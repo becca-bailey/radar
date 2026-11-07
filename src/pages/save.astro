@@ -1,0 +1,40 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+// Bookmarklet target: a small prefilled save form that works in a popup.
+const { user } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const url = Astro.url.searchParams.get('url') ?? '';
+const title = Astro.url.searchParams.get('title') ?? '';
+const done = Astro.url.searchParams.get('done') === '1';
+---
+
+<Layout title="Save — Rabbit Hole" user={user}>
+  {
+    done ? (
+      <>
+        <div class="notice">Saved. You can close this window.</div>
+        <script is:inline>
+          setTimeout(() => window.close(), 1200);
+        </script>
+      </>
+    ) : (
+      <>
+        <h1>Save{title ? `: ${title}` : ''}</h1>
+        <form class="stack" method="post" action="/api/saves">
+          <input type="hidden" name="return_to" value="save" />
+          <input type="url" name="url" value={url} placeholder="https://…" required />
+          <input type="text" name="sentence" placeholder="One sentence of why (optional)" autofocus={!!url} />
+          <textarea name="note" placeholder="Private note (optional)" />
+          <label style="font-size:0.9rem">
+            <input type="checkbox" name="wayback" /> Also save to the Wayback Machine
+          </label>
+          <button type="submit">Save</button>
+        </form>
+      </>
+    )
+  }
+</Layout>

@@ -40,6 +40,9 @@ const { title = 'Rabbit Hole', user } = Astro.props;
         </nav>
       </header>
       <slot />
+      <footer style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); font-size:0.85rem; color:var(--muted)">
+        <a href="/privacy">Privacy</a> · Your archive is yours: export it any time.
+      </footer>
     </main>
   </body>
 </html>

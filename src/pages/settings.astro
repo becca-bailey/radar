@@ -110,6 +110,21 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     )
   }
 
+  <h2>Capture tools</h2>
+  <p>
+    <strong>Bookmarklet:</strong> drag this to your bookmarks bar, then click it on any
+    page to save it:
+    <a
+      href={`javascript:window.open('${Astro.url.origin}/save?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'rabbithole','width=480,height=560')`}
+    >Save to Rabbit Hole</a>
+  </p>
+  <p>
+    <strong>iOS Shortcut:</strong> create a Shortcut that accepts URLs from the share
+    sheet and sends a POST request to <code>{Astro.url.origin}/api/saves</code> with
+    header <code>Authorization: Bearer &lt;your token&gt;</code> and JSON body
+    <code>{'{"url": <Shortcut Input>, "sentence": <Ask Each Time>}'}</code>.
+  </p>
+
   <h2>Export</h2>
   <p>Your whole archive, any time: <a href="/api/export?format=markdown">Markdown</a> · <a href="/api/export?format=json">JSON</a></p>
 </Layout>

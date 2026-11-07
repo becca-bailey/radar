@@ -26,6 +26,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   let note: string | null = null;
   let sentence: string | null = null;
   let wayback = false;
+  let returnTo = '/';
 
   if (isForm) {
     const form = await request.formData();
@@ -33,6 +34,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     note = (form.get('note') as string) || null;
     sentence = (form.get('sentence') as string) || null;
     wayback = form.get('wayback') === 'on';
+    if (form.get('return_to') === 'save') returnTo = '/save';
   } else {
     let body: unknown;
     try {
@@ -49,7 +51,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   if (!url.trim()) {
     return isForm
-      ? redirect('/?error=' + encodeURIComponent('Paste a link to save.'))
+      ? redirect(returnTo + '?error=' + encodeURIComponent('Paste a link to save.'))
       : Response.json({ error: 'url is required.' }, { status: 400 });
   }
 
@@ -60,18 +62,20 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       sentence,
       waybackRequested: wayback,
     });
-    return isForm ? redirect('/?saved=1') : Response.json(result, { status: 201 });
+    return isForm
+      ? redirect(returnTo === '/save' ? '/save?done=1' : '/?saved=1')
+      : Response.json(result, { status: 201 });
   } catch (err) {
     if (err instanceof TypeError) {
       const msg = 'That does not look like a web link.';
       return isForm
-        ? redirect('/?error=' + encodeURIComponent(msg))
+        ? redirect(returnTo + '?error=' + encodeURIComponent(msg))
         : Response.json({ error: msg }, { status: 400 });
     }
     console.error('save failed:', err);
     const msg = 'Saving failed. Try again.';
     return isForm
-      ? redirect('/?error=' + encodeURIComponent(msg))
+      ? redirect(returnTo + '?error=' + encodeURIComponent(msg))
       : Response.json({ error: msg }, { status: 500 });
   }
 };

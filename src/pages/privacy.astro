@@ -1,0 +1,73 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const { user } = Astro.locals;
+---
+
+<Layout title="Privacy — Rabbit Hole" user={user}>
+  <h1>Privacy</h1>
+  <p>
+    This page says exactly what is stored, what leaves the server, and to whom.
+    It changes only when the software changes.
+  </p>
+
+  <h2>The three layers</h2>
+  <p>
+    <strong>Your archive</strong> holds everything: the links you save, the page text we
+    archive for you, and your private notes. Only you can see it. Private notes never
+    leave the archive, full stop.
+  </p>
+  <p>
+    <strong>A group</strong> you share to sees the link and your one-sentence "why" — and
+    your display name, if the group shows names. A group never sees your other saves,
+    your notes, or anything you didn't explicitly share to it.
+  </p>
+  <p>
+    <strong>The public layer</strong> sees only counts: how many groups recommended a
+    link. Never who.
+  </p>
+
+  <h2>What is stored</h2>
+  <ul>
+    <li>Your email address (for sign-in) and a display name you choose.</li>
+    <li>Links you save: the canonical URL, the URL you actually saved, and the page's
+      extracted text and a cleaned snapshot, archived so you can search and keep it.</li>
+    <li>Your notes and sentences, timestamps, and group memberships.</li>
+  </ul>
+  <p>No ad identifiers, no analytics profiles, no payment data, no data about where a
+    group member came from.</p>
+
+  <h2>What leaves the server, and to whom</h2>
+  <ul>
+    <li>
+      <strong>OpenAI</strong> (embeddings and, occasionally, a single categorization
+      call): the <em>title and lead text of the public web page</em> you saved — never
+      your notes, never your name, never which user saved it. OpenAI's API terms exclude
+      training on this data.
+    </li>
+    <li>
+      <strong>Internet Archive (Wayback Machine)</strong>: only when you tick "also save
+      to Wayback" on a save, we ask it to archive that public URL. Never for pages that
+      required a login.
+    </li>
+    <li>
+      <strong>Email provider</strong>: your email address, to send sign-in links and
+      edition emails. One email per edition, nothing else. No notification system.
+    </li>
+  </ul>
+
+  <h2>What we will not do</h2>
+  <ul>
+    <li>No ads, no sponsored links, no affiliate rewriting.</li>
+    <li>No training models on your content, ours or anyone else's.</li>
+    <li>No selling or sharing data. The public layer shows counts, not people.</li>
+  </ul>
+
+  <h2>Export and deletion</h2>
+  <p>
+    Your whole archive exports to markdown or JSON — full archived text included — any
+    time, from <a href="/settings">Settings</a>. Deleting your account deletes your
+    saves, notes, tokens, and memberships. Past group editions are immutable and keep
+    the links they published, without your name.
+  </p>
+</Layout>
