@@ -1,0 +1,69 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+let message: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const name = String(form.get('name') ?? '').trim();
+  if (!name) {
+    message = 'Give the group a name.';
+  } else {
+    const { data: group, error } = await supabase
+      .from('groups')
+      .insert({ name, owner_id: user.id })
+      .select('id')
+      .single();
+    if (error) {
+      message = `Could not create group: ${error.message}`;
+    } else {
+      return Astro.redirect(`/groups/${group.id}`);
+    }
+  }
+}
+
+const { data: groups } = await supabase
+  .from('groups')
+  .select('id, name, cadence, edition_size, owner_id')
+  .order('created_at', { ascending: true });
+---
+
+<Layout title="Groups — Rabbit Hole" user={user}>
+  <h1>Groups</h1>
+  <p>
+    A group is a few people who trust each other's taste. Share a save with one
+    sentence of why; the group publishes a finite edition on a fixed cadence. No
+    comments, no likes, no feed.
+  </p>
+
+  {message && <div class="notice error">{message}</div>}
+
+  {
+    (groups ?? []).length > 0 && (
+      <ul class="saves">
+        {(groups ?? []).map((g) => (
+          <li>
+            <a class="title" href={`/groups/${g.id}`}>
+              {g.name}
+            </a>
+            <div class="meta">
+              {g.cadence} · {g.edition_size} links per edition
+              {g.owner_id === user.id ? ' · you run this' : ''}
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <h2>Start a group</h2>
+  <form class="stack" method="post">
+    <input type="text" name="name" placeholder="Group name" required maxlength="100" />
+    <button type="submit">Create group</button>
+  </form>
+</Layout>

@@ -7,6 +7,14 @@ leaves the app deployable. Sizes: S ≲ half day, M 1–2 days, L 3–5 days.
 **Stack:** Astro + React islands + TypeScript on Netlify; Supabase (Postgres +
 pgvector + Auth + RLS). Embeddings via API with no-training terms.
 
+**Design constraints:**
+- Visual direction: handmade, maximalist, modern (see Becca's reference examples —
+  cream background, chunky playful display type, organic shapes, candy accents).
+- Stay generic beyond articles: **product recommendations must work later** without
+  schema changes. Links carry `kind` (article/product/video/audio/other) from
+  OpenGraph/schema.org at ingest; metadata keeps og:image and price; ranking and
+  editions are kind-agnostic. Product UI treatment is deferred, not precluded.
+
 ## Stage 1 — Walking skeleton
 
 - [ ] **1.1 (S)** Scaffold: Astro + React + TS, Netlify adapter, Supabase local dev, vitest, CI.

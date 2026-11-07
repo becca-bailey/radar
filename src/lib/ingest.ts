@@ -4,6 +4,7 @@ import { parseHTML } from 'linkedom';
 import { canonicalUrlFor } from './canonicalize';
 import { embedAndCategorize } from './categorize';
 import { fetchPage } from './fetchPage';
+import { extractOpenGraph } from './openGraph';
 import { sourceForUrl } from './sources';
 
 const MAX_ATTEMPTS = 3;
@@ -140,15 +141,16 @@ async function processOneLink(
     return 'done';
   }
 
+  const og = extractOpenGraph(page.html);
   const { document } = parseHTML(page.html);
   const docTitle = document.querySelector('title')?.textContent?.trim() ?? null;
   const article = new Readability(document as unknown as Document, {
     charThreshold: 100,
   }).parse();
 
-  const title = (article?.title || docTitle || titleFromUrl(trueCanonical)).slice(0, 500);
+  const title = (article?.title || og.title || docTitle || titleFromUrl(trueCanonical)).slice(0, 500);
   const fullText = (article?.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim().slice(0, MAX_TEXT_CHARS);
-  const lead = (article?.excerpt || fullText.slice(0, 400)).trim().slice(0, 1000);
+  const lead = (article?.excerpt || og.description || fullText.slice(0, 400)).trim().slice(0, 1000);
   const snapshot = (article?.content ?? '').slice(0, MAX_SNAPSHOT_CHARS) || null;
 
   const source = await deriveSource(trueCanonical);
@@ -174,11 +176,16 @@ async function processOneLink(
       html_snapshot: snapshot,
       metadata: {
         byline: article?.byline ?? null,
-        siteName: article?.siteName ?? null,
+        siteName: article?.siteName ?? og.siteName,
         excerpt: article?.excerpt ?? null,
         contentType: page.contentType,
         fetchedFrom: page.finalUrl,
+        image: og.image,
+        ogType: og.type,
+        price: og.price,
+        currency: og.currency,
       },
+      kind: og.kind,
       embedding,
       category_id: categoryId,
       status: 'ready',

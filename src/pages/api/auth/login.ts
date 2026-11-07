@@ -7,9 +7,14 @@ export const POST: APIRoute = async ({ request, locals, url, redirect }) => {
     return redirect('/login?error=' + encodeURIComponent('Enter an email address.'));
   }
 
+  // Only ever bounce back to a local path (e.g. the /join page that sent us here).
+  const next = String(form.get('next') ?? '');
+  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '';
+  const callback = `${url.origin}/auth/callback${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ''}`;
+
   const { error } = await locals.supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${url.origin}/auth/callback` },
+    options: { emailRedirectTo: callback },
   });
 
   if (error) {

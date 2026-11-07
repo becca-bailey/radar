@@ -1,0 +1,300 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { createServiceClient } from '../../../lib/supabase';
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const groupId = Astro.params.id!;
+let message: string | null = null;
+
+// --- Load group (RLS: members only) ---------------------------------------
+const { data: group } = await supabase
+  .from('groups')
+  .select('id, name, owner_id, cadence, edition_size, names_visible, contribute_public, per_source_cap')
+  .eq('id', groupId)
+  .maybeSingle();
+
+if (!group) {
+  return Astro.redirect('/groups');
+}
+const isOwner = group.owner_id === user.id;
+
+// --- Handle actions ---------------------------------------------------------
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+
+  if (action === 'settings' && isOwner) {
+    const { error } = await supabase
+      .from('groups')
+      .update({
+        name: String(form.get('name') ?? group.name).trim() || group.name,
+        cadence: String(form.get('cadence') ?? group.cadence),
+        edition_size: Number(form.get('edition_size') ?? group.edition_size),
+        names_visible: form.get('names_visible') === 'on',
+        contribute_public: form.get('contribute_public') === 'on',
+        per_source_cap: Number(form.get('per_source_cap') ?? group.per_source_cap),
+      })
+      .eq('id', group.id);
+    message = error ? `Could not save settings: ${error.message}` : 'Settings saved.';
+    if (!error) return Astro.redirect(`/groups/${group.id}?saved=1`);
+  }
+
+  if (action === 'rotate_invite' && isOwner) {
+    // Service role: deactivate old, create new (one active per group).
+    const service = createServiceClient();
+    await service.from('invite_links').update({ active: false }).eq('group_id', group.id).eq('active', true);
+    const { error } = await service.from('invite_links').insert({
+      group_id: group.id,
+      weekly_cap: Number(form.get('weekly_cap') ?? 50) || 50,
+    });
+    message = error ? `Could not rotate link: ${error.message}` : 'New invite link active; the old one is dead.';
+  }
+
+  if (action === 'invite_cap' && isOwner) {
+    const { error } = await supabase
+      .from('invite_links')
+      .update({ weekly_cap: Number(form.get('weekly_cap') ?? 50) || 50, paused_at: null })
+      .eq('group_id', group.id)
+      .eq('active', true);
+    message = error ? `Could not update cap: ${error.message}` : 'Invite cap updated.';
+  }
+
+  if (action === 'remove_member' && isOwner) {
+    const memberId = String(form.get('user_id'));
+    if (memberId === group.owner_id) {
+      message = 'The owner cannot be removed.';
+    } else {
+      // Remove membership and their recommendations here; past editions are
+      // immutable snapshots and keep what they published.
+      await supabase.from('recommendations').delete().eq('group_id', group.id).eq('user_id', memberId);
+      const { error } = await supabase
+        .from('memberships')
+        .delete()
+        .eq('group_id', group.id)
+        .eq('user_id', memberId);
+      message = error ? `Could not remove member: ${error.message}` : 'Member removed.';
+    }
+  }
+
+  if (action === 'leave' && !isOwner) {
+    await supabase.from('recommendations').delete().eq('group_id', group.id).eq('user_id', user.id);
+    await supabase.from('memberships').delete().eq('group_id', group.id).eq('user_id', user.id);
+    return Astro.redirect('/groups');
+  }
+}
+
+if (Astro.url.searchParams.get('saved') === '1') message = 'Settings saved.';
+
+// --- Load page data ---------------------------------------------------------
+const [{ data: members }, { data: recs }, { data: editions }, inviteRes] = await Promise.all([
+  supabase
+    .from('memberships')
+    .select('user_id, role, created_at, profiles:user_id(display_name)')
+    .eq('group_id', group.id)
+    .order('created_at'),
+  supabase
+    .from('recommendations')
+    .select('id, sentence, created_at, user_id, links(title, canonical_url, source), profiles:user_id(display_name)')
+    .eq('group_id', group.id)
+    .order('created_at', { ascending: false })
+    .limit(50),
+  supabase
+    .from('editions')
+    .select('id, period_start, period_end, published_at')
+    .eq('group_id', group.id)
+    .order('period_start', { ascending: false })
+    .limit(20),
+  isOwner
+    ? supabase
+        .from('invite_links')
+        .select('token, weekly_cap, uses_this_week, paused_at')
+        .eq('group_id', group.id)
+        .eq('active', true)
+        .maybeSingle()
+    : Promise.resolve({ data: null }),
+]);
+
+const invite = inviteRes.data as {
+  token: string;
+  weekly_cap: number;
+  uses_this_week: number;
+  paused_at: string | null;
+} | null;
+
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+
+type RecRow = {
+  id: string;
+  sentence: string | null;
+  created_at: string;
+  user_id: string;
+  links: { title: string | null; canonical_url: string; source: string | null } | null;
+  profiles: { display_name: string } | null;
+};
+const recRows = (recs ?? []) as unknown as RecRow[];
+type MemberRow = {
+  user_id: string;
+  role: string;
+  profiles: { display_name: string } | null;
+};
+const memberRows = (members ?? []) as unknown as MemberRow[];
+---
+
+<Layout title={`${group.name} — Rabbit Hole`} user={user}>
+  <h1>{group.name}</h1>
+  <p class="meta" style="color:var(--muted)">
+    {group.cadence} editions of {group.edition_size} · {memberRows.length} member{memberRows.length === 1 ? '' : 's'}
+  </p>
+
+  {message && <div class="notice">{message}</div>}
+
+  <h2>Editions</h2>
+  {
+    (editions ?? []).length === 0 ? (
+      <p class="empty">No editions yet. The first one publishes on the group's cadence.</p>
+    ) : (
+      <ul class="saves">
+        {(editions ?? []).map((e) => (
+          <li>
+            <a class="title" href={`/groups/${group.id}/editions/${e.id}`}>
+              {dateFmt.format(new Date(e.period_start))} – {dateFmt.format(new Date(e.period_end))}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <h2>Shared this period</h2>
+  {
+    recRows.length === 0 ? (
+      <p class="empty">Nothing shared yet. Share a save from your <a href="/">archive</a>.</p>
+    ) : (
+      <ul class="saves">
+        {recRows.map((r) => (
+          <li>
+            <a class="title" href={r.links?.canonical_url}>
+              {r.links?.title ?? r.links?.canonical_url}
+            </a>
+            <div class="meta">
+              {r.links?.source ?? ''}
+              {group.names_visible && r.profiles?.display_name ? ` · ${r.profiles.display_name}` : ''}
+              {' · '}
+              {dateFmt.format(new Date(r.created_at))}
+            </div>
+            {r.sentence && <p class="sentence">{r.sentence}</p>}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <h2>Members</h2>
+  <ul class="saves">
+    {
+      memberRows.map((m) => (
+        <li style="display:flex; justify-content:space-between; align-items:center">
+          <span>
+            {m.profiles?.display_name || 'Unnamed reader'}
+            {m.role === 'owner' ? ' (owner)' : ''}
+          </span>
+          {isOwner && m.user_id !== group.owner_id && (
+            <form method="post">
+              <input type="hidden" name="_action" value="remove_member" />
+              <input type="hidden" name="user_id" value={m.user_id} />
+              <button class="danger" type="submit">
+                Remove
+              </button>
+            </form>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    !isOwner && (
+      <form method="post" style="margin-top:0.5rem">
+        <input type="hidden" name="_action" value="leave" />
+        <button class="danger" type="submit">
+          Leave group
+        </button>
+      </form>
+    )
+  }
+
+  {
+    isOwner && (
+      <>
+        <h2>Invite link</h2>
+        {invite ? (
+          <>
+            <code class="token">{`${Astro.url.origin}/join/${invite.token}`}</code>
+            <p class="meta" style="color:var(--muted)">
+              {invite.uses_this_week} of {invite.weekly_cap} uses this week
+              {invite.paused_at ? ' · paused (cap reached)' : ''}
+            </p>
+            <form class="stack" method="post">
+              <input type="hidden" name="_action" value="invite_cap" />
+              <label>
+                Weekly cap
+                <input type="text" name="weekly_cap" value={String(invite.weekly_cap)} inputmode="numeric" />
+              </label>
+              <button class="quiet" type="submit">Update cap</button>
+            </form>
+          </>
+        ) : (
+          <p>No active invite link.</p>
+        )}
+        <form method="post" style="margin-top:0.5rem">
+          <input type="hidden" name="_action" value="rotate_invite" />
+          <input type="hidden" name="weekly_cap" value={String(invite?.weekly_cap ?? 50)} />
+          <button class="quiet" type="submit">
+            {invite ? 'Rotate link (kills the old one immediately)' : 'Create invite link'}
+          </button>
+        </form>
+
+        <h2>Settings</h2>
+        <form class="stack" method="post">
+          <input type="hidden" name="_action" value="settings" />
+          <label>
+            Name
+            <input type="text" name="name" value={group.name} maxlength="100" />
+          </label>
+          <label>
+            Cadence
+            <select name="cadence">
+              <option value="daily" selected={group.cadence === 'daily'}>Daily</option>
+              <option value="weekly" selected={group.cadence === 'weekly'}>Weekly</option>
+              <option value="biweekly" selected={group.cadence === 'biweekly'}>Biweekly</option>
+            </select>
+          </label>
+          <label>
+            Links per edition (K)
+            <input type="text" name="edition_size" value={String(group.edition_size)} inputmode="numeric" />
+          </label>
+          <label>
+            Max links per source per edition
+            <select name="per_source_cap">
+              <option value="1" selected={group.per_source_cap === 1}>1</option>
+              <option value="2" selected={group.per_source_cap === 2}>2</option>
+            </select>
+          </label>
+          <label style="font-size:0.95rem">
+            <input type="checkbox" name="names_visible" checked={group.names_visible} /> Show recommender names to
+            members
+          </label>
+          <label style="font-size:0.95rem">
+            <input type="checkbox" name="contribute_public" checked={group.contribute_public} /> Contribute
+            anonymous counts to the public layer
+          </label>
+          <button type="submit">Save settings</button>
+        </form>
+      </>
+    )
+  }
+</Layout>

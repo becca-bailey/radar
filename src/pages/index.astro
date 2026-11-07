@@ -7,14 +7,22 @@ if (!user) {
 }
 
 const saved = Astro.url.searchParams.get('saved') === '1';
+const shared = Astro.url.searchParams.get('shared') === '1';
 const error = Astro.url.searchParams.get('error');
 
 // RLS scopes this to the signed-in user's saves.
-const { data: saves } = await supabase
-  .from('saves')
-  .select('id, original_url, note, sentence, created_at, links(title, source, canonical_url, status)')
-  .order('created_at', { ascending: false })
-  .limit(200);
+const [{ data: saves }, { data: myGroups }, { data: profile }] = await Promise.all([
+  supabase
+    .from('saves')
+    .select('id, original_url, note, sentence, created_at, links(title, source, canonical_url, status)')
+    .order('created_at', { ascending: false })
+    .limit(200),
+  supabase.from('groups').select('id, name').order('created_at'),
+  supabase.from('profiles').select('last_shared_group_id').eq('id', user.id).single(),
+]);
+
+const groups = (myGroups ?? []) as { id: string; name: string }[];
+const defaultGroupId = profile?.last_shared_group_id ?? groups[0]?.id ?? '';
 
 type SaveRow = {
   id: string;
@@ -47,6 +55,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
 <Layout title="Rabbit Hole" user={user}>
   {saved && <div class="notice">Saved.</div>}
+  {shared && <div class="notice">Shared.</div>}
   {error && <div class="notice error">{error}</div>}
 
   <form class="stack" method="post" action="/api/saves">
@@ -75,6 +84,32 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
             </div>
             {row.sentence && <p class="sentence">{row.sentence}</p>}
             {row.note && <p class="note">{row.note}</p>}
+            {groups.length > 0 && (
+              <details style="margin-top:0.5rem">
+                <summary style="cursor:pointer; font-size:0.85rem; color:var(--muted)">Share…</summary>
+                <form class="stack" method="post" action="/api/recommendations" style="margin:0.5rem 0 0">
+                  <input type="hidden" name="save_id" value={row.id} />
+                  <select name="group_id">
+                    {groups.map((g) => (
+                      <option value={g.id} selected={g.id === defaultGroupId}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    name="sentence"
+                    value={row.sentence ?? ''}
+                    placeholder="One sentence of why (the group sees this)"
+                  />
+                  <label style="font-size:0.85rem">
+                    <input type="checkbox" name="attribution_ok" /> OK to credit me by name in a published
+                    roundup
+                  </label>
+                  <button class="quiet" type="submit">Share</button>
+                </form>
+              </details>
+            )}
           </li>
         ))}
       </ul>

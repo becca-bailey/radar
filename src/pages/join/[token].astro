@@ -1,0 +1,112 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { createServiceClient } from '../../lib/supabase';
+
+const token = Astro.params.token!;
+const { user } = Astro.locals;
+
+if (!user) {
+  return Astro.redirect(`/login?next=${encodeURIComponent(`/join/${token}`)}`);
+}
+
+const service = createServiceClient();
+
+const { data: invite } = await service
+  .from('invite_links')
+  .select('id, group_id, active, weekly_cap, uses_this_week, week_started_at, paused_at, groups(name)')
+  .eq('token', token)
+  .maybeSingle();
+
+let outcome: 'joined' | 'already' | 'dead' | 'paused' = 'dead';
+let groupName = '';
+let groupId = '';
+
+if (invite && invite.active) {
+  groupName = (invite.groups as unknown as { name: string })?.name ?? '';
+  groupId = invite.group_id;
+
+  // Weekly window rollover.
+  const weekAge = Date.now() - new Date(invite.week_started_at).getTime();
+  let uses = invite.uses_this_week;
+  if (weekAge > 7 * 24 * 60 * 60 * 1000) {
+    uses = 0;
+    await service
+      .from('invite_links')
+      .update({ uses_this_week: 0, week_started_at: new Date().toISOString(), paused_at: null })
+      .eq('id', invite.id);
+  }
+
+  const { data: existing } = await service
+    .from('memberships')
+    .select('group_id')
+    .eq('group_id', invite.group_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existing) {
+    outcome = 'already';
+  } else if (uses >= invite.weekly_cap) {
+    outcome = 'paused';
+    if (!invite.paused_at) {
+      await service.from('invite_links').update({ paused_at: new Date().toISOString() }).eq('id', invite.id);
+    }
+  } else {
+    const { error } = await service
+      .from('memberships')
+      .insert({ group_id: invite.group_id, user_id: user.id, role: 'member' });
+    if (!error) {
+      await service
+        .from('invite_links')
+        .update({ uses_this_week: uses + 1 })
+        .eq('id', invite.id);
+      outcome = 'joined';
+    } else {
+      outcome = 'already';
+    }
+  }
+}
+---
+
+<Layout title="Join — Rabbit Hole" user={user}>
+  {
+    outcome === 'joined' && (
+      <>
+        <h1>Welcome to {groupName}</h1>
+        <p>
+          You're in. Share something you loved from your <a href="/">archive</a>, with one
+          sentence of why. The group publishes a short edition on a fixed cadence — when
+          you've seen it, you're done.
+        </p>
+        <p>
+          <a href={`/groups/${groupId}`}>Go to the group</a>
+        </p>
+      </>
+    )
+  }
+  {
+    outcome === 'already' && (
+      <>
+        <h1>You're already in</h1>
+        <p>
+          <a href={`/groups/${groupId}`}>Go to {groupName}</a>
+        </p>
+      </>
+    )
+  }
+  {
+    outcome === 'paused' && (
+      <>
+        <h1>This invite is resting</h1>
+        <p>This link hit its weekly limit. Try again in a few days, or ask whoever sent it.</p>
+      </>
+    )
+  }
+  {
+    outcome === 'dead' && (
+      <>
+        <h1>This invite link isn't active</h1>
+        <p>It may have been rotated. Ask whoever sent it for the current one.</p>
+      </>
+    )
+  }
+</Layout>

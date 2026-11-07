@@ -54,6 +54,8 @@ These are product decisions, already made. Do not reopen them in implementation 
 - **Category.** Fixed taxonomy entry (name, description, embedding of description). Twenty to thirty total.
 - **Source.** Derived from Link. Registrable domain, except on multi-tenant platforms (Substack, Medium, YouTube, Bluesky, etc.) where source = author or publication.
 
+**Genericity note (added 2026-11-07):** the design must stay generic enough to support product recommendations, not just articles. Products are not the first priority, but nothing should assume "link = article": Links carry a `kind` (article / product / video / audio / other) derived at ingest from OpenGraph and schema.org metadata, metadata captures og:image and price when present, and ranking/editions treat all kinds alike. Product-specific treatment (image cards, price display, maybe a product category set) is UI work for later, not schema work.
+
 ### Canonicalization
 
 - Follow redirects, resolve AMP to canonical, honor `<link rel="canonical">`.
