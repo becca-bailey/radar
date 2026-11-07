@@ -1,0 +1,108 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import { LABEL_TEXT } from '../../../../lib/editionEmail';
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const groupId = Astro.params.id!;
+const editionId = Astro.params.eid!;
+
+// RLS: members only.
+const [{ data: edition }, { data: group }] = await Promise.all([
+  supabase
+    .from('editions')
+    .select('id, group_id, period_start, period_end, published_at, active_members')
+    .eq('id', editionId)
+    .eq('group_id', groupId)
+    .maybeSingle(),
+  supabase.from('groups').select('id, name, names_visible').eq('id', groupId).maybeSingle(),
+]);
+
+if (!edition || !group) {
+  return Astro.redirect('/groups');
+}
+
+const { data: links } = await supabase
+  .from('edition_links')
+  .select('position, label, title, canonical_url, source, sentences, recommender_names, attribution_names, recommender_count')
+  .eq('edition_id', edition.id)
+  .order('position');
+
+type EntryRow = {
+  position: number;
+  label: string;
+  title: string | null;
+  canonical_url: string;
+  source: string | null;
+  sentences: string[];
+  recommender_names: string[];
+  attribution_names: string[];
+  recommender_count: number;
+};
+const entries = (links ?? []) as unknown as EntryRow[];
+
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' });
+const periodLabel = `${dateFmt.format(new Date(edition.period_start))} – ${dateFmt.format(
+  new Date(edition.period_end)
+)}`;
+
+// Roundup export (PLAN.md Phase 2): markdown with blurbs and opt-in attribution.
+if (Astro.url.searchParams.get('format') === 'markdown') {
+  const lines: string[] = [`# ${group.name}: ${periodLabel}`, ''];
+  for (const e of entries) {
+    lines.push(`## ${e.title ?? e.canonical_url}`);
+    lines.push('');
+    lines.push(`<${e.canonical_url}>`);
+    lines.push('');
+    lines.push(`*${LABEL_TEXT[e.label] ?? e.label}* · recommended by ${e.recommender_count} reader${e.recommender_count === 1 ? '' : 's'}${e.attribution_names.length ? ` (${e.attribution_names.join(', ')})` : ''}`);
+    for (const s of e.sentences) {
+      lines.push('');
+      lines.push(`> ${s}`);
+    }
+    lines.push('');
+  }
+  return new Response(lines.join('\n'), {
+    headers: {
+      'Content-Type': 'text/markdown; charset=utf-8',
+      'Content-Disposition': `attachment; filename="edition-${edition.period_start.slice(0, 10)}.md"`,
+    },
+  });
+}
+---
+
+<Layout title={`${group.name} — ${periodLabel}`} user={user}>
+  <h1>{group.name}</h1>
+  <p class="meta" style="color:var(--muted)">{periodLabel} · {entries.length} links · that's all of them</p>
+
+  <p><a href={`/groups/${groupId}/editions/${editionId}?format=markdown`}>Export as markdown (roundup draft)</a></p>
+
+  <ul class="saves">
+    {
+      entries.map((e) => (
+        <li>
+          <span style="font-size:0.72rem; letter-spacing:0.05em; text-transform:uppercase; color:var(--accent)">
+            {LABEL_TEXT[e.label] ?? e.label}
+          </span>
+          <br />
+          <a class="title" href={e.canonical_url}>
+            {e.title ?? e.canonical_url}
+          </a>
+          <div class="meta">
+            {e.source ?? ''} · {e.recommender_count} reader{e.recommender_count === 1 ? '' : 's'}
+            {group.names_visible && e.recommender_names.length > 0
+              ? ` · ${e.recommender_names.join(', ')}`
+              : ''}
+          </div>
+          {e.sentences.map((s) => (
+            <p class="sentence">“{s}”</p>
+          ))}
+        </li>
+      ))
+    }
+  </ul>
+
+  <p class="empty">When you've seen them, you're done.</p>
+</Layout>
