@@ -263,7 +263,7 @@ Written down now so the first request doesn't reopen it:
 
 ## 15. Open decisions
 
-- Product name. Candidates so far: Rabbit Hole (current working name), Headcanon, Canon Club, Commonplace (after the commonplace book), Canon / Canonize (note: trademark collisions with Canon Inc. and Canonical Ltd.).
+- Product name. **Current working name: Radar** (chosen 2026-11-07: generic but indicative — "put it on your radar"; reads right both as a personal notes tool and as a group sharing tool). Earlier candidates, kept for reference: Rabbit Hole, Headcanon, Canon Club, Commonplace (after the commonplace book), Canon / Canonize (note: trademark collisions with Canon Inc. and Canonical Ltd.).
 - Embeddings: self-hosted model vs API provider. **Decided for the build: API provider with no-training terms, named on the privacy page; pgvector keeps it swappable.**
 - Native capture: Expo share extension vs Swift.
 - Default for recommender names in private groups (current lean: visible). **Build default: visible.**

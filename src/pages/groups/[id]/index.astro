@@ -144,7 +144,7 @@ type MemberRow = {
 const memberRows = (members ?? []) as unknown as MemberRow[];
 ---
 
-<Layout title={`${group.name} — Rabbit Hole`} user={user}>
+<Layout title={`${group.name} — Radar`} user={user}>
   <h1>{group.name}</h1>
   <p class="meta" style="color:var(--muted)">
     {group.cadence} editions of {group.edition_size} · {memberRows.length} member{memberRows.length === 1 ? '' : 's'}

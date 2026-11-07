@@ -1,5 +1,5 @@
 /*
- * Rabbit Hole — handmade, maximalist, modern.
+ * Radar — handmade, maximalist, modern.
  * Cream paper, chunky friendly display type (Fraunces soft), candy accents,
  * ink borders with hard offset shadows, organic blob details.
  */
@@ -136,16 +136,19 @@ header.site .brand {
   align-items: baseline;
 }
 
-/* the "o" in hole is an actual hole */
-.brand .hole {
-  width: 0.72em;
-  height: 0.72em;
-  margin: 0 0.04em;
+/* a radar blip pings off the end of the wordmark */
+.brand .blip {
+  width: 0.34em;
+  height: 0.34em;
+  margin-left: 0.22em;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, var(--candy-orange) 0 55%, var(--ink) 56% 100%);
-  border: 2.5px solid var(--text);
+  background: var(--candy-orange);
+  border: 2px solid var(--text);
+  box-shadow:
+    0 0 0 3px var(--bg),
+    0 0 0 5px var(--text);
   align-self: center;
-  transform: translateY(0.06em);
+  transform: translateY(-0.3em);
 }
 
 header.site nav {

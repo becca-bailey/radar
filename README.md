@@ -1,4 +1,6 @@
-# Rabbit Hole (working name)
+# Radar (working name)
+
+"Put it on your radar." A notes tool for yourself, a sharing tool for a group.
 
 A reading archive that happens to be shareable, not a sharing app that happens to
 keep a copy. Every link you save goes to your own archive first: full text captured,

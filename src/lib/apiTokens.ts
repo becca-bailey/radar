@@ -1,9 +1,9 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/** Tokens look like rh_<base64url>. Only the SHA-256 hash is stored. */
+/** Tokens look like rdr_<base64url>. Only the SHA-256 hash is stored. */
 export function generateApiToken(): { raw: string; hash: string } {
-  const raw = 'rh_' + randomBytes(24).toString('base64url');
+  const raw = 'rdr_' + randomBytes(24).toString('base64url');
   return { raw, hash: hashApiToken(raw) };
 }
 
@@ -26,7 +26,8 @@ export async function userIdForBearerToken(
   service: SupabaseClient,
   authorizationHeader: string | null
 ): Promise<string | null> {
-  const match = authorizationHeader?.match(/^Bearer\s+(rh_[A-Za-z0-9_-]+)$/);
+  // rdr_ is current; rh_ tokens from before the rename keep working.
+  const match = authorizationHeader?.match(/^Bearer\s+((?:rdr|rh)_[A-Za-z0-9_-]+)$/);
   if (!match) return null;
   const hash = hashApiToken(match[1]);
   const { data } = await service

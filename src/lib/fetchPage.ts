@@ -1,6 +1,6 @@
 const MAX_BYTES = 3_000_000;
 const TIMEOUT_MS = 15_000;
-const USER_AGENT = 'RabbitHoleBot/0.1 (link archiver; saves pages its users asked it to save)';
+const USER_AGENT = 'RadarBot/0.1 (link archiver; saves pages its users asked it to save)';
 
 export interface FetchedPage {
   finalUrl: string;

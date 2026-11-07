@@ -23,7 +23,7 @@ export async function processWaybackRequests(service: SupabaseClient, limit = 2)
         method: 'GET',
         redirect: 'follow',
         signal: AbortSignal.timeout(30_000),
-        headers: { 'User-Agent': 'RabbitHoleBot/0.1 (user-requested Wayback save)' },
+        headers: { 'User-Agent': 'RadarBot/0.1 (user-requested Wayback save)' },
       });
       if (res.ok || res.status === 301 || res.status === 302) {
         await service

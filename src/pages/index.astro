@@ -53,7 +53,7 @@ function displayTitle(row: SaveRow): string {
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 
-<Layout title="Rabbit Hole" user={user}>
+<Layout title="Radar" user={user}>
   {saved && <div class="notice">Saved.</div>}
   {shared && <div class="notice">Shared.</div>}
   {error && <div class="notice error">{error}</div>}

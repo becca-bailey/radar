@@ -218,7 +218,7 @@ async function isUnsafeUrl(url: string): Promise<boolean> {
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
-          client: { clientId: 'rabbit-hole', clientVersion: '0.1' },
+          client: { clientId: 'radar', clientVersion: '0.1' },
           threatInfo: {
             threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE'],
             platformTypes: ['ANY_PLATFORM'],

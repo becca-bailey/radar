@@ -6,7 +6,7 @@ interface Props {
   user?: import('@supabase/supabase-js').User | null;
 }
 
-const { title = 'Rabbit Hole', user } = Astro.props;
+const { title = 'Radar', user } = Astro.props;
 ---
 
 <!doctype html>
@@ -36,8 +36,8 @@ const { title = 'Rabbit Hole', user } = Astro.props;
     </svg>
     <main>
       <header class="site">
-        <a class="brand" href="/" aria-label="Rabbit Hole"
-          >rabbit h<span class="hole" aria-hidden="true"></span>le</a
+        <a class="brand" href="/" aria-label="Radar"
+          >radar<span class="blip" aria-hidden="true"></span></a
         >
         <nav>
           {

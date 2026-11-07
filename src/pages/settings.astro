@@ -54,7 +54,7 @@ const { data: tokens } = await supabase
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 
-<Layout title="Settings — Rabbit Hole" user={user}>
+<Layout title="Settings — Radar" user={user}>
   <h1>Settings</h1>
 
   {message && <div class="notice">{message}</div>}
@@ -115,8 +115,8 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     <strong>Bookmarklet:</strong> drag this to your bookmarks bar, then click it on any
     page to save it:
     <a
-      href={`javascript:window.open('${Astro.url.origin}/save?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'rabbithole','width=480,height=560')`}
-    >Save to Rabbit Hole</a>
+      href={`javascript:window.open('${Astro.url.origin}/save?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'radar','width=480,height=560')`}
+    >Put it on Radar</a>
   </p>
   <p>
     <strong>iOS Shortcut:</strong> create a Shortcut that accepts URLs from the share
