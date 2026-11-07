@@ -25,6 +25,7 @@ const { title = 'Rabbit Hole', user } = Astro.props;
           {
             user ? (
               <>
+                <a href="/search">Search</a>
                 <a href="/settings">Settings</a>
                 <form method="post" action="/api/auth/logout" style="display:inline">
                   <button class="quiet" type="submit">

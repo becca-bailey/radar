@@ -1,0 +1,97 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { embedTexts, embeddingsConfigured } from '../lib/embeddings';
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+
+interface Result {
+  save_id: string;
+  title: string | null;
+  canonical_url: string;
+  source: string | null;
+  snippet: string;
+  sentence: string | null;
+  note: string | null;
+  created_at: string;
+  rank: number;
+}
+
+let results: Result[] = [];
+let searchError: string | null = null;
+
+if (q) {
+  let queryEmbedding: number[] | null = null;
+  if (embeddingsConfigured()) {
+    try {
+      [queryEmbedding] = await embedTexts([q]);
+    } catch {
+      // Keyword search still works without the embedding.
+    }
+  }
+  const { data, error } = await supabase.rpc('search_archive', {
+    query: q,
+    query_embedding: queryEmbedding,
+    match_limit: 30,
+  });
+  if (error) searchError = error.message;
+  results = (data ?? []) as Result[];
+}
+
+/**
+ * Snippets contain raw page text with [[[…]]] highlight markers from
+ * ts_headline. Escape everything, then convert only the markers to <mark>.
+ */
+function sanitizeSnippet(snippet: string): string {
+  const escaped = snippet
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped.replace(/\[\[\[/g, '<mark>').replace(/\]\]\]/g, '</mark>');
+}
+
+function displayTitle(r: Result): string {
+  if (r.title) return r.title;
+  try {
+    const u = new URL(r.canonical_url);
+    return u.hostname.replace(/^www\./, '') + u.pathname;
+  } catch {
+    return r.canonical_url;
+  }
+}
+---
+
+<Layout title="Search — Rabbit Hole" user={user}>
+  <h1>Search your archive</h1>
+  <form class="stack" method="get" action="/search">
+    <input type="search" name="q" value={q} placeholder="Words, ideas, half-remembered phrases" autofocus />
+    <button type="submit">Search</button>
+  </form>
+
+  {searchError && <div class="notice error">{searchError}</div>}
+
+  {
+    q && !searchError && (
+      results.length === 0 ? (
+        <p class="empty">Nothing found for “{q}”.</p>
+      ) : (
+        <ul class="saves">
+          {results.map((r) => (
+            <li>
+              <a class="title" href={r.canonical_url}>
+                {displayTitle(r)}
+              </a>
+              <div class="meta">{r.source ?? ''}</div>
+              {r.snippet && <p class="note" set:html={sanitizeSnippet(r.snippet)} />}
+              {r.sentence && <p class="sentence">{r.sentence}</p>}
+            </li>
+          ))}
+        </ul>
+      )
+    )
+  }
+</Layout>
