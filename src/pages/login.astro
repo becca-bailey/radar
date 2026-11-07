@@ -1,0 +1,32 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+if (Astro.locals.user) {
+  return Astro.redirect('/');
+}
+
+const sent = Astro.url.searchParams.get('sent') === '1';
+const error = Astro.url.searchParams.get('error');
+---
+
+<Layout title="Sign in — Rabbit Hole">
+  <h1>Sign in</h1>
+  <p>Enter your email and we'll send you a sign-in link. No password.</p>
+
+  {sent && (
+    <div class="notice">
+      Check your email for the sign-in link.
+      {import.meta.env.DEV && (
+        <>
+          {' '}In local dev, mail lands at <a href="http://localhost:55324">localhost:55324</a>.
+        </>
+      )}
+    </div>
+  )}
+  {error && <div class="notice error">{error}</div>}
+
+  <form class="stack" method="post" action="/api/auth/login">
+    <input type="email" name="email" placeholder="you@example.com" required autofocus />
+    <button type="submit">Send sign-in link</button>
+  </form>
+</Layout>

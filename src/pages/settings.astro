@@ -1,0 +1,115 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { generateApiToken } from '../lib/apiTokens';
+import { createServiceClient } from '../lib/supabase';
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+let newToken: string | null = null;
+let message: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+
+  if (action === 'display_name') {
+    const displayName = String(form.get('display_name') ?? '').trim();
+    const { error } = await supabase
+      .from('profiles')
+      .update({ display_name: displayName })
+      .eq('id', user.id);
+    message = error ? `Could not save: ${error.message}` : 'Display name saved.';
+  }
+
+  if (action === 'create_token') {
+    const { raw, hash } = generateApiToken();
+    const label = String(form.get('label') ?? '').trim() || 'Shortcut';
+    const service = createServiceClient();
+    const { error } = await service
+      .from('api_tokens')
+      .insert({ user_id: user.id, token_hash: hash, label });
+    if (error) {
+      message = `Could not create token: ${error.message}`;
+    } else {
+      newToken = raw;
+    }
+  }
+
+  if (action === 'revoke_token') {
+    // User-scoped client: RLS allows deleting only your own tokens.
+    const { error } = await supabase.from('api_tokens').delete().eq('id', String(form.get('id')));
+    message = error ? `Could not revoke: ${error.message}` : 'Token revoked.';
+  }
+}
+
+const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', user.id).single();
+const { data: tokens } = await supabase
+  .from('api_tokens')
+  .select('id, label, created_at, last_used_at')
+  .order('created_at', { ascending: false });
+
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+---
+
+<Layout title="Settings — Rabbit Hole" user={user}>
+  <h1>Settings</h1>
+
+  {message && <div class="notice">{message}</div>}
+
+  <h2>Display name</h2>
+  <p>Shown only inside private groups that choose to show recommender names.</p>
+  <form class="stack" method="post">
+    <input type="hidden" name="_action" value="display_name" />
+    <input type="text" name="display_name" value={profile?.display_name ?? ''} placeholder="Your name" />
+    <button type="submit">Save</button>
+  </form>
+
+  <h2>API tokens</h2>
+  <p>
+    For the iOS Shortcut and bookmarklet. A token can save links to your archive, nothing else.
+  </p>
+
+  {
+    newToken && (
+      <div class="notice">
+        <strong>Copy this token now — it won't be shown again.</strong>
+        <code class="token">{newToken}</code>
+      </div>
+    )
+  }
+
+  <form class="stack" method="post">
+    <input type="hidden" name="_action" value="create_token" />
+    <input type="text" name="label" placeholder="Label (e.g. iPhone Shortcut)" />
+    <button type="submit">Create token</button>
+  </form>
+
+  {
+    (tokens ?? []).length > 0 && (
+      <ul class="saves">
+        {(tokens ?? []).map((t) => (
+          <li>
+            <strong>{t.label || 'Token'}</strong>
+            <div class="meta">
+              Created {dateFmt.format(new Date(t.created_at))}
+              {t.last_used_at ? ` · last used ${dateFmt.format(new Date(t.last_used_at))}` : ' · never used'}
+            </div>
+            <form method="post" style="margin-top:0.5rem">
+              <input type="hidden" name="_action" value="revoke_token" />
+              <input type="hidden" name="id" value={t.id} />
+              <button class="danger" type="submit">
+                Revoke
+              </button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <h2>Export</h2>
+  <p>Your whole archive, any time: <a href="/api/export?format=markdown">Markdown</a> · <a href="/api/export?format=json">JSON</a></p>
+</Layout>

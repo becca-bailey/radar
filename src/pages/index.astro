@@ -1,16 +1,83 @@
 ---
+import Layout from '../layouts/Layout.astro';
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const saved = Astro.url.searchParams.get('saved') === '1';
+const error = Astro.url.searchParams.get('error');
+
+// RLS scopes this to the signed-in user's saves.
+const { data: saves } = await supabase
+  .from('saves')
+  .select('id, original_url, note, sentence, created_at, links(title, source, canonical_url, status)')
+  .order('created_at', { ascending: false })
+  .limit(200);
+
+type SaveRow = {
+  id: string;
+  original_url: string;
+  note: string | null;
+  sentence: string | null;
+  created_at: string;
+  links: {
+    title: string | null;
+    source: string | null;
+    canonical_url: string;
+    status: string;
+  } | null;
+};
+
+const rows = (saves ?? []) as unknown as SaveRow[];
+
+function displayTitle(row: SaveRow): string {
+  if (row.links?.title) return row.links.title;
+  try {
+    const u = new URL(row.links?.canonical_url ?? row.original_url);
+    return u.hostname.replace(/^www\./, '') + u.pathname;
+  } catch {
+    return row.original_url;
+  }
+}
+
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title="Rabbit Hole" user={user}>
+  {saved && <div class="notice">Saved.</div>}
+  {error && <div class="notice error">{error}</div>}
+
+  <form class="stack" method="post" action="/api/saves">
+    <input type="url" name="url" placeholder="Paste a link to save it" required />
+    <input type="text" name="sentence" placeholder="One sentence of why (optional, used if shared)" />
+    <textarea name="note" placeholder="Private note (optional, never leaves your archive)"></textarea>
+    <button type="submit">Save</button>
+  </form>
+
+  {
+    rows.length === 0 ? (
+      <p class="empty">Your archive is empty. Save the first thing you don't want to lose.</p>
+    ) : (
+      <ul class="saves">
+        {rows.map((row) => (
+          <li>
+            <a class="title" href={row.links?.canonical_url ?? row.original_url}>
+              {displayTitle(row)}
+            </a>
+            <div class="meta">
+              {row.links?.source ?? ''}
+              {row.links?.source ? ' · ' : ''}
+              {dateFmt.format(new Date(row.created_at))}
+              {row.links?.status === 'pending' ? ' · archiving…' : ''}
+              {row.links?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
+            </div>
+            {row.sentence && <p class="sentence">{row.sentence}</p>}
+            {row.note && <p class="note">{row.note}</p>}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</Layout>

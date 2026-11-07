@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  user?: import('@supabase/supabase-js').User | null;
+}
+
+const { title = 'Rabbit Hole', user } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <main>
+      <header class="site">
+        <a class="brand" href="/">Rabbit Hole</a>
+        <nav>
+          {
+            user ? (
+              <>
+                <a href="/settings">Settings</a>
+                <form method="post" action="/api/auth/logout" style="display:inline">
+                  <button class="quiet" type="submit">
+                    Sign out
+                  </button>
+                </form>
+              </>
+            ) : (
+              <a href="/login">Sign in</a>
+            )
+          }
+        </nav>
+      </header>
+      <slot />
+    </main>
+  </body>
+</html>
