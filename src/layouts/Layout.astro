@@ -15,34 +15,57 @@ const { title = 'Rabbit Hole', user } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..900,0..100,0..1;1,9..144,400..900,0..100,0..1&family=Work+Sans:wght@400;600;700&display=swap"
+    />
     <title>{title}</title>
   </head>
   <body>
+    <svg class="blob one" viewBox="0 0 200 200" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M48 15c25-14 62-18 84-2s24 48 17 76-23 54-49 62-61-4-77-27S5 66 17 44 32 24 48 15Z"></path>
+    </svg>
+    <svg class="blob two" viewBox="0 0 200 200" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M103 8c28 2 57 16 68 40s2 55-13 77-38 36-64 34S41 139 26 115 7 62 22 40 75 6 103 8Z"></path>
+    </svg>
     <main>
       <header class="site">
-        <a class="brand" href="/">Rabbit Hole</a>
+        <a class="brand" href="/" aria-label="Rabbit Hole"
+          >rabbit h<span class="hole" aria-hidden="true"></span>le</a
+        >
         <nav>
           {
             user ? (
               <>
                 <a href="/search">Search</a>
                 <a href="/groups">Groups</a>
+                <a href="/explore">Explore</a>
                 <a href="/settings">Settings</a>
                 <form method="post" action="/api/auth/logout" style="display:inline">
-                  <button class="quiet" type="submit">
+                  <button class="quiet" type="submit" style="padding:0.3rem 0.8rem; font-size:0.85rem">
                     Sign out
                   </button>
                 </form>
               </>
             ) : (
-              <a href="/login">Sign in</a>
+              <>
+                <a href="/explore">Explore</a>
+                <a href="/login">Sign in</a>
+              </>
             )
           }
         </nav>
       </header>
       <slot />
-      <footer style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); font-size:0.85rem; color:var(--muted)">
-        <a href="/privacy">Privacy</a> · Your archive is yours: export it any time.
+      <footer class="site">
+        <a href="/privacy">Privacy</a> · <a href="/ranking">How ranking works</a> ·
+        <a href="/dashboard">Dashboard</a> · Your archive is yours: export it any time.
       </footer>
     </main>
   </body>

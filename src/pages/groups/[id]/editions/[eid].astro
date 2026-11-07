@@ -45,7 +45,7 @@ type EntryRow = {
 };
 const entries = (links ?? []) as unknown as EntryRow[];
 
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' });
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
 const periodLabel = `${dateFmt.format(new Date(edition.period_start))} – ${dateFmt.format(
   new Date(edition.period_end)
 )}`;
@@ -76,7 +76,9 @@ if (Astro.url.searchParams.get('format') === 'markdown') {
 
 <Layout title={`${group.name} — ${periodLabel}`} user={user}>
   <h1>{group.name}</h1>
-  <p class="meta" style="color:var(--muted)">{periodLabel} · {entries.length} links · that's all of them</p>
+  <p class="meta" style="color:var(--muted)">
+    {periodLabel} · {entries.length} link{entries.length === 1 ? '' : 's'} · that's all of them
+  </p>
 
   <p><a href={`/groups/${groupId}/editions/${editionId}?format=markdown`}>Export as markdown (roundup draft)</a></p>
 
@@ -84,9 +86,7 @@ if (Astro.url.searchParams.get('format') === 'markdown') {
     {
       entries.map((e) => (
         <li>
-          <span style="font-size:0.72rem; letter-spacing:0.05em; text-transform:uppercase; color:var(--accent)">
-            {LABEL_TEXT[e.label] ?? e.label}
-          </span>
+          <span class={`label-chip ${e.label}`}>{LABEL_TEXT[e.label] ?? e.label}</span>
           <br />
           <a class="title" href={e.canonical_url}>
             {e.title ?? e.canonical_url}

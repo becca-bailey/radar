@@ -125,7 +125,7 @@ const invite = inviteRes.data as {
   paused_at: string | null;
 } | null;
 
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 type RecRow = {
   id: string;
