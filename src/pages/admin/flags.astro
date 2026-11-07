@@ -1,0 +1,101 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { createServiceClient } from '../../lib/supabase';
+
+// Flag-and-review queue (PLAN.md §9). Admin = emails in ADMIN_EMAILS.
+const { user } = Astro.locals;
+const admins = (import.meta.env.ADMIN_EMAILS ?? '')
+  .split(',')
+  .map((e: string) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+if (!user || !admins.includes((user.email ?? '').toLowerCase())) {
+  return new Response('Not found', { status: 404 });
+}
+
+const service = createServiceClient();
+let message: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action'));
+  const flagId = String(form.get('flag_id'));
+  const linkId = String(form.get('link_id'));
+
+  if (action === 'hold') {
+    await service.from('links').update({ status: 'held' }).eq('id', linkId);
+    await service.from('flags').update({ resolved_at: new Date().toISOString() }).eq('id', flagId);
+    message = 'Link held: it will not surface in groups, editions, or the public layer.';
+  }
+  if (action === 'dismiss') {
+    await service.from('flags').update({ resolved_at: new Date().toISOString() }).eq('id', flagId);
+    message = 'Flag dismissed.';
+  }
+  if (action === 'unhold') {
+    await service.from('links').update({ status: 'ready' }).eq('id', linkId);
+    message = 'Link released.';
+  }
+}
+
+const { data: open } = await service
+  .from('flags')
+  .select('id, reason, created_at, link_id, links(title, canonical_url, source, status)')
+  .is('resolved_at', null)
+  .order('created_at');
+
+type FlagRow = {
+  id: string;
+  reason: string;
+  created_at: string;
+  link_id: string;
+  links: { title: string | null; canonical_url: string; source: string | null; status: string } | null;
+};
+const flags = (open ?? []) as unknown as FlagRow[];
+---
+
+<Layout title="Flags — Rabbit Hole" user={user}>
+  <h1>Flag queue</h1>
+  {message && <div class="notice">{message}</div>}
+
+  {
+    flags.length === 0 ? (
+      <p class="empty">Nothing flagged. Good.</p>
+    ) : (
+      <ul class="saves">
+        {flags.map((f) => (
+          <li>
+            <a class="title" href={f.links?.canonical_url}>
+              {f.links?.title ?? f.links?.canonical_url}
+            </a>
+            <div class="meta">
+              {f.links?.source ?? ''} · status: {f.links?.status} · flagged {f.created_at.slice(0, 10)}
+            </div>
+            {f.reason && <p class="note">{f.reason}</p>}
+            <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
+              <form method="post">
+                <input type="hidden" name="_action" value="hold" />
+                <input type="hidden" name="flag_id" value={f.id} />
+                <input type="hidden" name="link_id" value={f.link_id} />
+                <button class="danger" type="submit">Hold link</button>
+              </form>
+              <form method="post">
+                <input type="hidden" name="_action" value="dismiss" />
+                <input type="hidden" name="flag_id" value={f.id} />
+                <input type="hidden" name="link_id" value={f.link_id} />
+                <button class="quiet" type="submit">Dismiss</button>
+              </form>
+              {f.links?.status === 'held' && (
+                <form method="post">
+                  <input type="hidden" name="_action" value="unhold" />
+                  <input type="hidden" name="flag_id" value={f.id} />
+                  <input type="hidden" name="link_id" value={f.link_id} />
+                  <button class="quiet" type="submit">Release</button>
+                </form>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</Layout>

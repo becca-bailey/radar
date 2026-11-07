@@ -1,0 +1,84 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { computeDashboardMetrics } from '../lib/metrics';
+import { createServiceClient } from '../lib/supabase';
+
+// Public, aggregate-only (PLAN.md §7: "measure what the research measured").
+const { user } = Astro.locals;
+
+const metrics = await computeDashboardMetrics(createServiceClient()).catch(() => ({
+  cohorts: [],
+  topTenShare: null,
+  diversity: [],
+}));
+
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+---
+
+<Layout title="Dashboard — Rabbit Hole" user={user}>
+  <h1>Ranking dashboard</h1>
+  <p>
+    The numbers that say whether <a href="/ranking">the ranking</a> is doing its job:
+    do new and small sources actually get seen? Updated continuously, aggregates only.
+  </p>
+
+  <h2>Surfacing rate by cohort</h2>
+  <p>Of sources first recommended in a month, how many reached 3 recommendations within 90 days.</p>
+  {
+    metrics.cohorts.length === 0 ? (
+      <p class="empty">No recommendation history yet.</p>
+    ) : (
+      <ul class="saves">
+        {metrics.cohorts.map((c) => (
+          <li>
+            <strong>{c.month}</strong>
+            <div class="meta">
+              {c.surfaced} of {c.sources} sources surfaced ({c.sources ? pct(c.surfaced / c.sources) : '—'})
+            </div>
+            <svg width="100%" height="10" role="img" aria-label={`${c.month} surfacing rate`}>
+              <rect width="100%" height="10" fill="var(--border)" rx="5" />
+              <rect
+                width={`${c.sources ? Math.round((c.surfaced / c.sources) * 100) : 0}%`}
+                height="10"
+                fill="var(--accent)"
+                rx="5"
+              />
+            </svg>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <h2>Concentration</h2>
+  {
+    metrics.topTenShare === null ? (
+      <p class="empty">No editions in the last 90 days.</p>
+    ) : (
+      <p>
+        The top 10 sources hold <strong>{pct(metrics.topTenShare)}</strong> of edition slots
+        from the last 90 days. If this number climbs toward 100%, the window is closing
+        here too.
+      </p>
+    )
+  }
+
+  <h2>Diversity</h2>
+  <p>Median distinct sources per edition, by month.</p>
+  {
+    metrics.diversity.length === 0 ? (
+      <p class="empty">No editions yet.</p>
+    ) : (
+      <ul class="saves">
+        {metrics.diversity.map((d) => (
+          <li>
+            <strong>{d.month}</strong>
+            <div class="meta">
+              median {d.medianDistinctSources} distinct sources across {d.editions} edition{d.editions === 1 ? '' : 's'}
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</Layout>

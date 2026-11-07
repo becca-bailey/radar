@@ -1,0 +1,53 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { computePublicHighlights } from '../lib/publicLayer';
+import { createServiceClient } from '../lib/supabase';
+
+// Public page: counts only, never who (PLAN.md §5).
+const { user } = Astro.locals;
+
+const highlights = await computePublicHighlights(createServiceClient()).catch(() => []);
+
+const byCategory = new Map<string, typeof highlights>();
+for (const h of highlights) {
+  const key = h.categoryName ?? 'Uncategorized';
+  const list = byCategory.get(key) ?? [];
+  list.push(h);
+  byCategory.set(key, list);
+}
+---
+
+<Layout title="Explore — Rabbit Hole" user={user}>
+  <h1>Explore</h1>
+  <p>
+    Links that several unrelated groups recommended recently. Counts, never names.
+    <a href="/ranking">How this ranking works.</a>
+  </p>
+
+  {
+    highlights.length === 0 ? (
+      <p class="empty">
+        Nothing here yet. A link appears when at least three independent groups
+        recommend it in the same month.
+      </p>
+    ) : (
+      [...byCategory.entries()].map(([category, links]) => (
+        <section>
+          <h2>{category}</h2>
+          <ul class="saves">
+            {links.map((h) => (
+              <li>
+                <a class="title" href={h.canonicalUrl}>
+                  {h.title ?? h.canonicalUrl}
+                </a>
+                <div class="meta">
+                  {h.source ?? ''} · recommended in {h.groupCount} groups
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    )
+  }
+</Layout>

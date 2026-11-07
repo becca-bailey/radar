@@ -45,6 +45,11 @@ export interface RankingContext {
   smallSourceThreshold: number;
   /** Sources that have appeared in this group's past editions. */
   seenSources: Set<string>;
+  /**
+   * Promotion damping (PLAN.md §9): accounts whose recent recommendations
+   * concentrate in one source count for less. Missing users weigh 1.
+   */
+  userWeights?: Map<string, number>;
   beta?: number;
   weightCap?: number;
 }
@@ -105,8 +110,15 @@ export function composeEdition(candidates: CandidateLink[], ctx: RankingContext)
     const r = distinct.size;
     if (r < minEvidence) continue;
 
+    // Weighted r: down-weighted accounts still count toward evidence (they
+    // are real people) but move the score less.
+    let weightedR = 0;
+    for (const userId of distinct.keys()) {
+      weightedR += ctx.userWeights?.get(userId) ?? 1;
+    }
+
     const a = ctx.sourceCounts.get(c.source) ?? 0;
-    const p = r / m;
+    const p = weightedR / m;
     const score = p * (1 + beta * inverseFrequencyWeight(a, ctx.totalRecommendations, weightCap));
 
     const firstTime = !ctx.seenSources.has(c.source);

@@ -177,13 +177,14 @@ async function buildEditionEntries(
   }
   if (byLink.size === 0) return null;
 
-  const [{ data: activeData }, seenSources] = await Promise.all([
+  const [{ data: activeData }, seenSources, userWeights] = await Promise.all([
     service.rpc('group_active_members', {
       gid: group.id,
       win_start: start.toISOString(),
       win_end: end.toISOString(),
     }),
     loadSeenSources(service, group.id),
+    loadUserWeights(service),
   ]);
   const activeMembers = Number(activeData ?? 0);
 
@@ -197,11 +198,38 @@ async function buildEditionEntries(
     totalRecommendations: stats.total,
     smallSourceThreshold: stats.smallThreshold,
     seenSources,
+    userWeights,
   };
 
   const entries = composeEdition([...byLink.values()], ctx) as EntriesWithMeta;
   entries.activeMembers = activeMembers;
   return entries;
+}
+
+/**
+ * Promotion damping (PLAN.md §9): an account whose last-90-day
+ * recommendations are ≥80% one source (with at least 5 of them) weighs 0.5.
+ */
+async function loadUserWeights(service: SupabaseClient): Promise<Map<string, number>> {
+  const { data } = await service
+    .from('recommendations')
+    .select('user_id, links(source)')
+    .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
+  const perUser = new Map<string, Map<string, number>>();
+  for (const row of (data ?? []) as unknown as Array<{ user_id: string; links: { source: string | null } | null }>) {
+    const source = row.links?.source;
+    if (!source) continue;
+    const counts = perUser.get(row.user_id) ?? new Map<string, number>();
+    counts.set(source, (counts.get(source) ?? 0) + 1);
+    perUser.set(row.user_id, counts);
+  }
+  const weights = new Map<string, number>();
+  for (const [userId, counts] of perUser) {
+    const total = [...counts.values()].reduce((a, b) => a + b, 0);
+    const max = Math.max(...counts.values());
+    if (total >= 5 && max / total >= 0.8) weights.set(userId, 0.5);
+  }
+  return weights;
 }
 
 async function loadSeenSources(service: SupabaseClient, groupId: string): Promise<Set<string>> {

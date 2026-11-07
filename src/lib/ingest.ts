@@ -93,6 +93,17 @@ async function processOneLink(
     .single();
   if (error) throw new Error(`Link ${linkId} not found: ${error.message}`);
 
+  // Safe Browsing check (PLAN.md §9), when a key is configured: held links
+  // never surface in groups, editions, or the public layer.
+  if (await isUnsafeUrl(link.canonical_url)) {
+    const { error: holdErr } = await service
+      .from('links')
+      .update({ status: 'held' })
+      .eq('id', link.id);
+    if (holdErr) throw new Error(holdErr.message);
+    return 'done';
+  }
+
   const page = await fetchPage(link.canonical_url);
   if (page.status >= 400) {
     throw new Error(`Fetch returned ${page.status}`);
@@ -194,6 +205,35 @@ async function processOneLink(
     .eq('id', link.id);
   if (updateErr) throw new Error(updateErr.message);
   return 'done';
+}
+
+async function isUnsafeUrl(url: string): Promise<boolean> {
+  const key = import.meta.env.SAFE_BROWSING_API_KEY;
+  if (!key) return false;
+  try {
+    const res = await fetch(
+      `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({
+          client: { clientId: 'rabbit-hole', clientVersion: '0.1' },
+          threatInfo: {
+            threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE'],
+            platformTypes: ['ANY_PLATFORM'],
+            threatEntryTypes: ['URL'],
+            threatEntries: [{ url }],
+          },
+        }),
+      }
+    );
+    if (!res.ok) return false; // fail open: our own archive copy is the risk surface, not others'
+    const json = (await res.json()) as { matches?: unknown[] };
+    return (json.matches?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
 }
 
 /** YouTube's source is the channel; oEmbed is keyless and reliable. */

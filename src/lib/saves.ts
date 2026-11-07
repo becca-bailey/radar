@@ -29,6 +29,27 @@ export async function createSave(
   const originalUrl = input.url.trim();
   const canonicalUrl = normalizeUrl(unwrapAmpCacheUrl(originalUrl)); // throws TypeError on junk
 
+  // Moderation (PLAN.md §9): blocklist at ingest + per-account rate limit.
+  const host = new URL(canonicalUrl).hostname;
+  const { data: blocked } = await service
+    .from('blocked_hosts')
+    .select('host')
+    .eq('host', host)
+    .maybeSingle();
+  if (blocked) {
+    throw new TypeError('That site cannot be saved here.');
+  }
+
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count } = await service
+    .from('saves')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', dayAgo);
+  if ((count ?? 0) >= 200) {
+    throw new TypeError('Daily save limit reached. Try again tomorrow.');
+  }
+
   // Find-or-create the Link row (one per canonical URL, system-wide).
   let { data: link } = await service
     .from('links')

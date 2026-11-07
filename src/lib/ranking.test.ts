@@ -169,6 +169,21 @@ describe('composeEdition', () => {
     expect(out[0].recommenderNames).toEqual(['Reader u1', 'Reader u2']);
   });
 
+  it('down-weights concentrated accounts in the score but not the evidence', () => {
+    const seen = new Set(['one.com', 'two.com']);
+    const out = composeEdition(
+      [
+        link('a', 'one.com', [rec('u1', 1), rec('spammy', 1)]),
+        link('b', 'two.com', [rec('u2', 1), rec('u3', 1)]),
+      ],
+      ctx({ seenSources: seen, userWeights: new Map([['spammy', 0.5]]) })
+    );
+    const a = out.find((e) => e.linkId === 'a')!;
+    const b = out.find((e) => e.linkId === 'b')!;
+    expect(a).toBeDefined(); // still eligible: two distinct humans
+    expect(a.score).toBeLessThan(b.score);
+  });
+
   it('ignores recommendations outside the window', () => {
     const out = composeEdition(
       [link('a', 'one.com', [rec('u1', -3), rec('u2', -2)])],
