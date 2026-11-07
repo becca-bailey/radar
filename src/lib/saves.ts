@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeUrl, unwrapAmpCacheUrl } from './canonicalize';
+import { sourceForUrl } from './sources';
 
 export interface SaveInput {
   url: string;
@@ -39,7 +40,12 @@ export async function createSave(
   if (!link) {
     const inserted = await service
       .from('links')
-      .upsert({ canonical_url: canonicalUrl }, { onConflict: 'canonical_url', ignoreDuplicates: true })
+      .upsert(
+        // Source is recomputed at ingest (with author hints); setting it now
+        // means the archive UI shows it before the worker runs.
+        { canonical_url: canonicalUrl, source: sourceForUrl(canonicalUrl) },
+        { onConflict: 'canonical_url', ignoreDuplicates: true }
+      )
       .select('id')
       .maybeSingle();
     if (inserted.data) {

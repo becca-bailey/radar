@@ -4,7 +4,10 @@ interface ImportMetaEnv {
   readonly SUPABASE_URL: string;
   readonly SUPABASE_ANON_KEY: string;
   readonly SUPABASE_SERVICE_ROLE_KEY: string;
-  readonly EMBEDDINGS_API_KEY?: string;
+  readonly OPENAI_API_KEY?: string;
+  readonly OPENAI_CLASSIFY_MODEL?: string;
+  readonly CATEGORY_SIM_THRESHOLD?: string;
+  readonly CRON_SECRET?: string;
   readonly RESEND_API_KEY?: string;
 }
 
