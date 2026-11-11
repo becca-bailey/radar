@@ -26,6 +26,7 @@ const done = Astro.url.searchParams.get('done') === '1';
         <h1>Save{title ? `: ${title}` : ''}</h1>
         <form class="stack" method="post" action="/api/saves">
           <input type="hidden" name="return_to" value="save" />
+          <input type="hidden" name="title" value={title} />
           <input type="url" name="url" value={url} placeholder="https://…" required />
           <input type="text" name="note" placeholder="Why you saved it (optional)" autofocus={!!url} />
           <label style="font-size:0.9rem">

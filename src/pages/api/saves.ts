@@ -24,6 +24,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   let url = '';
   let note: string | null = null;
+  let title: string | null = null;
   let wayback = false;
   let returnTo = '/';
 
@@ -31,6 +32,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     const form = await request.formData();
     url = String(form.get('url') ?? '');
     note = (form.get('note') as string) || null;
+    title = (form.get('title') as string) || null;
     wayback = form.get('wayback') === 'on';
     if (form.get('return_to') === 'save') returnTo = '/save';
   } else {
@@ -45,6 +47,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     // "sentence" is the pre-rename key; Shortcuts configured before the
     // rename keep working.
     note = typeof b.note === 'string' ? b.note : typeof b.sentence === 'string' ? b.sentence : null;
+    title = typeof b.title === 'string' ? b.title : null;
     wayback = b.wayback === true;
   }
 
@@ -58,8 +61,14 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     const result = await createSave(service, userId, {
       url,
       note,
+      title,
       waybackRequested: wayback,
     });
+    if (import.meta.env.DEV) {
+      // No scheduled functions in local dev, so a save kicks the ingest
+      // queue itself; fire-and-forget keeps the save response fast.
+      void fetch(new URL('/api/jobs/ingest?limit=5', request.url), { method: 'POST' }).catch(() => {});
+    }
     return isForm
       ? redirect(returnTo === '/save' ? '/save?done=1' : '/?saved=1')
       : Response.json(result, { status: 201 });

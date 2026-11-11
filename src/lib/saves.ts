@@ -5,6 +5,9 @@ import { sourceForUrl } from './sources';
 export interface SaveInput {
   url: string;
   note?: string | null;
+  /** Page title as seen by the saver (bookmarklet/Shortcut). Provisional:
+   * shown until ingest extracts the real one. */
+  title?: string | null;
   waybackRequested?: boolean;
 }
 
@@ -49,10 +52,12 @@ export async function createSave(
     throw new TypeError('Daily save limit reached. Try again tomorrow.');
   }
 
+  const providedTitle = input.title?.trim().slice(0, 300) || null;
+
   // Find-or-create the Link row (one per canonical URL, system-wide).
   let { data: link } = await service
     .from('links')
-    .select('id')
+    .select('id, title')
     .eq('canonical_url', canonicalUrl)
     .maybeSingle();
 
@@ -61,22 +66,29 @@ export async function createSave(
     const inserted = await service
       .from('links')
       .upsert(
-        // Source is recomputed at ingest (with author hints); setting it now
-        // means the archive UI shows it before the worker runs.
-        { canonical_url: canonicalUrl, source: sourceForUrl(canonicalUrl) },
+        // Source and title are recomputed at ingest (from the fetched page);
+        // setting them now means the archive UI shows them before the worker
+        // runs — and keeps showing a title if the fetch fails.
+        { canonical_url: canonicalUrl, source: sourceForUrl(canonicalUrl), title: providedTitle },
         { onConflict: 'canonical_url', ignoreDuplicates: true }
       )
-      .select('id')
+      .select('id, title')
       .maybeSingle();
     if (inserted.data) {
       link = inserted.data;
       isNewLink = true;
     } else {
       // Lost a race: someone else inserted it between our select and upsert.
-      const again = await service.from('links').select('id').eq('canonical_url', canonicalUrl).single();
+      const again = await service.from('links').select('id, title').eq('canonical_url', canonicalUrl).single();
       if (again.error) throw new Error(`Link lookup failed: ${again.error.message}`);
       link = again.data;
     }
+  }
+
+  // An existing link that never got a title (e.g. its fetch failed) can
+  // still take the saver's provisional one.
+  if (!isNewLink && providedTitle && !(link as { title?: string | null }).title) {
+    await service.from('links').update({ title: providedTitle }).eq('id', link.id).is('title', null);
   }
 
   if (isNewLink) {

@@ -122,7 +122,8 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     <strong>iOS Shortcut:</strong> create a Shortcut that accepts URLs from the share
     sheet and sends a POST request to <code>{Astro.url.origin}/api/saves</code> with
     header <code>Authorization: Bearer &lt;your token&gt;</code> and JSON body
-    <code>{'{"url": <Shortcut Input>, "note": <Ask Each Time>}'}</code>.
+    <code>{'{"url": <Shortcut Input>, "note": <Ask Each Time>, "title": <Name of Shortcut Input>}'}</code>
+    (<code>title</code> is optional — it names the link right away, before the page is archived).
   </p>
 
   <h2>Export</h2>
