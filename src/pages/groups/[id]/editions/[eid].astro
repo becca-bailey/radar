@@ -27,7 +27,7 @@ if (!edition || !group) {
 
 const { data: links } = await supabase
   .from('edition_links')
-  .select('position, label, link_id, title, canonical_url, source, sentences, recommender_names, attribution_names, recommender_count')
+  .select('position, label, link_id, title, canonical_url, source, notes, recommender_names, attribution_names, recommender_count')
   .eq('edition_id', edition.id)
   .order('position');
 
@@ -38,7 +38,7 @@ type EntryRow = {
   title: string | null;
   canonical_url: string;
   source: string | null;
-  sentences: string[];
+  notes: string[];
   recommender_names: string[];
   attribution_names: string[];
   recommender_count: number;
@@ -59,7 +59,7 @@ if (Astro.url.searchParams.get('format') === 'markdown') {
     lines.push(`<${e.canonical_url}>`);
     lines.push('');
     lines.push(`*${LABEL_TEXT[e.label] ?? e.label}* · recommended by ${e.recommender_count} reader${e.recommender_count === 1 ? '' : 's'}${e.attribution_names.length ? ` (${e.attribution_names.join(', ')})` : ''}`);
-    for (const s of e.sentences) {
+    for (const s of e.notes) {
       lines.push('');
       lines.push(`> ${s}`);
     }
@@ -97,8 +97,8 @@ if (Astro.url.searchParams.get('format') === 'markdown') {
               ? ` · ${e.recommender_names.join(', ')}`
               : ''}
           </div>
-          {e.sentences.map((s) => (
-            <p class="sentence">“{s}”</p>
+          {e.notes.map((s) => (
+            <p class="why">“{s}”</p>
           ))}
           <form method="post" action="/api/flags" style="margin-top:0.4rem">
             <input type="hidden" name="link_id" value={e.link_id} />

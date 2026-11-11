@@ -24,7 +24,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   let url = '';
   let note: string | null = null;
-  let sentence: string | null = null;
   let wayback = false;
   let returnTo = '/';
 
@@ -32,7 +31,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     const form = await request.formData();
     url = String(form.get('url') ?? '');
     note = (form.get('note') as string) || null;
-    sentence = (form.get('sentence') as string) || null;
     wayback = form.get('wayback') === 'on';
     if (form.get('return_to') === 'save') returnTo = '/save';
   } else {
@@ -44,8 +42,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     }
     const b = body as Record<string, unknown>;
     url = typeof b.url === 'string' ? b.url : '';
-    note = typeof b.note === 'string' ? b.note : null;
-    sentence = typeof b.sentence === 'string' ? b.sentence : null;
+    // "sentence" is the pre-rename key; Shortcuts configured before the
+    // rename keep working.
+    note = typeof b.note === 'string' ? b.note : typeof b.sentence === 'string' ? b.sentence : null;
     wayback = b.wayback === true;
   }
 
@@ -59,7 +58,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     const result = await createSave(service, userId, {
       url,
       note,
-      sentence,
       waybackRequested: wayback,
     });
     return isForm

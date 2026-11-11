@@ -40,7 +40,7 @@ export async function sendEditionEmails(
   const subject = `${groupName}: this edition's ${entries.length} links`;
   const itemsText = entries
     .map((e) => {
-      const why = e.sentences[0] ? `\n   "${e.sentences[0]}"` : '';
+      const why = e.notes[0] ? `\n   "${e.notes[0]}"` : '';
       return `${e.position}. [${LABEL_TEXT[e.label]}] ${e.title ?? e.canonicalUrl}\n   ${e.canonicalUrl}${why}`;
     })
     .join('\n\n');
@@ -48,8 +48,8 @@ export async function sendEditionEmails(
 
   const itemsHtml = entries
     .map((e) => {
-      const why = e.sentences[0]
-        ? `<p style="margin:4px 0 0;font-style:italic">“${escapeHtml(e.sentences[0])}”</p>`
+      const why = e.notes[0]
+        ? `<p style="margin:4px 0 0;font-style:italic">“${escapeHtml(e.notes[0])}”</p>`
         : '';
       return `<li style="margin-bottom:16px">
         <span style="font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:#8a4f2d">${LABEL_TEXT[e.label]}</span><br>

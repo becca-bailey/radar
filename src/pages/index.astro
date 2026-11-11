@@ -14,7 +14,7 @@ const error = Astro.url.searchParams.get('error');
 const [{ data: saves }, { data: myGroups }, { data: profile }] = await Promise.all([
   supabase
     .from('saves')
-    .select('id, original_url, note, sentence, created_at, links(title, source, canonical_url, status)')
+    .select('id, original_url, note, created_at, links(title, source, canonical_url, status)')
     .order('created_at', { ascending: false })
     .limit(200),
   supabase.from('groups').select('id, name').order('created_at'),
@@ -28,7 +28,6 @@ type SaveRow = {
   id: string;
   original_url: string;
   note: string | null;
-  sentence: string | null;
   created_at: string;
   links: {
     title: string | null;
@@ -60,8 +59,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   <form class="stack" method="post" action="/api/saves">
     <input type="url" name="url" placeholder="Paste a link to save it" required />
-    <input type="text" name="sentence" placeholder="One sentence of why (optional, used if shared)" />
-    <textarea name="note" placeholder="Private note (optional, never leaves your archive)"></textarea>
+    <input type="text" name="note" placeholder="Why you're saving it (optional, shown if shared)" />
     <button type="submit">Save</button>
   </form>
 
@@ -82,8 +80,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
               {row.links?.status === 'pending' ? ' · archiving…' : ''}
               {row.links?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
             </div>
-            {row.sentence && <p class="sentence">{row.sentence}</p>}
-            {row.note && <p class="note">{row.note}</p>}
+            {row.note && <p class="why">{row.note}</p>}
             {groups.length > 0 && (
               <details style="margin-top:0.5rem">
                 <summary style="cursor:pointer; font-size:0.85rem; color:var(--muted)">Share…</summary>
@@ -98,9 +95,9 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
                   </select>
                   <input
                     type="text"
-                    name="sentence"
-                    value={row.sentence ?? ''}
-                    placeholder="One sentence of why (the group sees this)"
+                    name="note"
+                    value={row.note ?? ''}
+                    placeholder="Why you're recommending it (the group sees this)"
                   />
                   <label style="font-size:0.85rem">
                     <input type="checkbox" name="attribution_ok" /> OK to credit me by name in a published

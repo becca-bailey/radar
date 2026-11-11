@@ -90,7 +90,7 @@ export async function buildDueEditions(
       title: e.title,
       canonical_url: e.canonicalUrl,
       source: e.source,
-      sentences: e.sentences,
+      notes: e.notes,
       recommender_names: group.names_visible ? e.recommenderNames : [],
       attribution_names: e.attributionNames,
     }));
@@ -138,7 +138,7 @@ async function buildEditionEntries(
   const { data: recs, error } = await service
     .from('recommendations')
     .select(
-      'user_id, sentence, attribution_ok, created_at, link_id, links(title, canonical_url, source, status), profiles:user_id(display_name)'
+      'user_id, note, attribution_ok, created_at, link_id, links(title, canonical_url, source, status), profiles:user_id(display_name)'
     )
     .eq('group_id', group.id)
     .gte('created_at', start.toISOString())
@@ -170,7 +170,7 @@ async function buildEditionEntries(
     candidate.recommenders.push({
       userId: raw.user_id,
       displayName: profile?.display_name || 'A reader',
-      sentence: raw.sentence,
+      note: raw.note,
       attributionOk: raw.attribution_ok,
       createdAt: new Date(raw.created_at),
     });

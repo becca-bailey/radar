@@ -13,7 +13,7 @@ People read things they love and have nowhere good to put them. Bookmark manager
 The app does three things, in this order:
 
 1. **Save.** Every link goes to the user's own archive first. Full text captured, searchable, never filed. Private by default, exportable always.
-2. **Share.** Optionally, the same save goes to one or more groups with a single sentence of why.
+2. **Share.** Optionally, the same save goes to one or more groups with a short note of why.
 3. **Surface.** Groups publish finite editions. Editions aggregate into public categories through a ranking designed to promote new and small sources alongside popular ones.
 
 Useful with one user. Fun with ten. Works with the whole internet.
@@ -23,11 +23,11 @@ Useful with one user. Fun with ten. Works with the whole internet.
 These are product decisions, already made. Do not reopen them in implementation without flagging it.
 
 - **Finite editions.** A group publishes a fixed number of links per period. When you've seen them, you're done. No infinite scroll anywhere.
-- **No comments, no replies, no reactions, no follows, no profiles.** A recommendation is a link plus one sentence. That sentence is the end of it.
+- **No comments, no replies, no reactions, no follows, no profiles.** A recommendation is a link plus one short note. That note is the end of it.
 - **Personal archive first.** Saving never requires sharing. The archive is free for everyone and never gated by group membership.
 - **Export always on.** Markdown and JSON, including archived full text, from day one.
 - **Transparent ranking.** Every surfaced link shows why it is there (a label). The ranking method is documented on a public page.
-- **Layered privacy.** The archive sees everything. A group sees the link and the sentence. The public layer sees counts. Nothing flows upward without an explicit setting.
+- **Layered privacy.** The archive sees everything. A group sees the link and the note. The public layer sees counts. Nothing flows upward without an explicit setting.
 - **No ads. No training on content.** If a model provider is used, its terms must exclude training, and the privacy page says which provider and what is sent.
 - **Platform-agnostic membership.** Groups are joined by invite link. The app never syncs with Substack, Patreon, or anyone else.
 
@@ -45,11 +45,11 @@ These are product decisions, already made. Do not reopen them in implementation 
 
 - **User.** Auth identity (Apple, Google, or email magic link). Display name. No public profile.
 - **Link.** Canonical URL, title, source, archived full text, extracted metadata, category (computed once, cached), first-seen timestamp. One row per canonical URL across the whole system.
-- **Save.** User × Link. Timestamp. Private note (long, optional). Public sentence (one line, optional, used when shared). Archive flags (e.g., Wayback requested).
+- **Save.** User × Link. Timestamp. Note (short, optional, why you saved it): private in the archive, shown to a group when the save is shared. Archive flags (e.g., Wayback requested). *(Until 2026-11-09 a save had two text fields — a long private note and a public "sentence"; collapsed into the single note to keep capture simple.)*
 - **Group.** Name, owner, settings: edition cadence (daily / weekly / biweekly), edition size (K), recommender names visible (bool, default true for private groups), contributes to public layer (bool, default false), categories enabled (bool, default false).
 - **Membership.** User × Group. Joined via invite link. Role: owner / member.
 - **Invite link.** Group, token, use cap per period, active flag, created and rotated timestamps.
-- **Recommendation.** Save × Group. Created when a save is shared to a group. Carries the public sentence.
+- **Recommendation.** Save × Group. Created when a save is shared to a group. Carries the note.
 - **Edition.** Group × period. Materialized list of K links with labels and scores. Immutable once published. Has an export (markdown, HTML, JSON).
 - **Category.** Fixed taxonomy entry (name, description, embedding of description). Twenty to thirty total.
 - **Source.** Derived from Link. Registrable domain, except on multi-tenant platforms (Substack, Medium, YouTube, Bluesky, etc.) where source = author or publication.
@@ -73,11 +73,11 @@ These are product decisions, already made. Do not reopen them in implementation 
 
 | Layer | What enters | Who sees what | Default |
 |---|---|---|---|
-| Archive | Every save, full text, private note | The user only | Always on |
-| Group | Link + public sentence, recommender name if group allows | Group members | Opt-in per save (default: last used group, user can set) |
+| Archive | Every save, full text, note | The user only | Always on |
+| Group | Link + note, recommender name if group allows | Group members | Opt-in per save (default: last used group, user can set) |
 | Public | Count of recommendations by category | Anyone | Opt-in per group |
 
-Private notes never leave the archive. Group recommendations never reveal a user's other saves. The public layer never shows who.
+The archive is private; a note reaches a group only when the user shares that save. Group recommendations never reveal a user's other saves. The public layer never shows who.
 
 ## 6. Features by phase
 
@@ -94,7 +94,7 @@ Private notes never leave the archive. Group recommendations never reveal a user
 - Web app. Sign in. Save by URL (paste, bookmarklet, Shortcut posting to an endpoint).
 - Worker: canonicalize, fetch, extract readable text, embed, categorize, store.
 - Semantic + keyword search over archived text.
-- Private note + public sentence fields on every save.
+- One optional note field on every save (private until shared).
 - Export: markdown and JSON, full text included.
 - Privacy page: what leaves the server, which providers, what is stored.
 

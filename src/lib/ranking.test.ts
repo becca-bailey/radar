@@ -10,11 +10,11 @@ import {
 const windowStart = new Date('2026-11-02T00:00:00Z');
 const windowEnd = new Date('2026-11-09T00:00:00Z');
 
-function rec(userId: string, day: number, sentence = '', attributionOk = false) {
+function rec(userId: string, day: number, note = '', attributionOk = false) {
   return {
     userId,
     displayName: `Reader ${userId}`,
-    sentence,
+    note,
     attributionOk,
     createdAt: new Date(windowStart.getTime() + day * 24 * 60 * 60 * 1000),
   };
@@ -154,7 +154,7 @@ describe('composeEdition', () => {
     expect(out.every((e) => ['hot', 'first_time', 'small_source', 'rising'].includes(e.label))).toBe(true);
   });
 
-  it('collects sentences and attribution names from distinct recommenders', () => {
+  it('collects notes and attribution names from distinct recommenders', () => {
     const out = composeEdition(
       [
         link('a', 'one.com', [
@@ -164,7 +164,7 @@ describe('composeEdition', () => {
       ],
       ctx({ activeMembers: 5, seenSources: new Set(['one.com']) })
     );
-    expect(out[0].sentences).toEqual(['Loved this.', 'Me too.']);
+    expect(out[0].notes).toEqual(['Loved this.', 'Me too.']);
     expect(out[0].attributionNames).toEqual(['Reader u1']);
     expect(out[0].recommenderNames).toEqual(['Reader u1', 'Reader u2']);
   });

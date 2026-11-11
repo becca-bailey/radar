@@ -17,7 +17,7 @@ export type EditionLabel = 'hot' | 'first_time' | 'small_source' | 'rising';
 export interface CandidateRecommender {
   userId: string;
   displayName: string;
-  sentence: string | null;
+  note: string | null;
   attributionOk: boolean;
   createdAt: Date;
 }
@@ -64,7 +64,7 @@ export interface EditionEntry {
   source: string;
   title: string | null;
   canonicalUrl: string;
-  sentences: string[];
+  notes: string[];
   recommenderNames: string[];
   attributionNames: string[];
 }
@@ -182,8 +182,8 @@ export function composeEdition(candidates: CandidateLink[], ctx: RankingContext)
       source: link.source,
       title: link.title,
       canonicalUrl: link.canonicalUrl,
-      sentences: link.recommenders
-        .map((rec) => rec.sentence)
+      notes: link.recommenders
+        .map((rec) => rec.note)
         .filter((s): s is string => !!s && s.trim() !== ''),
       recommenderNames: link.recommenders.map((rec) => rec.displayName).filter(Boolean),
       attributionNames: link.recommenders

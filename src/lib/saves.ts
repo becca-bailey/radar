@@ -5,7 +5,6 @@ import { sourceForUrl } from './sources';
 export interface SaveInput {
   url: string;
   note?: string | null;
-  sentence?: string | null;
   waybackRequested?: boolean;
 }
 
@@ -95,10 +94,9 @@ export async function createSave(
     .maybeSingle();
 
   if (existing) {
-    // Re-saving updates the note/sentence only when new text was provided.
+    // Re-saving updates the note only when new text was provided.
     const patch: Record<string, unknown> = {};
     if (input.note) patch.note = input.note;
-    if (input.sentence) patch.sentence = input.sentence;
     if (input.waybackRequested) patch.wayback_requested = true;
     if (Object.keys(patch).length > 0) {
       const updated = await service.from('saves').update(patch).eq('id', existing.id);
@@ -114,7 +112,6 @@ export async function createSave(
       link_id: link.id,
       original_url: originalUrl,
       note: input.note || null,
-      sentence: input.sentence || null,
       wayback_requested: input.waybackRequested ?? false,
     })
     .select('id')

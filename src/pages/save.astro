@@ -27,8 +27,7 @@ const done = Astro.url.searchParams.get('done') === '1';
         <form class="stack" method="post" action="/api/saves">
           <input type="hidden" name="return_to" value="save" />
           <input type="url" name="url" value={url} placeholder="https://…" required />
-          <input type="text" name="sentence" placeholder="One sentence of why (optional)" autofocus={!!url} />
-          <textarea name="note" placeholder="Private note (optional)" />
+          <input type="text" name="note" placeholder="Why you saved it (optional)" autofocus={!!url} />
           <label style="font-size:0.9rem">
             <input type="checkbox" name="wayback" /> Also save to the Wayback Machine
           </label>

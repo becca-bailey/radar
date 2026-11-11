@@ -15,7 +15,6 @@ interface Result {
   canonical_url: string;
   source: string | null;
   snippet: string;
-  sentence: string | null;
   note: string | null;
   created_at: string;
   rank: number;
@@ -87,7 +86,7 @@ function displayTitle(r: Result): string {
               </a>
               <div class="meta">{r.source ?? ''}</div>
               {r.snippet && <p class="note" set:html={sanitizeSnippet(r.snippet)} />}
-              {r.sentence && <p class="sentence">{r.sentence}</p>}
+              {r.note && <p class="why">{r.note}</p>}
             </li>
           ))}
         </ul>

@@ -98,7 +98,7 @@ const [{ data: members }, { data: recs }, { data: editions }, inviteRes] = await
     .order('created_at'),
   supabase
     .from('recommendations')
-    .select('id, sentence, created_at, user_id, links(title, canonical_url, source), profiles:user_id(display_name)')
+    .select('id, note, created_at, user_id, links(title, canonical_url, source), profiles:user_id(display_name)')
     .eq('group_id', group.id)
     .order('created_at', { ascending: false })
     .limit(50),
@@ -129,7 +129,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
 type RecRow = {
   id: string;
-  sentence: string | null;
+  note: string | null;
   created_at: string;
   user_id: string;
   links: { title: string | null; canonical_url: string; source: string | null } | null;
@@ -186,7 +186,7 @@ const memberRows = (members ?? []) as unknown as MemberRow[];
               {' · '}
               {dateFmt.format(new Date(r.created_at))}
             </div>
-            {r.sentence && <p class="sentence">{r.sentence}</p>}
+            {r.note && <p class="why">{r.note}</p>}
           </li>
         ))}
       </ul>

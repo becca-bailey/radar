@@ -3,7 +3,6 @@ import type { APIRoute } from 'astro';
 interface ExportRow {
   original_url: string;
   note: string | null;
-  sentence: string | null;
   created_at: string;
   links: {
     canonical_url: string;
@@ -31,7 +30,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
   const { data, error } = await supabase
     .from('saves')
     .select(
-      'original_url, note, sentence, created_at, links(canonical_url, title, source, lead_text, full_text, status)'
+      'original_url, note, created_at, links(canonical_url, title, source, lead_text, full_text, status)'
     )
     .order('created_at', { ascending: true });
   if (error) {
@@ -52,7 +51,6 @@ export const GET: APIRoute = async ({ locals, url }) => {
           canonical_url: r.links?.canonical_url ?? null,
           title: r.links?.title ?? null,
           source: r.links?.source ?? null,
-          sentence: r.sentence,
           note: r.note,
           lead_text: r.links?.lead_text ?? null,
           full_text: r.links?.full_text ?? null,
@@ -76,8 +74,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
     parts.push(`- URL: ${r.links?.canonical_url ?? r.original_url}`);
     if (r.links?.source) parts.push(`- Source: ${r.links.source}`);
     parts.push(`- Saved: ${r.created_at.slice(0, 10)}`);
-    if (r.sentence) parts.push(`- Why: ${r.sentence}`);
-    if (r.note) parts.push(`\n### Note\n\n${r.note}`);
+    if (r.note) parts.push(`- Why: ${r.note}`);
     if (r.links?.full_text) parts.push(`\n### Archived text\n\n${r.links.full_text}`);
   }
   return new Response(parts.join('\n'), {

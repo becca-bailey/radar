@@ -14,13 +14,13 @@ const { user } = Astro.locals;
   <h2>The three layers</h2>
   <p>
     <strong>Your archive</strong> holds everything: the links you save, the page text we
-    archive for you, and your private notes. Only you can see it. Private notes never
-    leave the archive, full stop.
+    archive for you, and your short note about why you saved each link. Only you can
+    see it unless you share a save to a group.
   </p>
   <p>
-    <strong>A group</strong> you share to sees the link and your one-sentence "why" — and
-    your display name, if the group shows names. A group never sees your other saves,
-    your notes, or anything you didn't explicitly share to it.
+    <strong>A group</strong> you share to sees the link and your note — and
+    your display name, if the group shows names. A group never sees your other saves
+    or anything you didn't explicitly share to it.
   </p>
   <p>
     <strong>The public layer</strong> sees only counts: how many groups recommended a
@@ -32,7 +32,7 @@ const { user } = Astro.locals;
     <li>Your email address (for sign-in) and a display name you choose.</li>
     <li>Links you save: the canonical URL, the URL you actually saved, and the page's
       extracted text and a cleaned snapshot, archived so you can search and keep it.</li>
-    <li>Your notes and sentences, timestamps, and group memberships.</li>
+    <li>Your notes, timestamps, and group memberships.</li>
   </ul>
   <p>No ad identifiers, no analytics profiles, no payment data, no data about where a
     group member came from.</p>
@@ -67,7 +67,7 @@ const { user } = Astro.locals;
   <p>
     Your whole archive exports to markdown or JSON — full archived text included — any
     time, from <a href="/settings">Settings</a>. Deleting your account deletes your
-    saves, notes, tokens, and memberships. Past group editions are immutable and keep
+    saves, tokens, and memberships. Past group editions are immutable and keep
     the links they published, without your name.
   </p>
 </Layout>
