@@ -25,6 +25,7 @@ SITE = "https://radar-saves.netlify.app"
 # U+FFFC marks where Shortcuts splices an attachment into a string.
 ATTACH = "￼"
 
+UUID_TOKEN = str(uuid.uuid4()).upper()
 UUID_LINKS = str(uuid.uuid4()).upper()
 UUID_FIRST = str(uuid.uuid4()).upper()
 UUID_RESP = str(uuid.uuid4()).upper()
@@ -74,7 +75,7 @@ workflow = {
     # from the shared file by Shortcuts itself.
     "WFWorkflowImportQuestions": [
         {
-            "ActionIndex": 0,
+            "ActionIndex": 1,
             "Category": "Parameter",
             "ParameterKey": "WFTextActionText",
             "Text": "Paste your Radar API token (Radar → Settings → API tokens)",
@@ -82,14 +83,21 @@ workflow = {
     ],
     "WFWorkflowActions": [
         {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+            "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
             "WFWorkflowActionParameters": {
-                "WFTextActionText": "paste-your-radar-token",
+                "WFCommentActionText": "Your Radar API token goes in the Text box below."
             },
         },
         {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
-            "WFWorkflowActionParameters": {"WFVariableName": "Radar Token"},
+            # The Authorization header references this action's output
+            # directly; a named variable here once got rebound to the
+            # share-sheet input on import, sending "Bearer <page URL>".
+            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_TOKEN,
+                "WFTextActionText": "paste-your-radar-token",
+                "CustomOutputName": "Radar API Token",
+            },
         },
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.detect.link",
@@ -132,8 +140,9 @@ workflow = {
                                 f"Bearer {ATTACH}",
                                 {
                                     "{7, 1}": {
-                                        "Type": "Variable",
-                                        "VariableName": "Radar Token",
+                                        "Type": "ActionOutput",
+                                        "OutputUUID": UUID_TOKEN,
+                                        "OutputName": "Radar API Token",
                                     }
                                 },
                             ),
