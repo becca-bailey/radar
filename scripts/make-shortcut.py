@@ -83,13 +83,21 @@ workflow = {
     ],
     "WFWorkflowActions": [
         {
-            # First action on purpose: in a share-sheet shortcut the
-            # first action receives the shared content implicitly. An
-            # explicit ExtensionInput reference here once stopped
-            # resolving after import, which made every save "no link".
+            # The input must be the Shortcut Input magic variable,
+            # serialized as an aggrandizement-free attachment wrapped
+            # TWICE (parameter -> variable -> attachment). A single
+            # wrap, and the implicit-first-action form, both imported
+            # as an unresolved "Input" and produced empty URLs.
             "WFWorkflowActionIdentifier": "is.workflow.actions.detect.link",
             "WFWorkflowActionParameters": {
                 "UUID": UUID_LINKS,
+                "WFInput": {
+                    "WFSerializationType": "WFTextTokenAttachment",
+                    "Value": {
+                        "WFSerializationType": "WFTextTokenAttachment",
+                        "Value": {"Type": "ExtensionInput"},
+                    },
+                },
             },
         },
         {
