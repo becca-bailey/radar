@@ -11,15 +11,22 @@ import { createServiceClient } from '../../lib/supabase';
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const service = createServiceClient();
 
-  const userId =
-    locals.user?.id ?? (await userIdForBearerToken(service, request.headers.get('Authorization')));
+  let userId = locals.user?.id ?? null;
   if (!userId) {
-    // `message` on every JSON response is what the Shortcut shows in its
-    // notification, so failures are visible instead of a fake "Saved".
-    return Response.json(
-      { error: 'Sign in or pass a valid API token.', message: 'Not saved — invalid Radar token' },
-      { status: 401 }
-    );
+    const lookup = await userIdForBearerToken(service, request.headers.get('Authorization'));
+    if (!lookup.userId) {
+      // `message` on every JSON response is what the Shortcut shows in its
+      // notification, so failures are visible instead of a fake "Saved".
+      const message =
+        lookup.failure === 'no_token'
+          ? 'Not saved — the Shortcut has no token; edit its first Text action and paste yours'
+          : 'Not saved — token not recognized; copy a fresh one from Radar Settings';
+      return Response.json(
+        { error: 'Sign in or pass a valid API token.', message },
+        { status: 401 }
+      );
+    }
+    userId = lookup.userId;
   }
 
   const contentType = request.headers.get('Content-Type') ?? '';

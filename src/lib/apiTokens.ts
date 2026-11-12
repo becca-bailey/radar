@@ -18,25 +18,33 @@ export function hashesEqual(a: string, b: string): boolean {
   return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
 
+export type BearerLookup =
+  | { userId: string; failure?: never }
+  | { userId: null; failure: 'no_token' | 'unknown_token' };
+
 /**
- * Resolve a Bearer token to a user id, or null. Uses the service client
- * (token lookup happens before any user is known).
+ * Resolve a Bearer token to a user id. Uses the service client (token
+ * lookup happens before any user is known). The two failure modes are
+ * distinguished so callers can say whether a token never arrived (e.g.
+ * the Shortcut still holds its placeholder) or arrived but matched
+ * nothing (wrong environment, revoked, mistyped).
  */
 export async function userIdForBearerToken(
   service: SupabaseClient,
   authorizationHeader: string | null
-): Promise<string | null> {
+): Promise<BearerLookup> {
   // rdr_ is current; rh_ tokens from before the rename keep working.
-  const match = authorizationHeader?.match(/^Bearer\s+((?:rdr|rh)_[A-Za-z0-9_-]+)$/);
-  if (!match) return null;
+  // Tolerate surrounding whitespace: tokens get hand-pasted on phones.
+  const match = authorizationHeader?.match(/^\s*Bearer\s+((?:rdr|rh)_[A-Za-z0-9_-]+)\s*$/);
+  if (!match) return { userId: null, failure: 'no_token' };
   const hash = hashApiToken(match[1]);
   const { data } = await service
     .from('api_tokens')
     .select('id, user_id')
     .eq('token_hash', hash)
     .maybeSingle();
-  if (!data) return null;
+  if (!data) return { userId: null, failure: 'unknown_token' };
   // Fire-and-forget usage timestamp.
   void service.from('api_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', data.id);
-  return data.user_id as string;
+  return { userId: data.user_id as string };
 }
