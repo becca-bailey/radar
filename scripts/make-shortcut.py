@@ -75,7 +75,7 @@ workflow = {
     # from the shared file by Shortcuts itself.
     "WFWorkflowImportQuestions": [
         {
-            "ActionIndex": 1,
+            "ActionIndex": 3,
             "Category": "Parameter",
             "ParameterKey": "WFTextActionText",
             "Text": "Paste your Radar API token (Radar → Settings → API tokens)",
@@ -83,30 +83,13 @@ workflow = {
     ],
     "WFWorkflowActions": [
         {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
-            "WFWorkflowActionParameters": {
-                "WFCommentActionText": "Your Radar API token goes in the Text box below."
-            },
-        },
-        {
-            # The Authorization header references this action's output
-            # directly; a named variable here once got rebound to the
-            # share-sheet input on import, sending "Bearer <page URL>".
-            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
-            "WFWorkflowActionParameters": {
-                "UUID": UUID_TOKEN,
-                "WFTextActionText": "paste-your-radar-token",
-                "CustomOutputName": "Radar API Token",
-            },
-        },
-        {
+            # First action on purpose: in a share-sheet shortcut the
+            # first action receives the shared content implicitly. An
+            # explicit ExtensionInput reference here once stopped
+            # resolving after import, which made every save "no link".
             "WFWorkflowActionIdentifier": "is.workflow.actions.detect.link",
             "WFWorkflowActionParameters": {
                 "UUID": UUID_LINKS,
-                "WFInput": {
-                    "WFSerializationType": "WFTextTokenAttachment",
-                    "Value": {"Type": "ExtensionInput"},
-                },
             },
         },
         {
@@ -123,6 +106,23 @@ workflow = {
                         "OutputName": "URLs",
                     },
                 },
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
+            "WFWorkflowActionParameters": {
+                "WFCommentActionText": "Your Radar API token goes in the Text box below."
+            },
+        },
+        {
+            # The Authorization header references this action's output
+            # directly; a named variable here once got rebound to the
+            # share-sheet input on import, sending "Bearer <page URL>".
+            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_TOKEN,
+                "WFTextActionText": "paste-your-radar-token",
+                "CustomOutputName": "Radar API Token",
             },
         },
         {
