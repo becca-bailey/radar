@@ -39,6 +39,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   let title: string | null = null;
   let wayback = false;
   let returnTo = '/';
+  // Echoed in the no-link error so the Shortcut's notification shows
+  // what actually arrived; tokens never appear in the body.
+  let bodyDebug = '';
 
   if (isForm) {
     const form = await request.formData();
@@ -52,7 +55,10 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     try {
       body = await request.json();
     } catch {
-      return Response.json({ error: 'Body must be JSON or form data.' }, { status: 400 });
+      return Response.json(
+        { error: 'Body must be JSON or form data.', message: 'Not saved — the request body was not JSON' },
+        { status: 400 }
+      );
     }
     const b = body as Record<string, unknown>;
     url = typeof b.url === 'string' ? b.url : '';
@@ -61,13 +67,16 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     note = typeof b.note === 'string' ? b.note : typeof b.sentence === 'string' ? b.sentence : null;
     title = typeof b.title === 'string' ? b.title : null;
     wayback = b.wayback === true;
+    bodyDebug = `url=${JSON.stringify(b.url ?? null)?.slice(0, 80)} keys=${
+      Object.keys(b).join(',') || 'none'
+    }`;
   }
 
   if (!url.trim()) {
     return isForm
       ? redirect(returnTo + '?error=' + encodeURIComponent('Paste a link to save.'))
       : Response.json(
-          { error: 'url is required.', message: 'Not saved — no link found' },
+          { error: 'url is required.', message: `Not saved — no link found (${bodyDebug})` },
           { status: 400 }
         );
   }
