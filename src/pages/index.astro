@@ -69,7 +69,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     ) : (
       <ul class="saves">
         {rows.map((row) => (
-          <li>
+          <li data-save-id={row.id} data-pending={row.links?.status === 'pending' ? '' : undefined}>
             <a class="title" href={row.links?.canonical_url ?? row.original_url}>
               {displayTitle(row)}
             </a>
@@ -112,4 +112,37 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
       </ul>
     )
   }
+
+  <script>
+    // While any save is still archiving, poll its status and re-render the
+    // page when the worker finishes (or gives up), instead of making the
+    // user refresh. Gives up after two minutes; a plain refresh still works.
+    const pending = [...document.querySelectorAll<HTMLElement>('li[data-pending]')].map(
+      (el) => el.dataset.saveId as string
+    );
+    if (pending.length > 0) {
+      // No cron runs locally, so in dev the page kicks the queue itself.
+      // In production this 401s harmlessly; the scheduled function does it.
+      if (import.meta.env.DEV) {
+        fetch('/api/jobs/ingest?limit=10', { method: 'POST' }).catch(() => {});
+      }
+      const deadline = Date.now() + 2 * 60_000;
+      const tick = async () => {
+        try {
+          const res = await fetch('/api/saves/status?ids=' + pending.join(','));
+          if (res.ok) {
+            const statuses: Record<string, string> = await res.json();
+            if (pending.some((id) => statuses[id] && statuses[id] !== 'pending')) {
+              location.reload();
+              return;
+            }
+          }
+        } catch {
+          // Transient network error; try again on the next tick.
+        }
+        if (Date.now() < deadline) setTimeout(tick, 2500);
+      };
+      setTimeout(tick, 2500);
+    }
+  </script>
 </Layout>
