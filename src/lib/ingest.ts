@@ -159,12 +159,20 @@ async function processOneLink(
     charThreshold: 100,
   }).parse();
 
-  const title = (article?.title || og.title || docTitle || titleFromUrl(trueCanonical)).slice(0, 500);
+  const oembed = await fetchYouTubeOembed(trueCanonical);
+
+  const title = (
+    oembed?.title ||
+    article?.title ||
+    og.title ||
+    docTitle ||
+    titleFromUrl(trueCanonical)
+  ).slice(0, 500);
   const fullText = (article?.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim().slice(0, MAX_TEXT_CHARS);
   const lead = (article?.excerpt || og.description || fullText.slice(0, 400)).trim().slice(0, 1000);
   const snapshot = (article?.content ?? '').slice(0, MAX_SNAPSHOT_CHARS) || null;
 
-  const source = await deriveSource(trueCanonical);
+  const source = sourceForUrl(trueCanonical, { authorName: oembed?.authorName ?? null });
 
   let embedding: number[] | null = null;
   let categoryId: number | null = null;
@@ -191,12 +199,13 @@ async function processOneLink(
         excerpt: article?.excerpt ?? null,
         contentType: page.contentType,
         fetchedFrom: page.finalUrl,
-        image: og.image,
+        image: og.image ?? oembed?.thumbnailUrl ?? null,
         ogType: og.type,
         price: og.price,
         currency: og.currency,
       },
-      kind: og.kind,
+      // The shell page has no og:type, so oEmbed presence is the video signal.
+      kind: oembed && og.kind === 'article' ? 'video' : og.kind,
       embedding,
       category_id: categoryId,
       status: 'ready',
@@ -236,24 +245,39 @@ async function isUnsafeUrl(url: string): Promise<boolean> {
   }
 }
 
-/** YouTube's source is the channel; oEmbed is keyless and reliable. */
-async function deriveSource(canonicalUrl: string): Promise<string> {
+interface YouTubeOembed {
+  title: string | null;
+  authorName: string | null;
+  thumbnailUrl: string | null;
+}
+
+/**
+ * YouTube serves datacenter IPs a generic shell page (title "- YouTube",
+ * no og tags), so the fetched HTML is useless there. oEmbed is keyless,
+ * bot-friendly, and carries the real title, channel, and thumbnail.
+ */
+async function fetchYouTubeOembed(canonicalUrl: string): Promise<YouTubeOembed | null> {
   const host = new URL(canonicalUrl).hostname.replace(/^www\./, '');
-  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtu.be') {
-    try {
-      const res = await fetch(
-        `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(canonicalUrl)}`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (res.ok) {
-        const json = (await res.json()) as { author_name?: string };
-        return sourceForUrl(canonicalUrl, { authorName: json.author_name ?? null });
-      }
-    } catch {
-      // fall through
-    }
+  if (host !== 'youtube.com' && host !== 'm.youtube.com' && host !== 'youtu.be') return null;
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(canonicalUrl)}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      title?: string;
+      author_name?: string;
+      thumbnail_url?: string;
+    };
+    return {
+      title: json.title ?? null,
+      authorName: json.author_name ?? null,
+      thumbnailUrl: json.thumbnail_url ?? null,
+    };
+  } catch {
+    return null;
   }
-  return sourceForUrl(canonicalUrl);
 }
 
 function titleFromUrl(url: string): string {
