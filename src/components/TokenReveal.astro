@@ -1,0 +1,54 @@
+---
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+
+// One-time token reveal with a copy button. Shown right after a token is
+// created; the raw value never appears again.
+interface Props {
+  token: string;
+}
+const { token } = Astro.props;
+---
+
+<Alert>
+  <strong>Copy this token now — it won't be shown again.</strong>
+  <div class="mt-2 flex items-center gap-2">
+    <code
+      class="block min-w-0 flex-1 rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all"
+      >{token}</code
+    >
+    <Button type="button" variant="outline" size="sm" className="copy-token" data-token={token}>
+      Copy
+    </Button>
+  </div>
+</Alert>
+
+<script>
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('button.copy-token')) {
+    btn.addEventListener('click', async () => {
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(btn.dataset.token ?? '');
+        copied = true;
+      } catch {
+        // Clipboard API blocked: select the token and try the legacy path;
+        // worst case the selection is ready for ⌘C / long-press.
+        const code = btn.parentElement?.querySelector('code');
+        if (code) {
+          window.getSelection()?.selectAllChildren(code);
+          try {
+            copied = document.execCommand('copy');
+          } catch {
+            /* selection stays for a manual copy */
+          }
+        }
+      }
+      if (copied) {
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+        }, 2000);
+      }
+    });
+  }
+</script>

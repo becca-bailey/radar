@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import CardList from '@/components/CardList.astro';
 import ItemCard from '@/components/ItemCard.astro';
+import TokenReveal from '../components/TokenReveal.astro';
 import { generateApiToken } from '../lib/apiTokens';
 import { groupsEnabled } from '../lib/flags';
 import { createServiceClient } from '../lib/supabase';
@@ -86,17 +87,11 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   <h2>API tokens</h2>
   <p>
-    For the iOS Shortcut and bookmarklet. A token can save links to your archive, nothing else.
+    For the Radar Shortcut and anything else that saves on your behalf. A token can save
+    links to your archive, nothing else.
   </p>
 
-  {
-    newToken && (
-      <Alert>
-        <strong>Copy this token now — it won't be shown again.</strong>
-        <code class="block rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all">{newToken}</code>
-      </Alert>
-    )
-  }
+  {newToken && <TokenReveal token={newToken} />}
 
   <form class="mt-4 mb-6 grid gap-2.5" method="post">
     <input type="hidden" name="_action" value="create_token" />
@@ -128,18 +123,11 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   <h2>Capture tools</h2>
   <p>
-    <strong>Bookmarklet:</strong> drag this to your bookmarks bar, then click it on any
-    page to save it:
-    <a
-      href={`javascript:window.open('${Astro.url.origin}/save?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'radar','width=480,height=560')`}
-    >Put it on Radar</a>
-  </p>
-  <p>
-    <strong>iOS Shortcut:</strong> create a Shortcut that accepts URLs from the share
-    sheet and sends a POST request to <code>{Astro.url.origin}/api/saves</code> with
-    header <code>Authorization: Bearer &lt;your token&gt;</code> and JSON body
-    <code>{'{"url": <Shortcut Input>, "note": <Ask Each Time>, "title": <Name of Shortcut Input>}'}</code>
-    (<code>title</code> is optional — it names the link right away, before the page is archived).
+    Get Radar into your iPhone's share sheet and your desktop bookmarks bar on the{' '}
+    <a href="/setup">setup page</a>. Rolling your own instead? POST to{' '}
+    <code>{Astro.url.origin}/api/saves</code> with header{' '}
+    <code>Authorization: Bearer &lt;your token&gt;</code> and JSON body{' '}
+    <code>{'{"url": "…", "note": "…", "title": "…"}'}</code> (note and title optional).
   </p>
 
   <h2>Export</h2>

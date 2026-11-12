@@ -1,0 +1,96 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Button } from '@/components/ui/button';
+import TokenReveal from '../components/TokenReveal.astro';
+import { Alert } from '@/components/ui/alert';
+import { generateApiToken } from '../lib/apiTokens';
+import { createServiceClient } from '../lib/supabase';
+
+// Guided capture setup: get Radar into the iOS share sheet and the
+// desktop bookmarks bar without asking anyone to build anything.
+const { user } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+let newToken: string | null = null;
+let message: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (form.get('_action') === 'create_token') {
+    const { raw, hash } = generateApiToken();
+    const service = createServiceClient();
+    const { error } = await service
+      .from('api_tokens')
+      .insert({ user_id: user.id, token_hash: hash, label: 'iPhone Shortcut' });
+    if (error) {
+      message = `Could not create token: ${error.message}`;
+    } else {
+      newToken = raw;
+    }
+  }
+}
+
+const shortcutHref = '/Put%20it%20on%20Radar.shortcut';
+---
+
+<Layout title="Save from anywhere — Radar" user={user}>
+  <h1>Save from anywhere</h1>
+  <p>
+    Two minutes of setup and any page is one tap from your archive. Radar fetches the
+    title and details itself, so saving is just handing it the link.
+  </p>
+
+  {message && <Alert>{message}</Alert>}
+
+  <h2>iPhone &amp; iPad</h2>
+  <p>
+    The Radar Shortcut puts <strong>Put it on Radar</strong> in the share sheet of every
+    app — Safari, YouTube, anywhere you can tap Share.
+  </p>
+  <ol class="grid gap-2.5">
+    <li>
+      Create a token for your phone. It can save links to your archive, nothing else.
+      {
+        newToken ? (
+          <TokenReveal token={newToken} />
+        ) : (
+          <form class="mt-2" method="post">
+            <input type="hidden" name="_action" value="create_token" />
+            <Button type="submit">Create token</Button>
+          </form>
+        )
+      }
+    </li>
+    <li>
+      With the token copied, <a href={shortcutHref}>get the Radar Shortcut</a>. Safari
+      downloads it: tap the <strong>↓</strong> button by the address bar, then tap{' '}
+      <strong>Put it on Radar</strong>, then <strong>Add Shortcut</strong>.
+    </li>
+    <li>
+      When Shortcuts asks for your Radar API token — as you add it, or on your first
+      save — paste the token from step 1.
+    </li>
+  </ol>
+  <p>
+    That's it. To save a page, tap <strong>Share → Put it on Radar</strong>. Try one now
+    and it will appear on your <a href="/">home page</a> within a minute.
+  </p>
+  <p class="text-sm text-muted-foreground">
+    On a Mac, the same file works: double-click it and the shortcut appears in the
+    share menu there too.
+  </p>
+
+  <h2>Desktop browsers</h2>
+  <p>
+    Drag this to your bookmarks bar, then click it on any page to save it:{' '}
+    <a
+      href={`javascript:window.open('${Astro.url.origin}/save?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'radar','width=480,height=560')`}
+    >Put it on Radar</a>
+  </p>
+
+  <p class="text-sm text-muted-foreground">
+    Tokens can be reviewed and revoked any time in <a href="/settings">Settings</a>.
+  </p>
+</Layout>
