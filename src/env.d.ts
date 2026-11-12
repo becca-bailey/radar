@@ -13,6 +13,7 @@ interface ImportMetaEnv {
   readonly SITE_URL?: string;
   readonly SAFE_BROWSING_API_KEY?: string;
   readonly ADMIN_EMAILS?: string;
+  readonly GROUPS_ENABLED?: string;
 }
 
 declare namespace App {

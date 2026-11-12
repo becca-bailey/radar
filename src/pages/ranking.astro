@@ -1,5 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { groupsEnabled } from '../lib/flags';
+
+if (!groupsEnabled()) {
+  return Astro.redirect('/');
+}
 
 // Public, static: the transparent-ranking page (PLAN.md §2, §7).
 const { user } = Astro.locals;

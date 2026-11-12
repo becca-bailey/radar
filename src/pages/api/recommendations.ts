@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { groupsEnabled } from '../../lib/flags';
 
 /**
  * Share a save to a group (PLAN.md §5): the group gets the link + note,
@@ -6,6 +7,9 @@ import type { APIRoute } from 'astro';
  * copied at share time so editions stay stable snapshots.
  */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
+  if (!groupsEnabled()) {
+    return Response.json({ error: 'Groups are not enabled.' }, { status: 404 });
+  }
   const { user, supabase } = locals;
   if (!user) {
     return Response.json({ error: 'Sign in first.' }, { status: 401 });

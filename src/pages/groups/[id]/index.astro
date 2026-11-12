@@ -1,6 +1,11 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
+import { groupsEnabled } from '../../../lib/flags';
 import { createServiceClient } from '../../../lib/supabase';
+
+if (!groupsEnabled()) {
+  return Astro.redirect('/');
+}
 
 const { user, supabase } = Astro.locals;
 if (!user) {

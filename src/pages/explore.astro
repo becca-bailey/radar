@@ -1,7 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { groupsEnabled } from '../lib/flags';
 import { computePublicHighlights } from '../lib/publicLayer';
 import { createServiceClient } from '../lib/supabase';
+
+if (!groupsEnabled()) {
+  return Astro.redirect('/');
+}
 
 // Public page: counts only, never who (PLAN.md §5).
 const { user } = Astro.locals;

@@ -90,23 +90,6 @@ h1 {
 h2 {
   font-size: 1.3rem;
   margin: 2.2rem 0 0.5rem;
-  display: inline-block;
-  padding: 0.05rem 0.55rem;
-  background: var(--candy-butter);
-  color: var(--ink);
-  border: 2px solid var(--border);
-  border-radius: 999px 10px 999px 10px;
-  transform: rotate(-0.7deg);
-}
-
-main > section:nth-of-type(2n) h2,
-main h2:nth-of-type(2n) {
-  background: var(--candy-sky);
-  transform: rotate(0.6deg);
-}
-
-main h2:nth-of-type(3n) {
-  background: var(--candy-pink);
 }
 
 a {
@@ -175,6 +158,22 @@ form.stack {
   display: grid;
   gap: 0.65rem;
   margin: 1rem 0 1.6rem;
+}
+
+/* The capture box: the save form is the page's one action, so it sits in
+   its own tinted card instead of floating on the page background. */
+form.capture {
+  background: color-mix(in srgb, var(--candy-butter) 22%, var(--card));
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  margin: 1.4rem 0 2.6rem;
+}
+
+form.capture h2 {
+  margin: 0 0 0.1rem;
+  font-size: 1.15rem;
 }
 
 input[type='url'],
@@ -267,7 +266,9 @@ ul.saves li {
   position: relative;
 }
 
-/* candy corner dots, rotating through the palette */
+/* Corner dot: media kind. Articles (the default) stay quiet; the four
+   exceptional kinds get palette colors, and the kind is also written in the
+   card's meta line so color is never the only signal. */
 ul.saves li::before {
   content: '';
   position: absolute;
@@ -277,27 +278,27 @@ ul.saves li::before {
   height: 15px;
   border-radius: 50% 50% 50% 4px;
   border: 2px solid var(--border);
-  background: var(--candy-lime);
+  background: var(--card);
   transform: rotate(8deg);
 }
 
-ul.saves li:nth-child(5n + 2)::before {
-  background: var(--candy-pink);
-  border-radius: 4px 50% 50% 50%;
-  transform: rotate(-6deg);
-}
-
-ul.saves li:nth-child(5n + 3)::before {
+ul.saves li[data-kind='video']::before {
   background: var(--candy-sky);
 }
 
-ul.saves li:nth-child(5n + 4)::before {
+ul.saves li[data-kind='audio']::before {
   background: var(--candy-plum);
   border-radius: 50% 4px 50% 50%;
 }
 
-ul.saves li:nth-child(5n)::before {
-  background: var(--candy-butter);
+ul.saves li[data-kind='product']::before {
+  background: var(--candy-lime);
+  border-radius: 4px 50% 50% 50%;
+  transform: rotate(-6deg);
+}
+
+ul.saves li[data-kind='other']::before {
+  background: var(--candy-pink);
   transform: rotate(14deg);
 }
 
@@ -339,6 +340,89 @@ mark {
   background: var(--candy-butter);
   border-radius: 3px;
   padding: 0 2px;
+}
+
+/* --- archive list header + topic chips ---------------------------------- */
+
+.list-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 2rem 0 0.4rem;
+}
+
+.list-head h2 {
+  margin: 0;
+}
+
+.list-head .count {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--candy-butter);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  padding: 0 0.55rem;
+  transform: rotate(-2deg);
+}
+
+.list-head .head-link {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 0.82rem;
+  line-height: 1;
+  color: var(--text);
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: var(--candy-sky);
+  color: var(--ink);
+}
+
+.chip[aria-current] {
+  background: var(--candy-orange);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.chips-more {
+  display: contents;
+}
+
+.chips-more summary {
+  list-style: none;
+  color: var(--muted);
+}
+
+.chips-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.chips-more[open] summary {
+  display: none;
+}
+
+.chips-more .chips {
+  display: contents;
 }
 
 /* --- labels (edition "why it's here") ----------------------------------- */

@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { generateApiToken } from '../lib/apiTokens';
+import { groupsEnabled } from '../lib/flags';
 import { createServiceClient } from '../lib/supabase';
 
 const { user, supabase } = Astro.locals;
@@ -59,13 +60,24 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   {message && <div class="notice">{message}</div>}
 
-  <h2>Display name</h2>
-  <p>Shown only inside private groups that choose to show recommender names.</p>
-  <form class="stack" method="post">
-    <input type="hidden" name="_action" value="display_name" />
-    <input type="text" name="display_name" value={profile?.display_name ?? ''} placeholder="Your name" />
-    <button type="submit">Save</button>
-  </form>
+  {
+    groupsEnabled() && (
+      <>
+        <h2>Display name</h2>
+        <p>Shown only inside private groups that choose to show recommender names.</p>
+        <form class="stack" method="post">
+          <input type="hidden" name="_action" value="display_name" />
+          <input
+            type="text"
+            name="display_name"
+            value={profile?.display_name ?? ''}
+            placeholder="Your name"
+          />
+          <button type="submit">Save</button>
+        </form>
+      </>
+    )
+  }
 
   <h2>API tokens</h2>
   <p>

@@ -1,7 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { groupsEnabled } from '../lib/flags';
 
 const { user } = Astro.locals;
+const groups = groupsEnabled();
 ---
 
 <Layout title="Privacy — Radar" user={user}>
@@ -11,31 +13,47 @@ const { user } = Astro.locals;
     It changes only when the software changes.
   </p>
 
-  <h2>The three layers</h2>
-  <p>
-    <strong>Your archive</strong> holds everything: the links you save, the page text we
-    archive for you, and your short note about why you saved each link. Only you can
-    see it unless you share a save to a group.
-  </p>
-  <p>
-    <strong>A group</strong> you share to sees the link and your note — and
-    your display name, if the group shows names. A group never sees your other saves
-    or anything you didn't explicitly share to it.
-  </p>
-  <p>
-    <strong>The public layer</strong> sees only counts: how many groups recommended a
-    link. Never who.
-  </p>
+  {
+    groups ? (
+      <>
+        <h2>The three layers</h2>
+        <p>
+          <strong>Your archive</strong> holds everything: the links you save, the page text we
+          archive for you, and your short note about why you saved each link. Only you can
+          see it unless you share a save to a group.
+        </p>
+        <p>
+          <strong>A group</strong> you share to sees the link and your note — and your display
+          name, if the group shows names. A group never sees your other saves or anything you
+          didn't explicitly share to it.
+        </p>
+        <p>
+          <strong>The public layer</strong> sees only counts: how many groups recommended a
+          link. Never who.
+        </p>
+      </>
+    ) : (
+      <>
+        <h2>Your archive is private</h2>
+        <p>
+          <strong>Your archive</strong> holds everything: the links you save, the page text we
+          archive for you, and your short note about why you saved each link. Only you can see
+          it.
+        </p>
+      </>
+    )
+  }
 
   <h2>What is stored</h2>
   <ul>
-    <li>Your email address (for sign-in) and a display name you choose.</li>
+    <li>Your email address (for sign-in){groups ? ' and a display name you choose' : ''}.</li>
     <li>Links you save: the canonical URL, the URL you actually saved, and the page's
       extracted text and a cleaned snapshot, archived so you can search and keep it.</li>
-    <li>Your notes, timestamps, and group memberships.</li>
+    <li>Your notes and timestamps{groups ? ', and group memberships' : ''}.</li>
   </ul>
-  <p>No ad identifiers, no analytics profiles, no payment data, no data about where a
-    group member came from.</p>
+  <p>No ad identifiers, no analytics profiles, no payment data{groups
+    ? ', no data about where a group member came from'
+    : ''}.</p>
 
   <h2>What leaves the server, and to whom</h2>
   <ul>
@@ -51,8 +69,9 @@ const { user } = Astro.locals;
       required a login.
     </li>
     <li>
-      <strong>Email provider</strong>: your email address, to send sign-in links and
-      edition emails. One email per edition, nothing else. No notification system.
+      <strong>Email provider</strong>: your email address, to send sign-in links{groups
+        ? ' and edition emails. One email per edition, nothing else'
+        : ''}. No notification system.
     </li>
   </ul>
 
@@ -60,14 +79,13 @@ const { user } = Astro.locals;
   <ul>
     <li>No ads, no sponsored links, no affiliate rewriting.</li>
     <li>No training models on your content, ours or anyone else's.</li>
-    <li>No selling or sharing data. The public layer shows counts, not people.</li>
+    <li>No selling or sharing data.{groups ? ' The public layer shows counts, not people.' : ''}</li>
   </ul>
 
   <h2>Export and deletion</h2>
   <p>
     Your whole archive exports to markdown or JSON — full archived text included — any
     time, from <a href="/settings">Settings</a>. Deleting your account deletes your
-    saves, tokens, and memberships. Past group editions are immutable and keep
-    the links they published, without your name.
+    saves, tokens{groups ? ', and memberships. Past group editions are immutable and keep the links they published, without your name' : ' — everything tied to you'}.
   </p>
 </Layout>

@@ -16,7 +16,11 @@ export interface OpenGraphData {
 }
 
 export function extractOpenGraph(html: string): OpenGraphData {
-  const head = html.slice(0, 300_000);
+  // Scan to the real end of <head> when we can find it: YouTube puts its og
+  // tags ~850KB in, after huge inline scripts. The byte cap is a guard
+  // against pathological pages with no </head> at all.
+  const headEnd = html.search(/<\/head\s*>/i);
+  const head = html.slice(0, headEnd > -1 ? Math.min(headEnd, 2_000_000) : 300_000);
   const metas = new Map<string, string>();
 
   for (const tag of head.match(/<meta\b[^>]*>/gi) ?? []) {

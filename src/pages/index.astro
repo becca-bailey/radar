@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { groupsEnabled } from '../lib/flags';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -9,17 +10,49 @@ if (!user) {
 const saved = Astro.url.searchParams.get('saved') === '1';
 const shared = Astro.url.searchParams.get('shared') === '1';
 const error = Astro.url.searchParams.get('error');
+const topic = Astro.url.searchParams.get('topic');
 
-// RLS scopes this to the signed-in user's saves.
-const [{ data: saves }, { data: myGroups }, { data: profile }] = await Promise.all([
-  supabase
-    .from('saves')
-    .select('id, original_url, note, created_at, links(title, source, canonical_url, status)')
-    .order('created_at', { ascending: false })
-    .limit(200),
-  supabase.from('groups').select('id, name').order('created_at'),
-  supabase.from('profiles').select('last_shared_group_id').eq('id', user.id).single(),
-]);
+// RLS scopes everything to the signed-in user.
+const [{ data: categories }, { data: catRows }, { data: myGroups }, { data: profile }] =
+  await Promise.all([
+    supabase.from('categories').select('id, slug, name').order('id'),
+    // Whole-archive category ids, for the chip counts (not just the 200 shown).
+    supabase.from('saves').select('links(category_id)'),
+    supabase.from('groups').select('id, name').order('created_at'),
+    supabase.from('profiles').select('last_shared_group_id').eq('id', user.id).single(),
+  ]);
+
+const cats = (categories ?? []) as { id: number; slug: string; name: string }[];
+const bySlug = new Map(cats.map((c) => [c.slug, c]));
+const activeCat = topic && topic !== 'uncategorized' ? (bySlug.get(topic) ?? null) : null;
+
+let query = supabase
+  .from('saves')
+  .select(
+    topic
+      ? 'id, original_url, note, created_at, links!inner(title, source, canonical_url, status, kind)'
+      : 'id, original_url, note, created_at, links(title, source, canonical_url, status, kind)'
+  );
+if (topic === 'uncategorized') query = query.is('links.category_id', null);
+else if (activeCat) query = query.eq('links.category_id', activeCat.id);
+const { data: saves } = await query.order('created_at', { ascending: false }).limit(200);
+
+// Chip counts from the whole archive.
+const countByCategory = new Map<number | null, number>();
+let totalSaves = 0;
+for (const r of (catRows ?? []) as unknown as { links: { category_id: number | null } | null }[]) {
+  totalSaves++;
+  const id = r.links?.category_id ?? null;
+  countByCategory.set(id, (countByCategory.get(id) ?? 0) + 1);
+}
+const topicChips = cats
+  .filter((c) => (countByCategory.get(c.id) ?? 0) > 0)
+  .map((c) => ({ slug: c.slug, name: c.name, count: countByCategory.get(c.id) ?? 0 }))
+  .sort((a, b) => b.count - a.count);
+const uncategorized = countByCategory.get(null) ?? 0;
+const CHIP_LIMIT = 8;
+const shownChips = topicChips.slice(0, CHIP_LIMIT);
+const foldedChips = topicChips.slice(CHIP_LIMIT);
 
 const groups = (myGroups ?? []) as { id: string; name: string }[];
 const defaultGroupId = profile?.last_shared_group_id ?? groups[0]?.id ?? '';
@@ -34,6 +67,7 @@ type SaveRow = {
     source: string | null;
     canonical_url: string;
     status: string;
+    kind: string;
   } | null;
 };
 
@@ -57,23 +91,79 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
   {shared && <div class="notice">Shared.</div>}
   {error && <div class="notice error">{error}</div>}
 
-  <form class="stack" method="post" action="/api/saves">
+  <form class="stack capture" method="post" action="/api/saves">
+    <h2>Save a link</h2>
     <input type="url" name="url" placeholder="Paste a link to save it" required />
     <input type="text" name="note" placeholder="Why you're saving it (optional, shown if shared)" />
     <button type="submit">Save</button>
   </form>
 
   {
+    totalSaves > 0 && (
+      <div class="list-head">
+        <h2>Recent saves</h2>
+        <span class="count">{totalSaves}</span>
+        <a class="head-link" href="/search">Search your archive →</a>
+      </div>
+    )
+  }
+
+  {
+    topicChips.length > 0 && (
+      <nav class="chips" aria-label="Filter by topic">
+        <a class="chip" href="/" aria-current={!topic ? 'true' : undefined}>
+          All · {totalSaves}
+        </a>
+        {shownChips.map((c) => (
+          <a class="chip" href={`/?topic=${c.slug}`} aria-current={topic === c.slug ? 'true' : undefined}>
+            {c.name} · {c.count}
+          </a>
+        ))}
+        {foldedChips.length > 0 && (
+          <details class="chips-more">
+            <summary class="chip">More…</summary>
+            <div class="chips">
+              {foldedChips.map((c) => (
+                <a class="chip" href={`/?topic=${c.slug}`} aria-current={topic === c.slug ? 'true' : undefined}>
+                  {c.name} · {c.count}
+                </a>
+              ))}
+            </div>
+          </details>
+        )}
+        {uncategorized > 0 && (
+          <a
+            class="chip"
+            href="/?topic=uncategorized"
+            aria-current={topic === 'uncategorized' ? 'true' : undefined}
+          >
+            Uncategorized · {uncategorized}
+          </a>
+        )}
+      </nav>
+    )
+  }
+
+  {
     rows.length === 0 ? (
-      <p class="empty">Your archive is empty. Save the first thing you don't want to lose.</p>
+      <p class="empty">
+        {topic
+          ? `Nothing saved under ${activeCat?.name ?? 'that topic'} yet.`
+          : "Your archive is empty. Save the first thing you don't want to lose."}
+      </p>
     ) : (
       <ul class="saves">
         {rows.map((row) => (
-          <li data-save-id={row.id} data-pending={row.links?.status === 'pending' ? '' : undefined}>
+          <li
+            data-save-id={row.id}
+            data-pending={row.links?.status === 'pending' ? '' : undefined}
+            data-kind={row.links?.kind && row.links.kind !== 'article' ? row.links.kind : undefined}
+          >
             <a class="title" href={row.links?.canonical_url ?? row.original_url}>
               {displayTitle(row)}
             </a>
             <div class="meta">
+              {row.links?.kind && row.links.kind !== 'article' ? `${row.links.kind} · ` : ''}
               {row.links?.source ?? ''}
               {row.links?.source ? ' · ' : ''}
               {dateFmt.format(new Date(row.created_at))}
@@ -81,7 +171,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
               {row.links?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
             </div>
             {row.note && <p class="why">{row.note}</p>}
-            {groups.length > 0 && (
+            {groupsEnabled() && groups.length > 0 && (
               <details style="margin-top:0.5rem">
                 <summary style="cursor:pointer; font-size:0.85rem; color:var(--muted)">Share…</summary>
                 <form class="stack" method="post" action="/api/recommendations" style="margin:0.5rem 0 0">

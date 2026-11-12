@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { groupsEnabled } from '../lib/flags';
 
 interface Props {
   title?: string;
@@ -7,6 +8,7 @@ interface Props {
 }
 
 const { title = 'Radar', user } = Astro.props;
+const groups = groupsEnabled();
 ---
 
 <!doctype html>
@@ -44,8 +46,8 @@ const { title = 'Radar', user } = Astro.props;
             user ? (
               <>
                 <a href="/search">Search</a>
-                <a href="/groups">Groups</a>
-                <a href="/explore">Explore</a>
+                {groups && <a href="/groups">Groups</a>}
+                {groups && <a href="/explore">Explore</a>}
                 <a href="/settings">Settings</a>
                 <form method="post" action="/api/auth/logout" style="display:inline">
                   <button class="quiet" type="submit" style="padding:0.3rem 0.8rem; font-size:0.85rem">
@@ -55,7 +57,7 @@ const { title = 'Radar', user } = Astro.props;
               </>
             ) : (
               <>
-                <a href="/explore">Explore</a>
+                {groups && <a href="/explore">Explore</a>}
                 <a href="/login">Sign in</a>
               </>
             )
@@ -64,8 +66,9 @@ const { title = 'Radar', user } = Astro.props;
       </header>
       <slot />
       <footer class="site">
-        <a href="/privacy">Privacy</a> · <a href="/ranking">How ranking works</a> ·
-        <a href="/dashboard">Dashboard</a> · Your archive is yours: export it any time.
+        <a href="/privacy">Privacy</a>
+        {groups && <> · <a href="/ranking">How ranking works</a> · <a href="/dashboard">Dashboard</a></>}
+        {' '}· Your archive is yours: export it any time.
       </footer>
     </main>
   </body>

@@ -1,7 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { groupsEnabled } from '../lib/flags';
 import { computeDashboardMetrics } from '../lib/metrics';
 import { createServiceClient } from '../lib/supabase';
+
+if (!groupsEnabled()) {
+  return Astro.redirect('/');
+}
 
 // Public, aggregate-only (PLAN.md §7: "measure what the research measured").
 const { user } = Astro.locals;

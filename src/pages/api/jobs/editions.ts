@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { buildDueEditions } from '../../../lib/editions';
+import { groupsEnabled } from '../../../lib/flags';
 import { createServiceClient } from '../../../lib/supabase';
 import { authorized } from './ingest';
 
@@ -7,6 +8,9 @@ import { authorized } from './ingest';
 export const POST: APIRoute = async ({ request }) => {
   if (!authorized(request)) {
     return Response.json({ error: 'forbidden' }, { status: 403 });
+  }
+  if (!groupsEnabled()) {
+    return Response.json({ built: 0, skipped: 'groups disabled' });
   }
   try {
     const result = await buildDueEditions(createServiceClient());
