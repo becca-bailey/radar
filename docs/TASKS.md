@@ -76,8 +76,8 @@ Done (2026-11-14/15, not yet deployed):
 
 Before inviting anyone (Becca, outside the code):
 
-- [ ] **7.7 (S)** Custom SMTP for sign-in emails via Resend, sending as `On Your Radar <hello@mail.onyourradar.app>`. Done: `mail.onyourradar.app` verified in Resend (us-east-1, records + DMARC in Netlify DNS) and a sending-only key "Supabase SMTP (sign-in emails)" created. Left: enter the SMTP settings in Supabase. Supabase's built-in sender sends 2 emails/hour and only to org members, so testers get nothing without this. Then raise the email rate limit under Authentication → Rate Limits.
-- [ ] **7.8 (S)** Push migrations to prod: `npx supabase db push --remote` (lenses + beta hardening).
+- [x] **7.7 (S)** Custom SMTP for sign-in emails via Resend, sending as `On Your Radar <hello@mail.onyourradar.app>`: `mail.onyourradar.app` verified in Resend (us-east-1, records + DMARC in Netlify DNS), sending-only key "Supabase SMTP (sign-in emails)" set as Supabase's SMTP password. Magic links deliver. Check the email limit under Authentication → Rate Limits before inviting many testers.
+- [x] **7.8 (S)** Push migrations to prod: `npx supabase db push --remote` (lenses + beta hardening).
 - [ ] **7.9 (S)** Netlify env: set `ADMIN_EMAILS` (your email) and `SAFE_BROWSING_API_KEY` (the malware check at ingest is skipped without it).
 - [ ] **7.10 (S)** Supabase dashboard: turn off "Allow new users to sign up". Invites keep working (accounts are created through the admin API); this closes the direct sign-up endpoint.
 - [ ] **7.11 (S)** Check the Supabase plan: free tier caps the database at 500 MB and pauses after a week idle. Full text + snapshots per link will grow fast.
@@ -86,9 +86,9 @@ Before inviting anyone (Becca, outside the code):
 Domain: **On Your Radar** at `onyourradar.app` (decided 2026-11-15; the .com is taken), with `onyourradar.fyi` as a redirecting alias. Do these before 7.12's invites, so nobody installs a Shortcut pointing at the old address:
 
 - [x] **7.20 (S)** Register `onyourradar.app` and `onyourradar.fyi` at Porkbun; both use Netlify DNS (Porkbun nameservers point at each Netlify zone's nameservers).
-- [x] **7.21 (S)** Netlify: confirm `onyourradar.app` is the primary domain and `onyourradar.fyi` an alias (`radar-saves.netlify.app` keeps redirecting). `.app` is HTTPS-only, so wait for Netlify's certificate before testing. Update `SITE_URL` in Netlify env, then trigger a deploy (Astro reads it at build time).
-- [x] **7.22 (S)** Supabase Auth: site URL → `https://onyourradar.app`; add `https://onyourradar.app/auth/callback` to the redirect allow list (sign-in links break otherwise). Keep the `radar-saves.netlify.app` entry until the switch is verified.
-- [x] **7.23 (S)** iOS Shortcut: `SITE` is now `https://onyourradar.app` and `public/Put it on Radar.shortcut` is regenerated and signed. Left: push, then reinstall it on your phone and rotate your API token (the old copy sends it to `radar-saves.netlify.app`, a Netlify name that was freed by the rename and anyone can claim).
+- [x] **7.21 (S)** Netlify: confirm `onyourradar.app` is the primary domain and `onyourradar.fyi` an alias. The bare `.fyi` needs the redirect in `netlify.toml` (Netlify serves aliases as-is). The site was renamed to `onyourradar`, so `radar-saves.netlify.app` no longer exists. `.app` is HTTPS-only, so wait for Netlify's certificate before testing. Update `SITE_URL` in Netlify env, then trigger a deploy (Astro reads it at build time).
+- [x] **7.22 (S)** Supabase Auth: site URL → `https://onyourradar.app`; add `https://onyourradar.app/auth/callback` to the redirect allow list (sign-in links break otherwise). Verified: magic links land on onyourradar.app.
+- [x] **7.23 (S)** iOS Shortcut: `SITE` is now `https://onyourradar.app` and `public/Put it on Radar.shortcut` is regenerated, signed and deployed. Left: reinstall it on your phone and rotate your API token (the old copy sends it to `radar-saves.netlify.app`, a Netlify name that was freed by the rename and anyone can claim).
 - [ ] **7.24 (S)** Optional branding: keep "radar" as the short mark; use "On Your Radar" in page titles, the sign-in email and the privacy page.
 
 Verify after deploy:
