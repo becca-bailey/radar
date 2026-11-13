@@ -21,6 +21,17 @@ export interface PickerRow extends ExportItem {
 
 interface Props {
   rows: PickerRow[];
+  /** What a row is called in status messages: "save" or "link". */
+  noun?: string;
+  /** Start of downloaded file names. */
+  filePrefix?: string;
+  /**
+   * After a copy or download, record the export so the next one can start
+   * "since your last export". Omit to skip. Group id for a group export.
+   */
+  recordExport?: { groupId?: string };
+  /** Owner of a group: offer to mark what was just exported as picked. */
+  pickUrl?: string;
 }
 
 const DOWNLOADS = [
@@ -34,9 +45,41 @@ const DOWNLOADS = [
  * picked saves as a list (rich text + Markdown) or download them as
  * Markdown, CSV or JSON. Output follows the on-screen order.
  */
-export default function SavePicker({ rows }: Props) {
+export default function SavePicker({ rows, noun = 'save', filePrefix = 'radar-saves', recordExport, pickUrl }: Props) {
   const [selected, setSelected] = React.useState<Set<string>>(() => new Set());
   const [status, setStatus] = React.useState('');
+  // Ids of the last export, offered for "Mark as picked".
+  const [justExported, setJustExported] = React.useState<string[]>([]);
+  const [pickStatus, setPickStatus] = React.useState('');
+
+  const afterExport = (items: PickerRow[]) => {
+    if (recordExport) {
+      void fetch('/api/exported', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: recordExport.groupId ?? null }),
+      }).catch(() => {});
+    }
+    if (pickUrl) {
+      setJustExported(items.map((i) => i.id));
+      setPickStatus('');
+    }
+  };
+
+  const markPicked = async () => {
+    try {
+      const res = await fetch(pickUrl!, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link_ids: justExported }),
+      });
+      if (!res.ok) throw new Error();
+      setPickStatus(`Marked ${justExported.length} as picked. Their sharers see it on their saves.`);
+      setJustExported([]);
+    } catch {
+      setPickStatus("Couldn't mark them. Try again.");
+    }
+  };
   const allRef = React.useRef<HTMLInputElement>(null);
 
   const count = selected.size;
@@ -67,7 +110,8 @@ export default function SavePicker({ rows }: Props) {
   const copy = async () => {
     const items = picked();
     const markdown = toMarkdownList(items);
-    const label = `Copied ${items.length} ${items.length === 1 ? 'save' : 'saves'}`;
+    const label = `Copied ${items.length} ${noun}${items.length === 1 ? '' : 's'}`;
+    afterExport(items);
     // Rich text keeps the links when pasted into an editor like Substack,
     // Notion or Google Docs; the plain-text flavor is Markdown.
     try {
@@ -105,11 +149,13 @@ export default function SavePicker({ rows }: Props) {
   };
 
   const download = (format: (typeof DOWNLOADS)[number]) => {
-    const blob = new Blob([format.render(picked())], { type: `${format.type};charset=utf-8` });
+    const items = picked();
+    afterExport(items);
+    const blob = new Blob([format.render(items)], { type: `${format.type};charset=utf-8` });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `radar-saves-${new Date().toISOString().slice(0, 10)}.${format.ext}`;
+    a.download = `${filePrefix}-${new Date().toISOString().slice(0, 10)}.${format.ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -153,6 +199,7 @@ export default function SavePicker({ rows }: Props) {
                         <CardTitle>{row.title}</CardTitle>
                         <CardDescription>
                           {row.source ? `${row.source} · ` : ''}
+                          {row.readers && row.readers > 1 ? `shared by ${row.readers} · ` : ''}
                           {row.savedOn}
                         </CardDescription>
                       </CardHeader>
@@ -160,7 +207,7 @@ export default function SavePicker({ rows }: Props) {
                     </div>
                     {row.image && (
                       <img
-                        className="mt-1 h-[60px] w-[88px] shrink-0 rounded-md border-2 border-border object-cover shadow-hard-xs"
+                        className="mt-1 h-12 w-16 shrink-0 rounded-md sm:h-[60px] sm:w-[88px] border-2 border-border object-cover shadow-hard-xs"
                         src={row.image}
                         alt=""
                         loading="lazy"
@@ -177,6 +224,21 @@ export default function SavePicker({ rows }: Props) {
           );
         })}
       </ul>
+
+      {(justExported.length > 0 || pickStatus) && (
+        <div className="mb-2.5 flex flex-wrap items-center gap-2.5 rounded-lg border-2 border-dashed px-4 py-3 text-sm">
+          {pickStatus ? (
+            <span aria-live="polite">{pickStatus}</span>
+          ) : (
+            <>
+              <span className="mr-auto">Using these? Mark them picked so the people who shared them know.</span>
+              <Button size="sm" variant="outline" onClick={() => void markPicked()}>
+                Mark {justExported.length} as picked
+              </Button>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2.5 rounded-lg border-2 bg-card px-4 py-3 shadow-hard">
         <span className="mr-auto text-sm font-semibold" aria-live="polite">

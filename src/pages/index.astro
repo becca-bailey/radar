@@ -7,7 +7,9 @@ import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
+import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
 import { groupsEnabled } from '../lib/flags';
+import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -16,9 +18,14 @@ if (!user) {
 
 const saved = Astro.url.searchParams.get('saved') === '1';
 const shared = Astro.url.searchParams.get('shared') === '1';
+const unshared = Astro.url.searchParams.get('unshared') === '1';
 const updated = Astro.url.searchParams.get('updated') === '1';
-const deleted = Astro.url.searchParams.get('deleted') === '1';
 const retrying = Astro.url.searchParams.get('retrying') === '1';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Undo targets: a save just made (delete it) or a save just deleted (restore it).
+const undoSave = Astro.url.searchParams.get('undo_save');
+const undoSaveId = undoSave && UUID_RE.test(undoSave) ? undoSave : null;
+const removed = Astro.url.searchParams.get('removed') === '1';
 const error = Astro.url.searchParams.get('error');
 const topic = Astro.url.searchParams.get('topic');
 
@@ -36,16 +43,28 @@ const cats = (categories ?? []) as { id: number; slug: string; name: string }[];
 const bySlug = new Map(cats.map((c) => [c.slug, c]));
 const activeCat = topic && topic !== 'uncategorized' ? (bySlug.get(topic) ?? null) : null;
 
+const linkCols = 'title, source, canonical_url, status, kind, image:metadata->>image';
+const shareCols = groupsEnabled() ? ', shares(group_id, removed_at, picked_at)' : '';
 let query = supabase
   .from('saves')
-  .select(
-    topic
-      ? 'id, original_url, note, created_at, links!inner(title, source, canonical_url, status, kind, image:metadata->>image)'
-      : 'id, original_url, note, created_at, links(title, source, canonical_url, status, kind, image:metadata->>image)'
-  );
+  .select(`id, original_url, note, created_at, ${topic ? 'links!inner' : 'links'}(${linkCols})${shareCols}`);
 if (topic === 'uncategorized') query = query.is('links.category_id', null);
 else if (activeCat) query = query.eq('links.category_id', activeCat.id);
-const { data: saves } = await query.order('created_at', { ascending: false }).limit(200);
+const resurfaceCutoff = new Date(Date.now() - RESURFACE_MIN_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+const [{ data: saves }, { data: oldSaves }] = await Promise.all([
+  query.order('created_at', { ascending: false }).limit(200),
+  // Candidates for "from a while ago": only on the unfiltered view.
+  topic
+    ? Promise.resolve({ data: [] })
+    : supabase
+        .from('saves')
+        .select(`id, original_url, note, created_at, links(${linkCols})${shareCols}`)
+        .lt('created_at', resurfaceCutoff)
+        .order('created_at')
+        .limit(365),
+]);
+const now = new Date();
+const resurfaced = pickForDay((oldSaves ?? []) as unknown as SaveRow[], now.toISOString().slice(0, 10));
 
 // Chip counts from the whole archive.
 const countByCategory = new Map<number | null, number>();
@@ -70,44 +89,97 @@ const defaultGroupId = profile?.last_shared_group_id ?? groups[0]?.id ?? '';
 const rows = (saves ?? []) as unknown as SaveRow[];
 const shareGroups = groupsEnabled() ? groups : [];
 const chip = badgeVariants({ variant: 'chip' });
+
+// Once there's an archive, saving mostly happens from the share sheet;
+// the paste box folds into one row so the page is about reading.
+const COMPACT_AFTER = 5;
+const saveBoxOpen = totalSaves < COMPACT_AFTER || !!error;
+const lensTopic = activeCat?.name ?? null;
 ---
 
 <Layout title="Radar" user={user}>
-  {saved && <Alert>Saved.</Alert>}
+  {
+    saved && (
+      <Alert>
+        <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          Saved.
+          {undoSaveId && (
+            <form method="post" action={`/api/saves/${undoSaveId}`}>
+              <input type="hidden" name="action" value="undo_save" />
+              <button class="cursor-pointer font-semibold underline" type="submit">Undo</button>
+            </form>
+          )}
+        </span>
+      </Alert>
+    )
+  }
+  {removed && <Alert>Removed from your archive.</Alert>}
+
   {shared && <Alert>Shared.</Alert>}
+  {unshared && <Alert>Unshared. It's still in your archive.</Alert>}
   {updated && <Alert>Note updated.</Alert>}
-  {deleted && <Alert>Deleted.</Alert>}
+  <UndoDeleteAlert />
   {retrying && <Alert>Trying to archive it again…</Alert>}
   {error && <Alert variant="error">{error}</Alert>}
 
-  <form
-    class="mt-5 mb-10 grid gap-2.5 rounded-lg border-2 bg-[color-mix(in_srgb,var(--candy-butter)_22%,var(--card))] p-4 shadow-hard"
-    method="post"
-    action="/api/saves"
+  <details
+    class="group/save mt-5 mb-8 rounded-lg border-2 bg-[color-mix(in_srgb,var(--candy-butter)_22%,var(--card))] shadow-hard"
+    open={saveBoxOpen}
   >
-    <div class="mb-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
-      <h2 class="m-0 text-[1.15rem]">Save a link</h2>
-      <a class="text-sm text-muted-foreground" href="/setup">Other ways to save →</a>
-    </div>
-    <Input type="url" name="url" placeholder="Paste a link to save it" required />
-    <Input type="text" name="note" placeholder="Why you're saving it (optional, shown if shared)" />
-    <Button type="submit">Save</Button>
-  </form>
+    <summary
+      class:list={[
+        'flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-x-3 px-4 py-3 [&::-webkit-details-marker]:hidden',
+        saveBoxOpen && 'pointer-events-none pb-0',
+      ]}
+      tabindex={saveBoxOpen ? -1 : undefined}
+    >
+      <h2 class="m-0 text-[1.15rem]">
+        <span class="group-open/save:hidden" aria-hidden="true">+ </span>Save a link
+      </h2>
+      <a class="pointer-events-auto text-sm text-muted-foreground" href="/setup">Other ways to save →</a>
+    </summary>
+    <form class="grid gap-2.5 px-4 pt-2.5 pb-4" method="post" action="/api/saves">
+      <Input type="url" name="url" placeholder="Paste a link to save it" required />
+      <Input type="text" name="note" placeholder="Why you're saving it (optional)" />
+      <Button type="submit">Save</Button>
+    </form>
+  </details>
+
+  {
+    resurfaced && (
+      <section class="mb-8" aria-labelledby="resurfaced-heading">
+        <h2 id="resurfaced-heading" class="m-0 mb-2 text-[1.15rem]">
+          From {agoLabel(new Date(resurfaced.created_at), now)}
+        </h2>
+        <CardList>
+          <SaveCard row={resurfaced} groups={shareGroups} defaultGroupId={defaultGroupId} topic={topic} />
+        </CardList>
+        <p class="m-0 mt-1.5 text-sm text-muted-foreground">A different one tomorrow.</p>
+      </section>
+    )
+  }
 
   {
     totalSaves > 0 && (
-      <div class="mt-8 mb-1.5 flex items-baseline gap-2.5">
-        <h2 class="m-0">Recent saves</h2>
+      <div class="mt-8 mb-1.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        <h2 class="m-0 whitespace-nowrap">Recent saves</h2>
         <Badge className="-rotate-2">{totalSaves}</Badge>
-        <a class="ml-auto text-sm text-muted-foreground" href="/export">Export</a>
-        <a class="text-sm text-muted-foreground" href="/search">Search your archive →</a>
+        <div class="flex w-full gap-3.5 text-sm whitespace-nowrap sm:ml-auto sm:w-auto">
+          <a class="text-muted-foreground" href="/export">Export</a>
+          <a class="text-muted-foreground" href="/search">Search your archive →</a>
+        </div>
       </div>
     )
   }
 
   {
     topicChips.length > 0 && (
-      <nav class="mt-2.5 mb-1.5 flex flex-wrap gap-2" aria-label="Filter by topic">
+      // Phones: one row that scrolls sideways, bleeding to the screen edges.
+      // Wider screens: chips wrap onto as many rows as they need.
+      <nav
+        class="-mx-4 mt-1.5 mb-0.5 flex gap-2 overflow-x-auto px-4 pt-1 pb-2.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+        aria-label="Filter by topic"
+      >
         <a class={chip} href="/" aria-current={!topic ? 'true' : undefined}>
           All · {totalSaves}
         </a>
@@ -137,6 +209,15 @@ const chip = badgeVariants({ variant: 'chip' });
           </a>
         )}
       </nav>
+    )
+  }
+
+  {
+    lensTopic && (
+      <p class="m-0 mt-1 mb-2 text-sm">
+        <a href={`/explore?new=${encodeURIComponent(lensTopic)}`}>Keep “{lensTopic}” as a lens →</a>
+        <span class="text-muted-foreground"> A lens matches by meaning, so it gathers related saves too.</span>
+      </p>
     )
   }
 

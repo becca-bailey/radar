@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { saveDisplayTitle, toCsv, toHtmlList, toJson, toMarkdownList, type ExportItem } from './exportFormats';
+import { joinNotes, saveDisplayTitle, toCsv, toHtmlList, toJson, toMarkdownList, type ExportItem } from './exportFormats';
 
 const item = (over: Partial<ExportItem>): ExportItem => ({
   title: 'T',
@@ -81,5 +81,34 @@ describe('saveDisplayTitle', () => {
     expect(saveDisplayTitle('Hello', 'https://www.example.com/a')).toBe('Hello');
     expect(saveDisplayTitle(null, 'https://www.example.com/a/b')).toBe('example.com/a/b');
     expect(saveDisplayTitle(null, 'not a url')).toBe('not a url');
+  });
+});
+
+describe('group exports', () => {
+  const shared = [
+    item({ title: 'Sock heels', url: 'https://example.com/heels', source: 'Knit Weekly', note: 'Clear / Finally', readers: 3 }),
+    item({ title: 'Solo', url: 'https://example.org/a', readers: 1 }),
+  ];
+
+  it('joins notes, dropping blanks and flattening whitespace', () => {
+    expect(joinNotes(['Clear', '  ', 'Finally\nmakes sense'])).toBe('Clear / Finally makes sense');
+    expect(joinNotes(['', ' '])).toBeNull();
+  });
+
+  it('says how many members shared a link, never who', () => {
+    expect(toMarkdownList(shared)).toBe(
+      '- [Sock heels](https://example.com/heels) (Knit Weekly · shared by 3) — Clear / Finally\n' +
+        '- [Solo](https://example.org/a)\n'
+    );
+    expect(toHtmlList(shared)).toContain('(Knit Weekly · shared by 3)');
+  });
+
+  it('adds a shared_by column to CSV and JSON', () => {
+    const csv = toCsv(shared);
+    expect(csv.split('\r\n')[0]).toBe('last_shared_at,title,url,source,notes,shared_by');
+    expect(csv).toContain(',3\r\n');
+    const json = JSON.parse(toJson(shared, new Date('2026-11-16T00:00:00Z')));
+    expect(json.links[0]).toMatchObject({ title: 'Sock heels', notes: 'Clear / Finally', shared_by: 3 });
+    expect(json.saves).toBeUndefined();
   });
 });

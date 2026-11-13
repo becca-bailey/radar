@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { DownloadIcon, FlagIcon, LogOutIcon, MailPlusIcon, SettingsIcon } from 'lucide-react';
+import { DownloadIcon, LogOutIcon, MailPlusIcon, SettingsIcon } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -59,12 +59,6 @@ export default function UserMenu({ email, admin = false }: Props) {
                 <a className={itemLink} href="/admin/invites">
                   <MailPlusIcon aria-hidden="true" />
                   Beta invites
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a className={itemLink} href="/admin/flags">
-                  <FlagIcon aria-hidden="true" />
-                  Flag queue
                 </a>
               </DropdownMenuItem>
             </>

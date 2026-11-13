@@ -2,9 +2,6 @@
 import ItemCard from '@/components/ItemCard.astro';
 import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 
 /** One save in the archive list. */
 export interface SaveRow {
@@ -21,11 +18,13 @@ export interface SaveRow {
     /** Thumbnail from ingest (links.metadata->>image), when the page had one. */
     image?: string | null;
   } | null;
+  /** Groups this save is shared to (loaded only when groups are on). */
+  shares?: { group_id: string; removed_at: string | null; picked_at?: string | null }[];
 }
 
 interface Props {
   row: SaveRow;
-  /** Groups this save can be shared to; empty hides the share form. */
+  /** Your groups; empty hides sharing entirely. */
   groups?: { id: string; name: string }[];
   defaultGroupId?: string;
   /** Active topic filter, passed through so actions return to the same view. */
@@ -48,6 +47,14 @@ function displayTitle(): string {
 
 const title = displayTitle();
 
+// A save can be shared to many groups. Shares to groups you've left are
+// hidden; the form offers only groups it isn't in yet.
+const groupName = new Map(groups.map((g) => [g.id, g.name]));
+const shares = (row.shares ?? []).filter((s) => groupName.has(s.group_id));
+const sharedTo = new Set(shares.map((s) => s.group_id));
+const shareable = groups.filter((g) => !sharedTo.has(g.id));
+const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.group_id)!);
+
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 
@@ -67,6 +74,17 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     {link?.status === 'pending' ? ' · archiving…' : ''}
     {link?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
   </Fragment>
+  {
+    link?.status === 'failed' && (
+      <form method="post" action={`/api/saves/${row.id}`}>
+        <input type="hidden" name="action" value="retry" />
+        <input type="hidden" name="topic" value={topic ?? ''} />
+        <button class="cursor-pointer text-[0.82rem] font-semibold underline" type="submit">
+          Try archiving again
+        </button>
+      </form>
+    )
+  }
   <SaveMenu
     slot="action"
     client:visible
@@ -76,37 +94,51 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     note={row.note}
     canRetry={link?.status === 'failed'}
     topic={topic}
+    sharedIn={sharedIn}
+    shareTo={shareable}
+    defaultGroupId={defaultGroupId}
   />
   {row.note && <Why>{row.note}</Why>}
   {
-    groups.length > 0 && (
-      <details>
-        <summary class="cursor-pointer text-[0.85rem] font-semibold text-muted-foreground">Share…</summary>
-        <form class="mt-2 grid gap-2.5" method="post" action="/api/recommendations">
-          <input type="hidden" name="save_id" value={row.id} />
-          <NativeSelect name="group_id" aria-label="Group">
-            {groups.map((g) => (
-              <option value={g.id} selected={g.id === defaultGroupId}>
-                {g.name}
-              </option>
-            ))}
-          </NativeSelect>
-          <Input
-            type="text"
-            name="note"
-            defaultValue={row.note ?? ''}
-            placeholder="Why you're recommending it (the group sees this)"
-            aria-label="Note for the group"
-          />
-          <label class="flex items-center gap-2 text-sm font-semibold">
-            <input class="size-4 accent-primary" type="checkbox" name="attribution_ok" /> OK to credit me by
-            name in a published roundup
-          </label>
-          <Button variant="outline" type="submit">
-            Share
-          </Button>
-        </form>
-      </details>
+    shares.length > 0 && (
+      <ul class="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-[0.8rem]" aria-label="Shared to">
+        <li class="font-semibold text-muted-foreground">Shared to</li>
+        {shares.map((s) =>
+          s.removed_at ? (
+            <li
+              class="max-w-full truncate rounded-full border-2 border-dashed px-2 py-0.5 text-muted-foreground"
+              title="The group's owner removed this link from the group. It stays in your archive."
+            >
+              {groupName.get(s.group_id)} · removed by owner
+            </li>
+          ) : (
+            <li class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border-2 bg-card py-0.5 pr-1 pl-2">
+              <span class="truncate">{groupName.get(s.group_id)}</span>
+              {s.picked_at && (
+                <span
+                  class="shrink-0 rounded-full bg-candy-lime px-1.5 text-[0.72rem] font-bold"
+                  title="The group's owner picked this, say for a newsletter"
+                >
+                  picked
+                </span>
+              )}
+              <form method="post" action="/api/shares" class="contents">
+                <input type="hidden" name="action" value="unshare" />
+                <input type="hidden" name="save_id" value={row.id} />
+                <input type="hidden" name="group_id" value={s.group_id} />
+                <button
+                  class="shrink-0 cursor-pointer rounded-full px-1 leading-none text-muted-foreground hover:text-destructive"
+                  type="submit"
+                  aria-label={`Unshare from ${groupName.get(s.group_id)}`}
+                  title="Unshare (stays in your archive)"
+                >
+                  ×
+                </button>
+              </form>
+            </li>
+          )
+        )}
+      </ul>
     )
   }
 </ItemCard>

@@ -9,7 +9,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * POST /api/saves/:id — manage one save from the archive list. HTML forms
  * can only POST, so the `action` field picks the operation:
  *   edit   — replace the note (empty clears it)
- *   delete — remove the save from your archive (and unshare it from groups)
+ *   delete — move the save to a one-day trash (undo restores it, shares too)
+ *   undo_save — "Undo" right after saving: remove it for good
  *   retry  — re-queue archiving for a link whose ingest failed
  * RLS scopes every read and write to the caller's own saves.
  */
@@ -48,10 +49,17 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   }
 
   if (action === 'delete') {
-    const { data, error } = await supabase.from('saves').delete().eq('id', id).select('id');
+    // No confirm dialog: the page offers Undo instead.
+    const { data: trashId, error } = await supabase.rpc('trash_save', { sid: id });
     if (error) return fail('Could not delete that save. Try again.');
-    if (!data?.length) return fail('That save was not found.');
-    return back('deleted=1');
+    if (!trashId) return fail('That save was not found.');
+    return back(`deleted=1&trash=${trashId}`);
+  }
+
+  if (action === 'undo_save') {
+    const { error } = await supabase.from('saves').delete().eq('id', id);
+    if (error) return fail('Could not undo that save. Try again.');
+    return back('removed=1');
   }
 
   if (action === 'retry') {

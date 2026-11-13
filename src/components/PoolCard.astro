@@ -1,0 +1,75 @@
+---
+import ItemCard from '@/components/ItemCard.astro';
+import Why from '@/components/Why.astro';
+import { saveDisplayTitle } from '../lib/exportFormats';
+import { sanitizeSnippet } from '../lib/snippet';
+import { sharedByLabel, type PoolLink } from '../lib/groupPool';
+
+/**
+ * One link shared to a group: how many members shared it and their notes,
+ * never who. The owner gets a Remove button (moderation).
+ */
+interface Props {
+  link: PoolLink;
+  groupId: string;
+  isOwner: boolean;
+  /** Where to come back to after removing. */
+  returnPath: string;
+  /** Show the search snippet (lens results), clamped to this many lines. */
+  snippetLines?: 2 | 3 | null;
+}
+
+const { link, groupId, isOwner, returnPath, snippetLines = null } = Astro.props;
+const sharedBy = sharedByLabel(link.readers, link.names ?? []);
+const title = saveDisplayTitle(link.title, link.canonical_url);
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const confirmText = `Remove this link from the group? It's hidden here and can't be shared here again until you restore it. Members keep it in their archives.`;
+---
+
+<ItemCard href={link.canonical_url} title={title} thumb={link.image}>
+  <Fragment slot="meta">
+    {link.source ? `${link.source} · ` : ''}
+    {sharedBy ? `${sharedBy} · ` : ''}
+    {dateFmt.format(new Date(link.last_shared_at))}
+  </Fragment>
+  {
+    link.picked && (
+      <span slot="before" class="w-fit rounded-full border-2 bg-candy-lime px-2 text-[0.72rem] font-bold">
+        Picked
+      </span>
+    )
+  }
+  {
+    isOwner && (
+      <form
+        slot="action"
+        method="post"
+        action={`/groups/${groupId}`}
+        onsubmit={`return confirm(${JSON.stringify(confirmText)})`}
+      >
+        <input type="hidden" name="_action" value="remove_link" />
+        <input type="hidden" name="link_id" value={link.link_id} />
+        <input type="hidden" name="return_path" value={returnPath} />
+        <button
+          class="cursor-pointer rounded-md px-2 py-1 text-[0.8rem] font-semibold text-muted-foreground hover:bg-muted hover:text-destructive"
+          type="submit"
+          aria-label={`Remove “${title}” from the group`}
+        >
+          Remove
+        </button>
+      </form>
+    )
+  }
+  {
+    snippetLines && link.snippet && (
+      <p
+        class:list={[
+          'm-0 text-[0.9rem] whitespace-pre-wrap text-muted-foreground',
+          snippetLines === 3 ? 'line-clamp-3' : 'line-clamp-2',
+        ]}
+        set:html={sanitizeSnippet(link.snippet)}
+      />
+    )
+  }
+  {link.notes.map((n) => <Why>{n}</Why>)}
+</ItemCard>

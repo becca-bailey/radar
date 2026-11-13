@@ -102,10 +102,55 @@ Should do during the beta:
 - [ ] **7.16 (S)** Block private and localhost addresses in `fetchPage`, including after redirects (SSRF).
 - [ ] **7.17 (S)** Error monitoring (Sentry or similar), or at least a failed-ingest count on an admin page.
 - [ ] **7.18 (S)** Feedback link in the footer (a mailto is enough).
+- [ ] **7.20 (M)** Dates and time zones. Pages render on Netlify in UTC, so dates are UTC everywhere: a save made at 8pm Pacific shows as the next day, the export date filters (`/export`, `/groups/:id/export`) treat "from/to" as UTC days, and download filenames use the UTC date. Some formatters pin `timeZone: 'UTC'`, others use the server's zone by accident. Fix: learn each person's zone from the browser (a cookie set on load, saved to `profiles.time_zone` so it holds before the cookie is set, e.g. on a first visit from a new device), format every date through one helper in `src/lib/dates.ts`, and turn local "from/to" days into UTC instants for queries. Show "today"/"yesterday" for recent saves while there.
+
+## Stage 8 — Simpler groups (PLAN.md §0)
+
+Done (2026-11-16, migration `20261116000000_simplify_groups.sql`, not yet pushed):
+
+- [x] **8.1 (M)** Removed scheduled editions, edition emails (Resend), the public layer (`/highlights`, `/ranking`, `/dashboard`), the flag queue, and all group settings except name and invite link.
+- [x] **8.2 (S)** Anonymous shares: no names or credit anywhere; members see only their own membership row and no other profiles; display name setting removed.
+- [x] **8.3 (M)** Shares replace recommendations: `shares (save_id, group_id, shared_at, removed_at)`, one save to many groups, note read from the save, no user id on the row. Members read groups only through security-definer `group_pool()` (per-link count + notes, same keyword + semantic search as the archive). Save cards show which groups a save is in, with unshare.
+- [x] **8.3b (M)** Group lenses: `lenses.group_id`, owner manages, members see them stacked on the group page.
+- [x] **8.4 (M)** Group export at `/groups/:id/export`: date range, most shared / newest / oldest, copy list or Markdown/CSV/JSON with "shared by N".
+- [x] **8.5 (S)** Moderation: owner removes a link (marks its shares in that group removed, blocks re-sharing there), with a restore list. Saves are never touched.
 
 Before groups ship:
 
-- [ ] **7.19 (S)** Deleting an account that owns a group deletes the group for every member (`groups.owner_id` cascades). Decide on ownership transfer or a block, and fix the privacy page's "editions are immutable" line to match.
+- [ ] **7.19 (S)** Deleting an account that owns a group deletes the group for every member (`groups.owner_id` cascades). Decide on ownership transfer or a block.
+- [x] **8.8 (M)** Shortcut asks for a note and, when you're in groups, which group to share to ("Just save" first). `GET /api/groups` gives the menu; `share_to` on `POST /api/saves` shares after saving. Tokens can now share to your groups.
+- [ ] **8.9 (S)** On a Mac: `python3 scripts/make-shortcut.py` to sign the new Shortcut, then try it on an iPhone with no groups, with groups, and with a blank note. Deploy the server first: the new file calls `/api/shortcut-options` (on `claude/ux-pass`; `/api/groups` before it), and the old file keeps working against the new server.
+- [ ] **8.7 (S)** Click through locally with `GROUPS_ENABLED=true`: create group, join, share, add lenses, remove/restore a link, export.
+
+Possible later:
+
+- Display names, opt-in credit in exports, and name visibility inside a group.
+- Removing a member (needs some way for the owner to tell members apart).
+- Marking exported links as used, so next week's export skips them.
+
+## Stage 10 — UX pass (branch `claude/ux-pass`, migration `20261117000000_ux_pass.sql`)
+
+An experiment from a UX review: help people come back to read, and give group members a reason to return without notifications.
+
+- [x] **10.1** Home: the paste box folds to "+ Save a link" after 5 saves; one save from 30+ days ago resurfaces at the top ("From 3 months ago"), a different one each day.
+- [x] **10.2** Topic chips suggest themselves as lenses ("Keep “AI” as a lens →"). Search already offered "Save as a lens".
+- [x] **10.3** Save cards: Share moved into the ⋯ menu as a dialog ("Knitters will see this note"); the note editor says where the note is visible; "Shared to" chips only when shared; failed archives get an inline "Try archiving again".
+- [x] **10.4** Undo instead of confirm: deleting goes to a one-day trash (`trash_save` / `restore_save`) with "Deleted. Undo"; a fresh web save offers "Saved. Undo".
+- [x] **10.5** Groups: "4 new" on the Groups nav link and per group (`my_group_news`); "New since your last visit" divider on the group page (`mark_group_visited`).
+- [x] **10.6** Picked: after exporting, a group owner can mark links picked; sharers see "picked" on their share chip, the group sees a Picked badge. Anonymous either way.
+- [x] **10.7** Optional nickname per group (`memberships.display_name`): shown as "shared by Ana and 2 others" in that group only. Exports still carry counts, not names.
+- [x] **10.8** Export pages default to "new since your last export" (recorded on copy/download), with "Show everything".
+- [x] **10.9** Settings → iPhone Shortcut: turn off the note question. The Shortcut now reads `GET /api/shortcut-options` (`ask_note`, `choices`); needs re-signing on a Mac (see 8.9).
+- [ ] **10.10** Try it on a phone with real data before merging; decide per item what stays.
+
+## Capture beyond iOS
+
+Today: the iOS Shortcut, the desktop bookmarklet and the paste box. Everything goes through `POST /api/saves`, so each of these is mostly packaging around that endpoint.
+
+- [ ] **9.1 (M)** Android: make the site an installable PWA with a Web Share Target (manifest `share_target` posting to `/save`), so Radar shows up in Android's share sheet. Signed-in session, no token needed. Add an Android section to `/setup`.
+- [ ] **9.2 (M)** Browser extension (Chrome + Firefox, one WebExtension): toolbar button and right-click "Save link to Radar", optional note, using an API token from Settings. Replaces the bookmarklet where sites' content security policies block it.
+- [ ] **9.3 (M)** Save by email: a private per-user address (e.g. `save+<token>@…`) via the email provider's inbound webhook. Saves every link in the message; the subject or body becomes the note. Works from any mail app, desktop or phone, including newsletters you forward.
+- [ ] **9.4 (S)** `/setup`: one section per method, chosen by detected platform, so each person sees their own first.
 
 ## Deferred
 

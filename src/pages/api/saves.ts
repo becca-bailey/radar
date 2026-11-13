@@ -1,12 +1,18 @@
 import type { APIRoute } from 'astro';
 import { userIdForBearerToken } from '../../lib/apiTokens';
+import { groupsEnabled } from '../../lib/flags';
 import { createSave } from '../../lib/saves';
+import { JUST_SAVE, groupsForUser, resolveShareChoice, shareSaveAsService } from '../../lib/shares';
 import { createServiceClient } from '../../lib/supabase';
 
 /**
  * POST /api/saves — the one capture endpoint. Three callers:
  * the web form (session cookie), the bookmarklet and the iOS Shortcut
- * (Bearer rh_… token). Form posts get redirects; everything else gets JSON.
+ * (Bearer rdr_… token). Form posts get redirects; everything else gets JSON.
+ *
+ * JSON callers may also send `share_to`: a label from GET /api/shortcut-options. The
+ * save always happens first; sharing is a second step whose outcome goes
+ * into `message` ("Saved and shared to Readers").
  */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const service = createServiceClient();
@@ -38,6 +44,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   let note: string | null = null;
   let title: string | null = null;
   let wayback = false;
+  let shareTo = '';
   let returnTo = '/';
   // Echoed in the no-link error so the Shortcut's notification shows
   // what actually arrived; tokens never appear in the body.
@@ -67,6 +74,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     note = typeof b.note === 'string' ? b.note : typeof b.sentence === 'string' ? b.sentence : null;
     title = typeof b.title === 'string' ? b.title : null;
     wayback = b.wayback === true;
+    shareTo = typeof b.share_to === 'string' ? b.share_to.trim() : '';
     bodyDebug = `url=${JSON.stringify(b.url ?? null)?.slice(0, 80)} keys=${
       Object.keys(b).join(',') || 'none'
     }`;
@@ -93,12 +101,32 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       // queue itself; fire-and-forget keeps the save response fast.
       void fetch(new URL('/api/jobs/ingest?limit=5', request.url), { method: 'POST' }).catch(() => {});
     }
-    return isForm
-      ? redirect(returnTo === '/save' ? '/save?done=1' : '/?saved=1')
-      : Response.json(
-          { ...result, message: result.alreadySaved ? 'Already on Radar' : 'Saved to Radar' },
-          { status: 201 }
-        );
+    if (isForm) {
+      // A brand-new save can be undone from the home page's "Saved." notice.
+      const undo = result.alreadySaved ? '' : `&undo_save=${result.saveId}`;
+      return redirect(returnTo === '/save' ? '/save?done=1' : `/?saved=1${undo}`);
+    }
+    let message = result.alreadySaved ? 'Already on Radar' : 'Saved to Radar';
+    let shared: string | null = null;
+    if (shareTo && shareTo.toLowerCase() !== JUST_SAVE.toLowerCase() && groupsEnabled()) {
+      const { groups, lastUsedId } = await groupsForUser(service, userId);
+      const choice = resolveShareChoice(shareTo, groups, lastUsedId);
+      if (!choice?.groupId) {
+        message += ` — couldn't find the group “${shareTo}”`;
+      } else {
+        const outcome = await shareSaveAsService(service, userId, result.saveId, choice.groupId);
+        if (outcome === 'shared' || outcome === 'already') shared = choice.label;
+        message +=
+          outcome === 'shared'
+            ? ` and shared to ${choice.label}`
+            : outcome === 'already'
+              ? ` — already shared to ${choice.label}`
+              : outcome === 'removed'
+                ? ` — not shared: ${choice.label}'s owner removed this link`
+                : ` — couldn't share to ${choice.label}, try from the archive`;
+      }
+    }
+    return Response.json({ ...result, shared_to: shared, message }, { status: 201 });
   } catch (err) {
     if (err instanceof TypeError) {
       const msg = 'That does not look like a web link.';

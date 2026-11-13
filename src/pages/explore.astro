@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { Alert } from '@/components/ui/alert';
+import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,10 +35,11 @@ interface Lens {
   query_embedding: string | null;
 }
 
-// RLS scopes to the signed-in user's lenses.
+// RLS also returns lenses of your groups; Explore shows personal ones only.
 const { data: lensRows } = await supabase
   .from('lenses')
   .select('id, name, query, query_embedding')
+  .is('group_id', null)
   .order('created_at');
 const lenses = (lensRows ?? []) as Lens[];
 
@@ -120,7 +122,8 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
   {created && <Alert>Lens saved.</Alert>}
   {lensUpdated && <Alert>Lens updated.</Alert>}
   {noteUpdated && <Alert>Note updated.</Alert>}
-  {deleted && <Alert>Deleted.</Alert>}
+  {deleted && !params.get('trash') && <Alert>Deleted.</Alert>}
+  <UndoDeleteAlert />
   {error && <Alert variant="error">{error}</Alert>}
 
   {

@@ -94,7 +94,7 @@ async function processOneLink(
   if (error) throw new Error(`Link ${linkId} not found: ${error.message}`);
 
   // Safe Browsing check (PLAN.md §9), when a key is configured: held links
-  // never surface in groups, editions, or the public layer.
+  // never surface in groups.
   if (await isUnsafeUrl(link.canonical_url)) {
     const { error: holdErr } = await service
       .from('links')

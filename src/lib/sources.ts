@@ -2,9 +2,8 @@ import { getDomain } from 'tldts';
 
 /**
  * Source derivation (PLAN.md §4): registrable domain, except on multi-tenant
- * platforms where the source is the author or publication. Sources feed the
- * per-source edition cap and the inverse-frequency ranking weight, so two
- * Substack newsletters must not collapse into one "substack.com".
+ * platforms where the source is the author or publication, so two Substack
+ * newsletters don't collapse into one "substack.com".
  */
 export function sourceForUrl(canonicalUrl: string, hints?: { authorName?: string | null }): string {
   let url: URL;

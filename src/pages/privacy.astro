@@ -16,20 +16,26 @@ const groups = groupsEnabled();
   {
     groups ? (
       <>
-        <h2>The three layers</h2>
+        <h2>Your archive, and groups</h2>
         <p>
           <strong>Your archive</strong> holds everything: the links you save, the page text we
           archive for you, and your short note about why you saved each link. Only you can
           see it unless you share a save to a group.
         </p>
         <p>
-          <strong>A group</strong> you share to sees the link and your note — and your display
-          name, if the group shows names. A group never sees your other saves or anything you
-          didn't explicitly share to it.
+          <strong>A group</strong> you share to sees the link and your note — not your email, and
+          not who else is in the group. That goes for the group's owner too. Your shares are
+          anonymous unless you choose a name for that group; it's shown on your shares there and
+          nowhere else. Members
+          see how many people shared a link, and can export the links with those counts and
+          notes. A group never sees your other saves or anything you didn't explicitly share
+          to it.
         </p>
         <p>
-          <strong>The public layer</strong> sees only counts: how many groups recommended a
-          link. Never who.
+          Sharing is always a choice you make per save, on the web or in the Shortcut;
+          nothing you save is shared automatically. The group's owner can remove a link from
+          the group, which removes everyone's share
+          of it there. It stays in your archive.
         </p>
       </>
     ) : (
@@ -46,7 +52,7 @@ const groups = groupsEnabled();
 
   <h2>What is stored</h2>
   <ul>
-    <li>Your email address (for sign-in){groups ? ' and a display name you choose' : ''}.</li>
+    <li>Your email address, for sign-in.</li>
     <li>Links you save: the canonical URL, the URL you actually saved, and the page's
       extracted text and a cleaned snapshot, archived so you can search and keep it.</li>
     <li>Your notes and timestamps{groups ? ', and group memberships' : ''}.</li>
@@ -71,9 +77,8 @@ const groups = groupsEnabled();
       required a login.
     </li>
     <li>
-      <strong>Email provider</strong>: your email address, to send sign-in links{groups
-        ? ' and edition emails. One email per edition, nothing else'
-        : ''}. No notification system.
+      <strong>Email provider</strong>: your email address, to send sign-in links. Nothing
+      else: no notifications, no digests.
     </li>
   </ul>
 
@@ -81,14 +86,14 @@ const groups = groupsEnabled();
   <ul>
     <li>No ads, no sponsored links, no affiliate rewriting.</li>
     <li>No training models on your content, ours or anyone else's.</li>
-    <li>No selling or sharing data.{groups ? ' The public layer shows counts, not people.' : ''}</li>
+    <li>No selling or sharing data.</li>
   </ul>
 
   <h2>Export and deletion</h2>
   <p>
     Your whole archive exports to markdown or JSON — full archived text included — any
     time, from <a href="/settings">Settings</a>. Deleting your account deletes your
-    saves, lenses, tokens{groups ? ', and memberships. Past group editions are immutable and keep the links they published, without your name' : ' — everything tied to you'}.
+    saves, lenses, tokens{groups ? ', memberships and what you shared to groups. Groups you own are deleted for every member' : ' — everything tied to you'}.
     You can delete your account at the bottom of <a href="/settings#delete-account">Settings</a>,
     and archived pages that nobody else saved are deleted along with it.
   </p>

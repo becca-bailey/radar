@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { Alert } from '@/components/ui/alert';
+import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Empty from '@/components/Empty.astro';
@@ -20,7 +21,6 @@ const q = (Astro.url.searchParams.get('q') ?? '').trim();
 
 // Confirmations after a menu action round-trips back here.
 const updated = Astro.url.searchParams.get('updated') === '1';
-const deleted = Astro.url.searchParams.get('deleted') === '1';
 const actionError = Astro.url.searchParams.get('error');
 
 interface Result {
@@ -82,7 +82,7 @@ function displayTitle(r: Result): string {
   </form>
 
   {updated && <Alert>Note updated.</Alert>}
-  {deleted && <Alert>Deleted.</Alert>}
+  <UndoDeleteAlert />
   {actionError && <Alert variant="error">{actionError}</Alert>}
   {searchError && <Alert variant="error">{searchError}</Alert>}
 

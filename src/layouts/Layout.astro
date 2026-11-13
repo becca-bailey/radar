@@ -11,6 +11,14 @@ interface Props {
 
 const { title = 'Radar', user } = Astro.props;
 const groups = groupsEnabled();
+
+// "4 new" on the Groups link: shares from others since your last visit to
+// each group. A quiet count, not a notification; visiting clears it.
+let groupNews = 0;
+if (groups && user) {
+  const { data } = await Astro.locals.supabase.rpc('my_group_news');
+  groupNews = ((data ?? []) as { new_count: number }[]).reduce((n, r) => n + r.new_count, 0);
+}
 ---
 
 <!doctype html>
@@ -67,14 +75,23 @@ const groups = groupsEnabled();
               <>
                 <a href="/search">Search</a>
                 <a href="/explore">Explore</a>
-                {groups && <a href="/groups">Groups</a>}
+                {groups && (
+                  <a href="/groups" aria-label={groupNews ? `Groups, ${groupNews} new` : undefined}>
+                    Groups
+                    {groupNews > 0 && (
+                      <span
+                        class="ml-1 inline-block min-w-5 rounded-full border-2 border-foreground bg-candy-butter px-1 text-center text-[0.72rem] leading-4"
+                        aria-hidden="true"
+                      >
+                        {groupNews > 99 ? '99+' : groupNews}
+                      </span>
+                    )}
+                  </a>
+                )}
                 <UserMenu client:load email={user.email ?? ''} admin={isAdmin(user)} />
               </>
             ) : (
-              <>
-                {groups && <a href="/highlights">Highlights</a>}
-                <a href="/login">Sign in</a>
-              </>
+              <a href="/login">Sign in</a>
             )
           }
         </nav>
@@ -83,7 +100,6 @@ const groups = groupsEnabled();
       <footer class="mt-14 border-t-[3px] border-foreground pt-4 text-sm text-muted-foreground">
         <a href="/privacy">Privacy</a>
         {user && <> · <a href="/setup">Save from anywhere</a></>}
-        {groups && <> · <a href="/highlights">Highlights</a> · <a href="/ranking">How ranking works</a> · <a href="/dashboard">Dashboard</a></>}
         {' '}· Your archive is yours: export it any time.
       </footer>
     </main>
