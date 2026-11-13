@@ -30,4 +30,12 @@ describe('extractOpenGraph', () => {
     expect(og.kind).toBe('product');
     expect(og.price).toBe('19.99');
   });
+
+  it('decodes numeric entities in meta content (Threads-style &#064;)', () => {
+    const html =
+      '<head><meta property="og:title" content="Someone (&#064;someone) on Threads"><meta property="og:description" content="Tom &amp;amp; Jerry &#x2014; ok"></head>';
+    const og = extractOpenGraph(html);
+    expect(og.title).toBe('Someone (@someone) on Threads');
+    expect(og.description).toBe('Tom &amp; Jerry \u2014 ok');
+  });
 });

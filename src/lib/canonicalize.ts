@@ -10,6 +10,8 @@
  * → strip tracking params → normalize host/port/slash.
  */
 
+import { decodeHtmlEntities } from './htmlEntities';
+
 /** Query params that are tracking noise on any site. */
 const STRIP_EXACT = new Set([
   'fbclid',
@@ -119,14 +121,6 @@ export function extractCanonicalHref(html: string, baseUrl: string): string | nu
     }
   }
   return null;
-}
-
-function decodeHtmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&#38;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
 }
 
 /**

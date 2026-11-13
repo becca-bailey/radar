@@ -144,6 +144,18 @@ describe('extractCanonicalHref', () => {
     expect(extractCanonicalHref(html, 'https://example.com/')).toBe('https://example.com/a?x=1&y=2');
   });
 
+  it('decodes numeric entities so an encoded @ is not read as a fragment', () => {
+    // Threads emits href="https://www.threads.com/&#064;user/post/ID"
+    const html = '<link rel="canonical" href="https://www.threads.com/&#064;someone/post/ABC123">';
+    expect(extractCanonicalHref(html, 'https://www.threads.com/')).toBe(
+      'https://www.threads.com/@someone/post/ABC123'
+    );
+    const hex = '<link rel="canonical" href="https://www.threads.com/&#x40;someone/post/ABC123">';
+    expect(extractCanonicalHref(hex, 'https://www.threads.com/')).toBe(
+      'https://www.threads.com/@someone/post/ABC123'
+    );
+  });
+
   it('ignores stylesheet links and non-http canonicals', () => {
     expect(
       extractCanonicalHref('<link rel="stylesheet" href="/style.css">', 'https://example.com/')
@@ -183,6 +195,13 @@ describe('canonicalUrlFor', () => {
   it('accepts a root canonical when the page is the root', () => {
     const html = '<link rel="canonical" href="https://example.com/">';
     expect(canonicalUrlFor('https://example.com/?utm_source=x', html)).toBe('https://example.com/');
+  });
+
+  it('keeps the full Threads post path from an entity-encoded canonical', () => {
+    const html = '<link rel="canonical" href="https://www.threads.com/&#064;someone/post/ABC123" />';
+    expect(
+      canonicalUrlFor('https://www.threads.com/@someone/post/ABC123?xmt=AQF0abc', html)
+    ).toBe('https://www.threads.com/@someone/post/ABC123');
   });
 
   it('unwraps amp cache before applying the canonical', () => {

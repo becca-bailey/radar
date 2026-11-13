@@ -4,6 +4,8 @@
  * an image/price in metadata without any schema changes.
  */
 
+import { decodeHtmlEntities } from './htmlEntities';
+
 export interface OpenGraphData {
   title: string | null;
   description: string | null;
@@ -28,7 +30,7 @@ export function extractOpenGraph(html: string): OpenGraphData {
     const contentMatch = tag.match(/\bcontent\s*=\s*("([^"]*)"|'([^']*)')/i);
     const key = (keyMatch?.[2] ?? keyMatch?.[3])?.toLowerCase();
     const content = contentMatch?.[2] ?? contentMatch?.[3];
-    if (key && content && !metas.has(key)) metas.set(key, decodeEntities(content));
+    if (key && content && !metas.has(key)) metas.set(key, decodeHtmlEntities(content));
   }
 
   const get = (...keys: string[]) => {
@@ -60,13 +62,4 @@ export function extractOpenGraph(html: string): OpenGraphData {
     currency: get('product:price:currency', 'og:price:currency'),
     kind,
   };
-}
-
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
 }
