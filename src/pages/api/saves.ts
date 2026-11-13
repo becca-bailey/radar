@@ -10,7 +10,7 @@ import { createServiceClient } from '../../lib/supabase';
  * the web form (session cookie), the bookmarklet and the iOS Shortcut
  * (Bearer rdr_… token). Form posts get redirects; everything else gets JSON.
  *
- * JSON callers may also send `share_to`: a label from GET /api/groups. The
+ * JSON callers may also send `share_to`: a label from GET /api/shortcut-options. The
  * save always happens first; sharing is a second step whose outcome goes
  * into `message` ("Saved and shared to Readers").
  */
@@ -102,7 +102,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       void fetch(new URL('/api/jobs/ingest?limit=5', request.url), { method: 'POST' }).catch(() => {});
     }
     if (isForm) {
-      return redirect(returnTo === '/save' ? '/save?done=1' : '/?saved=1');
+      // A brand-new save can be undone from the home page's "Saved." notice.
+      const undo = result.alreadySaved ? '' : `&undo_save=${result.saveId}`;
+      return redirect(returnTo === '/save' ? '/save?done=1' : `/?saved=1${undo}`);
     }
     let message = result.alreadySaved ? 'Already on Radar' : 'Saved to Radar';
     let shared: string | null = null;

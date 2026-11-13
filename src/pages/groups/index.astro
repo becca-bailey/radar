@@ -37,17 +37,18 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const { data: groups } = await supabase
-  .from('groups')
-  .select('id, name, owner_id')
-  .order('created_at', { ascending: true });
+const [{ data: groups }, { data: news }] = await Promise.all([
+  supabase.from('groups').select('id, name, owner_id').order('created_at', { ascending: true }),
+  supabase.rpc('my_group_news'),
+]);
+const newIn = new Map(((news ?? []) as { group_id: string; new_count: number }[]).map((r) => [r.group_id, r.new_count]));
 ---
 
 <Layout title="Groups — Radar" user={user}>
   <h1>Groups</h1>
   <p>
     A group is a shared pool of links. Members share saves from their archive with a
-    short note of why; nobody sees who shared what. The owner sets up topics to browse
+    short note of why; shares are anonymous unless someone picks a name for that group. The owner sets up topics to browse
     by, and anyone can export the links, say for a newsletter's links post. No comments,
     no likes, no feed.
   </p>
@@ -59,7 +60,11 @@ const { data: groups } = await supabase
       <CardList>
         {(groups ?? []).map((g) => (
           <ItemCard href={`/groups/${g.id}`} title={g.name}>
-            {g.owner_id === user.id && <Fragment slot="meta">You run this</Fragment>}
+            <Fragment slot="meta">
+              {[g.owner_id === user.id ? 'You run this' : '', newIn.get(g.id) ? `${newIn.get(g.id)} new since your last visit` : '']
+                .filter(Boolean)
+                .join(' · ')}
+            </Fragment>
           </ItemCard>
         ))}
       </CardList>

@@ -78,6 +78,14 @@ if (Astro.request.method === 'POST') {
     return back(error ? 'error=' + encodeURIComponent('Could not restore the link.') : 'restored=1');
   }
 
+  if (action === 'nickname') {
+    const { error } = await supabase.rpc('set_group_display_name', {
+      gid: group.id,
+      name: String(form.get('display_name') ?? ''),
+    });
+    return back(error ? 'error=' + encodeURIComponent('Could not save your name.') : 'named=1');
+  }
+
   if (action === 'leave' && !isOwner) {
     // RLS limits this to your own shares; the saves stay in your archive.
     await supabase.from('shares').delete().eq('group_id', group.id);
@@ -98,7 +106,21 @@ const NOTICES: Record<string, string> = {
   rotated: 'New invite link active; the old one stopped working.',
   removed: 'Removed from the group.',
   restored: 'Restored to the group.',
+  named: 'Saved. Your name shows on what you share here.',
 };
+// Record this visit; the previous one draws "since your last visit". A
+// lens view doesn't count as a visit to the group's front page.
+const previousVisit: string | null = params.get('lens')
+  ? null
+  : (((await supabase.rpc('mark_group_visited', { gid: group.id })).data as string | null) ?? null);
+const { data: myMembership } = await supabase
+  .from('memberships')
+  .select('display_name')
+  .eq('group_id', group.id)
+  .eq('user_id', user.id)
+  .maybeSingle();
+const myName = (myMembership?.display_name as string | null) ?? '';
+
 const notice = Object.entries(NOTICES).find(([key]) => params.get(key) === '1')?.[1] ?? null;
 const error = params.get('error');
 
@@ -173,6 +195,12 @@ const removedLinks = (ownerData?.[2].data ?? []) as {
   removed_at: string;
 }[];
 
+// Split this week's shares at the last visit (none on a first visit).
+const lastVisitMs = previousVisit ? new Date(previousVisit).getTime() : null;
+const isNew = (l: PoolLink) => lastVisitMs !== null && new Date(l.last_shared_at).getTime() > lastVisitMs;
+const recentNew = recent.links.filter(isNew);
+const recentEarlier = recent.links.filter((l) => !isNew(l));
+
 const returnPath = single ? `${home}?lens=${single.id}` : home;
 const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? 'link' : 'links'}`;
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -185,7 +213,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
   </div>
   <p class="text-[0.82rem] text-muted-foreground">
     {isOwner ? `You run this group${memberCount !== null ? ` · ${memberCount} member${memberCount === 1 ? '' : 's'}` : ''} · ` : ''}
-    Shares are anonymous: everyone sees the link and the note, never who shared it.
+    Shares are anonymous unless the sharer picks a name for this group. Emails are never shown.
   </p>
 
   {notice && <Alert>{notice}</Alert>}
@@ -312,15 +340,51 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
             <a href="/">archive</a> with a note of why.
           </Empty>
         ) : (
-          <CardList>
-            {recent.links.map((l) => (
-              <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
-            ))}
-          </CardList>
+          <>
+            {recentNew.length > 0 && (
+              <>
+                <p class="m-0 mt-3 text-sm font-semibold">New since your last visit</p>
+                <CardList>
+                  {recentNew.map((l) => (
+                    <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
+                  ))}
+                </CardList>
+                {recentEarlier.length > 0 && (
+                  <p class="m-0 mt-6 border-t-2 border-dashed pt-3 text-sm font-semibold text-muted-foreground">
+                    Seen before
+                  </p>
+                )}
+              </>
+            )}
+            {recentEarlier.length > 0 && (
+              <CardList>
+                {recentEarlier.map((l) => (
+                  <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
+                ))}
+              </CardList>
+            )}
+          </>
         )}
         <p class="text-sm text-muted-foreground">
           Older shares are in <a href={`${home}/export`}>Export</a>, by date.
         </p>
+      </>
+    )
+  }
+
+  {
+    !single && (
+      <>
+        <h2 class="mt-10">Your name here</h2>
+        <p class="text-sm text-muted-foreground">
+          Optional. Shown on what you share, in this group only — a nickname is fine. Leave it
+          blank to stay anonymous; your email is never shown.
+        </p>
+        <form class="mt-3 mb-6 flex flex-wrap gap-2.5" method="post">
+          <input type="hidden" name="_action" value="nickname" />
+          <Input className="w-auto flex-1" type="text" name="display_name" defaultValue={myName} maxLength={40} placeholder="Anonymous" aria-label="Your name in this group" />
+          <Button variant="outline" type="submit">Save</Button>
+        </form>
       </>
     )
   }

@@ -29,6 +29,12 @@ interface Row {
   links: { title: string | null; source: string | null; canonical_url: string; image: string | null } | null;
 }
 
+// With no filters chosen, start from the last export: the usual question
+// is "what's new since I last pulled links?". ?all=1 shows everything.
+const { data: profileRow } = await supabase.from('profiles').select('last_export_at').eq('id', user.id).maybeSingle();
+const lastExportAt = (profileRow?.last_export_at as string | null) ?? null;
+const since = !from && !to && !params.has('all') && !params.has('sort') ? lastExportAt : null;
+
 const LIMIT = 500;
 // RLS scopes to the signed-in user's saves. Dates are whole UTC days, and
 // "to" includes that day.
@@ -36,6 +42,7 @@ let query = supabase
   .from('saves')
   .select('id, original_url, note, created_at, links(title, source, canonical_url, image:metadata->>image)');
 if (from) query = query.gte('created_at', `${from}T00:00:00Z`);
+else if (since) query = query.gt('created_at', since);
 if (to) {
   const end = new Date(`${to}T00:00:00Z`);
   end.setUTCDate(end.getUTCDate() + 1);
@@ -61,7 +68,8 @@ if (sort === 'title') {
   rows.sort((a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' }));
 }
 
-const filtered = !!(from || to);
+const filtered = !!(from || to || since);
+const sinceLabel = since ? dateFmt.format(new Date(since)) : '';
 ---
 
 <Layout title="Export — Radar" user={user}>
@@ -89,10 +97,16 @@ const filtered = !!(from || to);
       </NativeSelect>
     </label>
     <Button variant="outline" type="submit">Apply</Button>
-    {(filtered || sort !== 'newest') && (
-      <a class="self-center text-sm text-muted-foreground" href="/export">Reset</a>
+    {((from || to) || sort !== 'newest') && (
+      <a class="self-center text-sm text-muted-foreground" href="/export?all=1">Reset</a>
     )}
   </form>
+
+  {since && (
+    <p class="text-sm">
+      New since your last export ({sinceLabel}). <a href="/export?all=1">Show everything</a>
+    </p>
+  )}
 
   {rows.length >= LIMIT && (
     <p class="text-sm text-muted-foreground">
@@ -102,9 +116,9 @@ const filtered = !!(from || to);
 
   {
     rows.length === 0 ? (
-      <Empty>{filtered ? 'Nothing saved in those dates.' : 'Nothing saved yet.'}</Empty>
+      <Empty>{since ? 'Nothing new since your last export.' : filtered ? 'Nothing saved in those dates.' : 'Nothing saved yet.'}</Empty>
     ) : (
-      <SavePicker client:load rows={rows} />
+      <SavePicker client:load rows={rows} recordExport={{}} />
     )
   }
 </Layout>

@@ -24,6 +24,14 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
 
+  if (action === 'shortcut_note') {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ shortcut_ask_note: form.get('ask_note') === 'on' })
+      .eq('id', user.id);
+    message = error ? 'Could not save that setting.' : 'Shortcut setting saved.';
+  }
+
   if (action === 'create_token') {
     const { raw, hash } = generateApiToken();
     const label = String(form.get('label') ?? '').trim() || 'Shortcut';
@@ -45,6 +53,8 @@ if (Astro.request.method === 'POST') {
   }
 }
 
+const { data: prefs } = await supabase.from('profiles').select('shortcut_ask_note').eq('id', user.id).maybeSingle();
+const askNote = prefs?.shortcut_ask_note !== false;
 const { data: tokens } = await supabase
   .from('api_tokens')
   .select('id, label, created_at, last_used_at')
@@ -57,6 +67,21 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
   <h1>Settings</h1>
 
   {message && <Alert>{message}</Alert>}
+
+  <h2>iPhone Shortcut</h2>
+  <form class="mt-3 mb-6 grid gap-2.5" method="post">
+    <input type="hidden" name="_action" value="shortcut_note" />
+    <label class="flex items-start gap-2 text-sm font-semibold">
+      <input class="mt-0.5 size-4 accent-primary" type="checkbox" name="ask_note" checked={askNote} />
+      <span>
+        Ask "why are you saving it?" each time
+        <span class="block font-normal text-muted-foreground">
+          Off: the Shortcut saves without a note{groupsEnabled() ? ' and only asks about groups' : ''}. You can add a note later from your archive.
+        </span>
+      </span>
+    </label>
+    <Button className="w-fit" variant="outline" type="submit">Save</Button>
+  </form>
 
   <h2>API tokens</h2>
   <p>

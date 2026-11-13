@@ -17,3 +17,6 @@ supabase/.temp/
 .DS_Store
 *.log
 coverage/
+
+# Python bytecode
+__pycache__/

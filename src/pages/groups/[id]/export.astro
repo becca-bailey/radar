@@ -27,7 +27,7 @@ if (!user) {
 
 const groupId = Astro.params.id!;
 const home = `/groups/${groupId}`;
-const { data: group } = await supabase.from('groups').select('id, name').eq('id', groupId).maybeSingle();
+const { data: group } = await supabase.from('groups').select('id, name, owner_id').eq('id', groupId).maybeSingle();
 if (!group) {
   return Astro.redirect('/groups');
 }
@@ -50,10 +50,21 @@ if (to) {
   sharedBefore = end.toISOString();
 }
 
+// Default range: since your last export of this group (?all=1 for everything).
+const { data: membership } = await supabase
+  .from('memberships')
+  .select('last_export_at')
+  .eq('group_id', group.id)
+  .eq('user_id', user.id)
+  .maybeSingle();
+const lastExportAt = (membership?.last_export_at as string | null) ?? null;
+const since = !from && !to && !params.has('all') && !params.has('sort') ? lastExportAt : null;
+const isOwner = group.owner_id === user.id;
+
 const LIMIT = 500;
 const { links, error } = await fetchGroupPool(supabase, group.id, {
   limit: LIMIT,
-  sharedFrom: from ? `${from}T00:00:00Z` : null,
+  sharedFrom: from ? `${from}T00:00:00Z` : since,
   sharedBefore,
 });
 
@@ -74,7 +85,8 @@ const rows: PickerRow[] = links.map((l) => ({
 if (sort === 'oldest') rows.reverse();
 if (sort === 'shared') rows.sort((a, b) => (b.readers ?? 1) - (a.readers ?? 1));
 
-const filtered = !!(from || to);
+const filtered = !!(from || to || since);
+const sinceLabel = since ? dateFmt.format(new Date(since)) : '';
 const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'group';
 ---
 
@@ -105,10 +117,16 @@ const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$
       </NativeSelect>
     </label>
     <Button variant="outline" type="submit">Apply</Button>
-    {(filtered || sort !== 'shared') && (
-      <a class="self-center text-sm text-muted-foreground" href={`${home}/export`}>Reset</a>
+    {((from || to) || sort !== 'shared') && (
+      <a class="self-center text-sm text-muted-foreground" href={`${home}/export?all=1`}>Reset</a>
     )}
   </form>
+
+  {since && (
+    <p class="text-sm">
+      New since your last export ({sinceLabel}). <a href={`${home}/export?all=1`}>Show everything</a>
+    </p>
+  )}
 
   {error && <Alert variant="error">{error}</Alert>}
 
@@ -120,9 +138,16 @@ const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$
 
   {
     rows.length === 0 && !error ? (
-      <Empty>{filtered ? 'Nothing shared in those dates.' : 'Nothing shared yet.'}</Empty>
+      <Empty>{since ? 'Nothing new since your last export.' : filtered ? 'Nothing shared in those dates.' : 'Nothing shared yet.'}</Empty>
     ) : (
-      <SavePicker client:load rows={rows} noun="link" filePrefix={`radar-${slug}`} />
+      <SavePicker
+        client:load
+        rows={rows}
+        noun="link"
+        filePrefix={`radar-${slug}`}
+        recordExport={{ groupId: group.id }}
+        pickUrl={isOwner ? `/api/groups/${group.id}/picked` : undefined}
+      />
     )
   }
 </Layout>

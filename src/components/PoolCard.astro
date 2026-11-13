@@ -3,7 +3,7 @@ import ItemCard from '@/components/ItemCard.astro';
 import Why from '@/components/Why.astro';
 import { saveDisplayTitle } from '../lib/exportFormats';
 import { sanitizeSnippet } from '../lib/snippet';
-import type { PoolLink } from '../lib/groupPool';
+import { sharedByLabel, type PoolLink } from '../lib/groupPool';
 
 /**
  * One link shared to a group: how many members shared it and their notes,
@@ -20,6 +20,7 @@ interface Props {
 }
 
 const { link, groupId, isOwner, returnPath, snippetLines = null } = Astro.props;
+const sharedBy = sharedByLabel(link.readers, link.names ?? []);
 const title = saveDisplayTitle(link.title, link.canonical_url);
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const confirmText = `Remove this link from the group? It's hidden here and can't be shared here again until you restore it. Members keep it in their archives.`;
@@ -28,9 +29,16 @@ const confirmText = `Remove this link from the group? It's hidden here and can't
 <ItemCard href={link.canonical_url} title={title} thumb={link.image}>
   <Fragment slot="meta">
     {link.source ? `${link.source} · ` : ''}
-    {link.readers > 1 ? `shared by ${link.readers} · ` : ''}
+    {sharedBy ? `${sharedBy} · ` : ''}
     {dateFmt.format(new Date(link.last_shared_at))}
   </Fragment>
+  {
+    link.picked && (
+      <span slot="before" class="w-fit rounded-full border-2 bg-candy-lime px-2 text-[0.72rem] font-bold">
+        Picked
+      </span>
+    )
+  }
   {
     isOwner && (
       <form

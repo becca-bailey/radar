@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { Alert } from '@/components/ui/alert';
+import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -121,7 +122,8 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
   {created && <Alert>Lens saved.</Alert>}
   {lensUpdated && <Alert>Lens updated.</Alert>}
   {noteUpdated && <Alert>Note updated.</Alert>}
-  {deleted && <Alert>Deleted.</Alert>}
+  {deleted && !params.get('trash') && <Alert>Deleted.</Alert>}
+  <UndoDeleteAlert />
   {error && <Alert variant="error">{error}</Alert>}
 
   {

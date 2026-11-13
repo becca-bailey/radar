@@ -6,9 +6,10 @@ Signing uses the macOS `shortcuts` CLI, so this must run on a Mac:
 
     python3 scripts/make-shortcut.py
 
-The shortcut accepts a page from the share sheet, extracts the URL, asks
-for an optional note, and, if the person is in any groups, asks whether to
-share it to one (GET /api/groups gives the menu, "Just save" first). Then
+The shortcut accepts a page from the share sheet, extracts the URL, fetches
+its options (GET /api/shortcut-options), asks for an optional note unless
+the person turned that off in Settings, and, if they're in any groups, asks
+whether to share it to one ("Just save" first). Then
 it POSTs url + note + share_to to /api/saves with a Bearer token and shows
 the reply's message. The token is an import question: the Shortcuts app
 asks the person to paste theirs when they first set up the shortcut, and
@@ -43,6 +44,10 @@ UUID_CHOSEN = str(uuid.uuid4()).upper()
 UUID_JUST_SAVE = str(uuid.uuid4()).upper()
 UUID_IF = str(uuid.uuid4()).upper()
 GROUP_IF = str(uuid.uuid4()).upper()
+UUID_ASK_NOTE = str(uuid.uuid4()).upper()
+UUID_NO_NOTE = str(uuid.uuid4()).upper()
+UUID_NOTE_IF = str(uuid.uuid4()).upper()
+GROUP_NOTE_IF = str(uuid.uuid4()).upper()
 
 
 def text_token(string, attachments=None):
@@ -172,6 +177,36 @@ workflow = {
             },
         },
         {
+            # Options: {"ask_note": "yes"|"no", "choices": ["Just save", …]}.
+            "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_GROUPS,
+                "WFURL": f"{SITE}/api/shortcut-options",
+                "WFHTTPMethod": "GET",
+                "ShowHeaders": True,
+                "WFHTTPHeaders": auth_headers(),
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_ASK_NOTE,
+                "WFDictionaryKey": "ask_note",
+                "WFInput": output_attachment(UUID_GROUPS, "Contents of URL"),
+            },
+        },
+        {
+            # WFCondition 4 is "is" (text equals).
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {
+                "GroupingIdentifier": GROUP_NOTE_IF,
+                "WFControlFlowMode": 0,
+                "WFCondition": 4,
+                "WFConditionalActionString": "yes",
+                "WFInput": {"Type": "Variable", "Variable": output_attachment(UUID_ASK_NOTE, "Dictionary Value")},
+            },
+        },
+        {
             # Optional: tapping Done with nothing typed saves without a note.
             "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
             "WFWorkflowActionParameters": {
@@ -182,14 +217,19 @@ workflow = {
             },
         },
         {
-            # The share menu: ["Just save", group names…].
-            "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {"GroupingIdentifier": GROUP_NOTE_IF, "WFControlFlowMode": 1},
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+            "WFWorkflowActionParameters": {"UUID": UUID_NO_NOTE, "WFTextActionText": ""},
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
             "WFWorkflowActionParameters": {
-                "UUID": UUID_GROUPS,
-                "WFURL": f"{SITE}/api/groups",
-                "WFHTTPMethod": "GET",
-                "ShowHeaders": True,
-                "WFHTTPHeaders": auth_headers(),
+                "GroupingIdentifier": GROUP_NOTE_IF,
+                "WFControlFlowMode": 2,
+                "UUID": UUID_NOTE_IF,
             },
         },
         {
@@ -257,7 +297,7 @@ workflow = {
                 "WFJSONValues": dictionary_field(
                     [
                         text_item("url", output_text(UUID_FIRST, "Item from List")),
-                        text_item("note", output_text(UUID_NOTE, "Provided Input")),
+                        text_item("note", output_text(UUID_NOTE_IF, "If Result")),
                         text_item("share_to", output_text(UUID_IF, "If Result")),
                     ]
                 ),
