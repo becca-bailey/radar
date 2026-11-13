@@ -40,8 +40,8 @@ let query = supabase
   .from('saves')
   .select(
     topic
-      ? 'id, original_url, note, created_at, links!inner(title, source, canonical_url, status, kind)'
-      : 'id, original_url, note, created_at, links(title, source, canonical_url, status, kind)'
+      ? 'id, original_url, note, created_at, links!inner(title, source, canonical_url, status, kind, image:metadata->>image)'
+      : 'id, original_url, note, created_at, links(title, source, canonical_url, status, kind, image:metadata->>image)'
   );
 if (topic === 'uncategorized') query = query.is('links.category_id', null);
 else if (activeCat) query = query.eq('links.category_id', activeCat.id);

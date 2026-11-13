@@ -12,10 +12,12 @@ interface Props {
   href?: string | null;
   /** Media kind for the corner dot. Articles (the default) stay quiet. */
   kind?: string | null;
+  /** Thumbnail URL, shown as a small image on the card's right edge. */
+  thumb?: string | null;
   [attr: `data-${string}`]: string | undefined;
 }
 
-const { title, href, kind, ...attrs } = Astro.props;
+const { title, href, kind, thumb, ...attrs } = Astro.props;
 
 // Conditional children often render nothing; skip the body wrapper then.
 const body = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
@@ -36,39 +38,55 @@ const dot = (kind && DOT_SHAPES[kind]) || 'rotate-[8deg] rounded-[50%_50%_50%_4p
     <span
       aria-hidden="true"
       class:list={['absolute -top-[7px] right-3.5 size-[15px] border-2', dot]}></span>
-    <CardHeader>
-      <slot name="before" />
+    <div class="flex items-start gap-3">
       {
-        title && (
-          <CardTitle>
-            {href ? (
-              <a
-                class="text-foreground no-underline decoration-candy-orange decoration-[3px] hover:underline"
-                href={href}
-              >
-                {title}
-              </a>
-            ) : (
-              title
-            )}
-          </CardTitle>
+        thumb && (
+          <img
+            class="mt-1 h-[60px] w-[88px] shrink-0 rounded-md border-2 border-border object-cover shadow-hard-xs"
+            src={thumb}
+            alt=""
+            loading="lazy"
+            referrerpolicy="no-referrer"
+            onerror="this.style.display='none'"
+          />
         )
       }
-      {
-        Astro.slots.has('meta') && (
-          <CardDescription>
-            <slot name="meta" />
-          </CardDescription>
-        )
-      }
-      {
-        Astro.slots.has('action') && (
-          <CardAction>
-            <slot name="action" />
-          </CardAction>
-        )
-      }
-    </CardHeader>
-    {body && <CardContent set:html={body} />}
+      <div class="flex min-w-0 flex-1 flex-col gap-2">
+        <CardHeader>
+          <slot name="before" />
+          {
+            title && (
+              <CardTitle>
+                {href ? (
+                  <a
+                    class="text-foreground no-underline decoration-candy-orange decoration-[3px] hover:underline"
+                    href={href}
+                  >
+                    {title}
+                  </a>
+                ) : (
+                  title
+                )}
+              </CardTitle>
+            )
+          }
+          {
+            Astro.slots.has('meta') && (
+              <CardDescription>
+                <slot name="meta" />
+              </CardDescription>
+            )
+          }
+          {
+            Astro.slots.has('action') && (
+              <CardAction>
+                <slot name="action" />
+              </CardAction>
+            )
+          }
+        </CardHeader>
+        {body && <CardContent set:html={body} />}
+      </div>
+    </div>
   </Card>
 </li>
