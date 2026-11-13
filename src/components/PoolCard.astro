@@ -22,7 +22,7 @@ interface Props {
 const { link, groupId, isOwner, returnPath, snippetLines = null } = Astro.props;
 const title = saveDisplayTitle(link.title, link.canonical_url);
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-const confirmText = `Remove this link from the group? Everyone's shares of it go, and it can't be shared here again unless you restore it.`;
+const confirmText = `Remove this link from the group? It's hidden here and can't be shared here again until you restore it. Members keep it in their archives.`;
 ---
 
 <ItemCard href={link.canonical_url} title={title} thumb={link.image}>

@@ -61,42 +61,26 @@ if (Astro.request.method === 'POST') {
   }
 
   if (action === 'remove_link' && isOwner) {
-    // Moderation: drop every share of the link here and block re-sharing.
-    // The title is snapshotted first, while the owner can still read it.
+    // Moderation: mark the link's shares in this group as removed. Members'
+    // saves, and their shares to other groups, are untouched. Removed links
+    // can't be shared here again until restored.
     const linkId = String(form.get('link_id') ?? '');
     const rawReturn = String(form.get('return_path') ?? '');
     const returnPath = rawReturn === home || rawReturn.startsWith(`${home}?`) ? rawReturn : home;
-    const { data: link } = await supabase
-      .from('links')
-      .select('id, title, canonical_url')
-      .eq('id', linkId)
-      .maybeSingle();
-    if (!link) return back('error=' + encodeURIComponent('That link was not found.'), returnPath);
-    const { error: blockError } = await supabase
-      .from('group_removed_links')
-      .upsert(
-        { group_id: group.id, link_id: link.id, title: link.title, canonical_url: link.canonical_url },
-        { onConflict: 'group_id,link_id', ignoreDuplicates: true }
-      );
-    const { error } = await supabase
-      .from('recommendations')
-      .delete()
-      .eq('group_id', group.id)
-      .eq('link_id', link.id);
-    if (error || blockError) {
-      return back('error=' + encodeURIComponent('Could not remove the link. Try again.'), returnPath);
-    }
+    const { error } = await supabase.rpc('remove_link_from_group', { gid: group.id, lid: linkId });
+    if (error) return back('error=' + encodeURIComponent('Could not remove the link. Try again.'), returnPath);
     return back('removed=1', returnPath);
   }
 
   if (action === 'restore_link' && isOwner) {
     const linkId = String(form.get('link_id') ?? '');
-    await supabase.from('group_removed_links').delete().eq('group_id', group.id).eq('link_id', linkId);
-    return back('restored=1');
+    const { error } = await supabase.rpc('restore_link_to_group', { gid: group.id, lid: linkId });
+    return back(error ? 'error=' + encodeURIComponent('Could not restore the link.') : 'restored=1');
   }
 
   if (action === 'leave' && !isOwner) {
-    await supabase.from('recommendations').delete().eq('group_id', group.id).eq('user_id', user.id);
+    // RLS limits this to your own shares; the saves stay in your archive.
+    await supabase.from('shares').delete().eq('group_id', group.id);
     await supabase.from('memberships').delete().eq('group_id', group.id).eq('user_id', user.id);
     return Astro.redirect('/groups');
   }
@@ -113,7 +97,7 @@ const NOTICES: Record<string, string> = {
   renamed: 'Group renamed.',
   rotated: 'New invite link active; the old one stopped working.',
   removed: 'Removed from the group.',
-  restored: 'Restored. Members can share it here again.',
+  restored: 'Restored to the group.',
 };
 const notice = Object.entries(NOTICES).find(([key]) => params.get(key) === '1')?.[1] ?? null;
 const error = params.get('error');
@@ -175,11 +159,7 @@ const [sections, recent, ownerData] = await Promise.all([
           .eq('group_id', group.id)
           .eq('active', true)
           .maybeSingle(),
-        supabase
-          .from('group_removed_links')
-          .select('link_id, title, canonical_url, removed_at')
-          .eq('group_id', group.id)
-          .order('removed_at', { ascending: false }),
+        supabase.rpc('group_removed_links', { gid: group.id }),
       ])
     : Promise.resolve(null),
 ]);
@@ -371,7 +351,10 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
         {removedLinks.length > 0 && (
           <>
             <h2 class="mt-10">Removed links</h2>
-            <p class="text-sm text-muted-foreground">Members can't share these here until you restore them.</p>
+            <p class="text-sm text-muted-foreground">
+              Hidden from the group and can't be shared here again. Members keep them in their
+              archives. Restoring brings back the shares that were removed.
+            </p>
             <CardList>
               {removedLinks.map((r) => (
                 <ItemCard href={r.canonical_url} title={r.title ?? r.canonical_url}>
@@ -399,7 +382,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   {
     !single && !isOwner && (
-      <form class="mt-10" method="post" onsubmit="return confirm('Leave the group? Your shares to it are removed.')">
+      <form class="mt-10" method="post" onsubmit="return confirm('Leave the group? Your shares to it are removed; your saves stay in your archive.')">
         <input type="hidden" name="_action" value="leave" />
         <Button variant="destructive" type="submit">
           Leave group

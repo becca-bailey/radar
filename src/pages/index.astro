@@ -16,6 +16,7 @@ if (!user) {
 
 const saved = Astro.url.searchParams.get('saved') === '1';
 const shared = Astro.url.searchParams.get('shared') === '1';
+const unshared = Astro.url.searchParams.get('unshared') === '1';
 const updated = Astro.url.searchParams.get('updated') === '1';
 const deleted = Astro.url.searchParams.get('deleted') === '1';
 const retrying = Astro.url.searchParams.get('retrying') === '1';
@@ -36,13 +37,11 @@ const cats = (categories ?? []) as { id: number; slug: string; name: string }[];
 const bySlug = new Map(cats.map((c) => [c.slug, c]));
 const activeCat = topic && topic !== 'uncategorized' ? (bySlug.get(topic) ?? null) : null;
 
+const linkCols = 'title, source, canonical_url, status, kind, image:metadata->>image';
+const shareCols = groupsEnabled() ? ', shares(group_id, removed_at)' : '';
 let query = supabase
   .from('saves')
-  .select(
-    topic
-      ? 'id, original_url, note, created_at, links!inner(title, source, canonical_url, status, kind, image:metadata->>image)'
-      : 'id, original_url, note, created_at, links(title, source, canonical_url, status, kind, image:metadata->>image)'
-  );
+  .select(`id, original_url, note, created_at, ${topic ? 'links!inner' : 'links'}(${linkCols})${shareCols}`);
 if (topic === 'uncategorized') query = query.is('links.category_id', null);
 else if (activeCat) query = query.eq('links.category_id', activeCat.id);
 const { data: saves } = await query.order('created_at', { ascending: false }).limit(200);
@@ -75,6 +74,7 @@ const chip = badgeVariants({ variant: 'chip' });
 <Layout title="Radar" user={user}>
   {saved && <Alert>Saved.</Alert>}
   {shared && <Alert>Shared.</Alert>}
+  {unshared && <Alert>Unshared. It's still in your archive.</Alert>}
   {updated && <Alert>Note updated.</Alert>}
   {deleted && <Alert>Deleted.</Alert>}
   {retrying && <Alert>Trying to archive it again…</Alert>}

@@ -100,14 +100,14 @@ Done (2026-11-16, migration `20261116000000_simplify_groups.sql`, not yet pushed
 
 - [x] **8.1 (M)** Removed scheduled editions, edition emails (Resend), the public layer (`/highlights`, `/ranking`, `/dashboard`), the flag queue, and all group settings except name and invite link.
 - [x] **8.2 (S)** Anonymous shares: no names or credit anywhere; members see only their own membership row and no other profiles; display name setting removed.
-- [x] **8.3 (M)** Group lenses: `lenses.group_id`, owner manages, members see them stacked on the group page; `group_pool()` aggregates shares per link (count + notes) with the same keyword + semantic search as the archive.
+- [x] **8.3 (M)** Shares replace recommendations: `shares (save_id, group_id, shared_at, removed_at)`, one save to many groups, note read from the save, no user id on the row. Members read groups only through security-definer `group_pool()` (per-link count + notes, same keyword + semantic search as the archive). Save cards show which groups a save is in, with unshare.
+- [x] **8.3b (M)** Group lenses: `lenses.group_id`, owner manages, members see them stacked on the group page.
 - [x] **8.4 (M)** Group export at `/groups/:id/export`: date range, most shared / newest / oldest, copy list or Markdown/CSV/JSON with "shared by N".
-- [x] **8.5 (S)** Moderation: owner removes a link (deletes its shares, blocks re-sharing), with a restore list.
+- [x] **8.5 (S)** Moderation: owner removes a link (marks its shares in that group removed, blocks re-sharing there), with a restore list. Saves are never touched.
 
 Before groups ship:
 
 - [ ] **7.19 (S)** Deleting an account that owns a group deletes the group for every member (`groups.owner_id` cascades). Decide on ownership transfer or a block.
-- [ ] **8.6 (S)** Members can still read raw `recommendations.user_id` through the API, so shares are anonymous but linkable to each other. Route reads through a security-definer `group_pool` and stop exposing the column.
 - [ ] **8.7 (S)** Click through locally with `GROUPS_ENABLED=true`: create group, join, share, add lenses, remove/restore a link, export.
 
 Possible later:

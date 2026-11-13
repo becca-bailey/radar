@@ -1,29 +1,30 @@
 -- Simplify groups (2026-11-16).
 --
--- A group is now a shared pool of links its members recommend, viewed
--- through lenses the owner sets up and exported by any member. Gone:
--- scheduled editions and their emails, the public layer and its flag queue,
--- and most group settings. Names are never shown: there is no display name
--- shown to a group yet (a possible later addition), so recommendations are
--- anonymous to everyone, the owner included.
+-- A group is a pool of saves its members share, viewed through lenses the
+-- owner sets up and exported by any member. Gone: scheduled editions and
+-- their emails, the public layer and its flag queue, and most group
+-- settings.
+--
+-- Shares: a save belongs to its user and can be shared to many groups. A
+-- share is just that link (save × group). The group sees the save's link
+-- and note, never who saved it: shares carry no user id, and members read a
+-- group only through group_pool, which returns counts and notes. When the
+-- owner removes a link from the group, its shares there are marked removed;
+-- the saves, and their shares to other groups, are untouched.
 
 -- ---------------------------------------------------------------------------
 -- 1. Editions, the public layer and flags
 -- ---------------------------------------------------------------------------
 
--- The links policy and orphan cleanup referenced edition_links; redefine
--- both without it before dropping the tables.
+-- Links are readable only by people who saved them. Group members see a
+-- shared link's title and URL through group_pool instead.
 drop policy "links: saved or shared with you" on public.links;
 
-create policy "links: saved or shared with you" on public.links
+create policy "links: saved by you" on public.links
   for select using (
     exists (
       select 1 from public.saves s
       where s.link_id = links.id and s.user_id = auth.uid ()
-    )
-    or exists (
-      select 1 from public.recommendations r
-      where r.link_id = links.id and public.is_group_member (r.group_id, auth.uid ())
     )
   );
 
@@ -60,8 +61,6 @@ alter table public.groups
   drop column categories_enabled,
   drop column per_source_cap;
 
-alter table public.recommendations drop column attribution_ok;
-
 -- Members no longer see each other's profiles or membership rows. You see
 -- your own membership; the owner sees all of them (for the member count).
 drop policy "profiles: visible to shared-group members" on public.profiles;
@@ -75,52 +74,7 @@ create policy "memberships: own or owner reads" on public.memberships
   );
 
 -- ---------------------------------------------------------------------------
--- 3. Moderation: the owner can remove a link from the group
--- ---------------------------------------------------------------------------
-
--- Removing deletes every recommendation of the link in the group and
--- records it here, so it can't be shared back. Members can read the list
--- (so the share form can explain a refusal); only the owner changes it.
--- Title and URL are snapshots: once its shares are gone, the owner may no
--- longer be able to read the link row itself.
-create table public.group_removed_links (
-  group_id uuid not null references public.groups (id) on delete cascade,
-  link_id uuid not null references public.links (id) on delete cascade,
-  title text,
-  canonical_url text not null,
-  removed_at timestamptz not null default now(),
-  primary key (group_id, link_id)
-);
-
-alter table public.group_removed_links enable row level security;
-
-create policy "group_removed_links: members read" on public.group_removed_links
-  for select using (public.is_group_member (group_id, auth.uid ()));
-
-create policy "group_removed_links: owner adds" on public.group_removed_links
-  for insert with check (public.is_group_owner (group_id, auth.uid ()));
-
-create policy "group_removed_links: owner restores" on public.group_removed_links
-  for delete using (public.is_group_owner (group_id, auth.uid ()));
-
-drop policy "recommendations: share own saves" on public.recommendations;
-
-create policy "recommendations: share own saves" on public.recommendations
-  for insert with check (
-    user_id = auth.uid ()
-    and public.is_group_member (group_id, auth.uid ())
-    and exists (
-      select 1 from public.saves s
-      where s.id = save_id and s.user_id = auth.uid () and s.link_id = link_id
-    )
-    and not exists (
-      select 1 from public.group_removed_links g
-      where g.group_id = recommendations.group_id and g.link_id = recommendations.link_id
-    )
-  );
-
--- ---------------------------------------------------------------------------
--- 4. Group lenses: saved searches over the group's pool, set by the owner
+-- 3. Group lenses: saved searches over the group's pool, set by the owner
 -- ---------------------------------------------------------------------------
 
 -- Same table as personal lenses. group_id null = personal (yours only);
@@ -161,18 +115,153 @@ create policy "lenses: delete own or as group owner" on public.lenses
     or (group_id is not null and public.is_group_owner (group_id, auth.uid ()))
   );
 
+
 -- ---------------------------------------------------------------------------
--- 5. group_pool: the group's links, one row per link, optionally searched
+-- 4. Shares: save × group, replacing recommendations
 -- ---------------------------------------------------------------------------
 
--- Security invoker: RLS on recommendations limits this to groups you're in.
--- An empty query returns the whole pool, newest share first; otherwise the
--- same keyword + semantic ranking as search_archive. Shares are aggregated
--- per link (how many members, every note) and never carry who shared.
+create table public.shares (
+  save_id uuid not null references public.saves (id) on delete cascade,
+  group_id uuid not null references public.groups (id) on delete cascade,
+  shared_at timestamptz not null default now(),
+  -- Set when the group's owner removes the link from the group.
+  removed_at timestamptz,
+  primary key (save_id, group_id)
+);
+
+create index shares_group_idx on public.shares (group_id, shared_at desc);
+
+-- Carry existing shares over. The note now comes from the save itself, so a
+-- note that was edited only for one group is replaced by the save's note.
+insert into public.shares (save_id, group_id, shared_at)
+select save_id, group_id, created_at from public.recommendations
+on conflict do nothing;
+
+drop table public.recommendations;
+
+-- True when the owner removed this save's link from the group (someone's
+-- share of it is marked removed). Blocks sharing it there again.
+create function public.link_removed_from_group (gid uuid, sid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.shares sh
+    join public.saves s on s.id = sh.save_id
+    where sh.group_id = gid
+      and sh.removed_at is not null
+      and s.link_id = (select link_id from public.saves where id = sid)
+  );
+$$;
+
+alter table public.shares enable row level security;
+
+-- You see and manage the shares of your own saves. Nobody reads anyone
+-- else's share rows; groups are read through group_pool.
+create policy "shares: read own" on public.shares
+  for select using (
+    exists (select 1 from public.saves s where s.id = save_id and s.user_id = auth.uid ())
+  );
+
+create policy "shares: share own saves to your groups" on public.shares
+  for insert with check (
+    removed_at is null
+    and public.is_group_member (group_id, auth.uid ())
+    and exists (select 1 from public.saves s where s.id = save_id and s.user_id = auth.uid ())
+    and not public.link_removed_from_group (group_id, save_id)
+  );
+
+-- Unsharing is yours, but a removed share stays put so it keeps blocking.
+create policy "shares: unshare own" on public.shares
+  for delete using (
+    removed_at is null
+    and exists (select 1 from public.saves s where s.id = save_id and s.user_id = auth.uid ())
+  );
+
+-- No update policy: removed_at changes only through the owner functions.
+
+-- ---------------------------------------------------------------------------
+-- 5. Owner moderation: remove a link from the group, or restore it
+-- ---------------------------------------------------------------------------
+
+create function public.remove_link_from_group (gid uuid, lid uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  n integer;
+begin
+  if not public.is_group_owner (gid, auth.uid ()) then
+    raise exception 'Only the group owner can remove links.' using errcode = '42501';
+  end if;
+  update public.shares sh
+  set removed_at = now()
+  from public.saves s
+  where s.id = sh.save_id and sh.group_id = gid and s.link_id = lid and sh.removed_at is null;
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+create function public.restore_link_to_group (gid uuid, lid uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  n integer;
+begin
+  if not public.is_group_owner (gid, auth.uid ()) then
+    raise exception 'Only the group owner can restore links.' using errcode = '42501';
+  end if;
+  update public.shares sh
+  set removed_at = null
+  from public.saves s
+  where s.id = sh.save_id and sh.group_id = gid and s.link_id = lid and sh.removed_at is not null;
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+-- The owner's list of removed links, newest first.
+create function public.group_removed_links (gid uuid)
+returns table (link_id uuid, title text, canonical_url text, removed_at timestamptz)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select l.id, l.title, l.canonical_url, max(sh.removed_at)
+  from public.shares sh
+  join public.saves s on s.id = sh.save_id
+  join public.links l on l.id = s.link_id
+  where sh.group_id = gid
+    and sh.removed_at is not null
+    and public.is_group_owner (gid, auth.uid ())
+  group by l.id, l.title, l.canonical_url
+  order by max(sh.removed_at) desc;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 6. group_pool: the group's links, one row per link, optionally searched
+-- ---------------------------------------------------------------------------
+
+-- Security definer, with an explicit membership check: it reads other
+-- members' saves, which their RLS hides, and returns only what the group
+-- may see (link, note, count). An empty query returns the whole pool,
+-- newest share first; otherwise the same keyword + semantic ranking as
+-- search_archive. Removed shares and held links are left out.
 create function public.group_pool (
   gid uuid,
   query text default '',
-  query_embedding vector (1536) default null,
+  query_embedding public.vector (1536) default null,
   match_limit int default 60,
   min_similarity real default 0.3,
   shared_from timestamptz default null,
@@ -192,21 +281,27 @@ returns table (
 )
 language sql
 stable
+security definer
+set search_path = ''
 as $$
 with pool as (
   select
-    r.link_id,
+    s.link_id,
     coalesce(
-      array_agg(r.note order by r.created_at) filter (where nullif(btrim(r.note), '') is not null),
+      array_agg(s.note order by sh.shared_at) filter (where nullif(btrim(s.note), '') is not null),
       '{}'
     ) as notes,
-    count(distinct r.user_id)::int as readers,
-    max(r.created_at) as last_shared_at
-  from public.recommendations r
-  where r.group_id = gid
-    and (shared_from is null or r.created_at >= shared_from)
-    and (shared_before is null or r.created_at < shared_before)
-  group by r.link_id
+    -- One save per user per link, so this counts members.
+    count(*)::int as readers,
+    max(sh.shared_at) as last_shared_at
+  from public.shares sh
+  join public.saves s on s.id = sh.save_id
+  where sh.group_id = gid
+    and sh.removed_at is null
+    and public.is_group_member (gid, auth.uid ())
+    and (shared_from is null or sh.shared_at >= shared_from)
+    and (shared_before is null or sh.shared_at < shared_before)
+  group by s.link_id
 ),
 shared as (
   select
@@ -231,10 +326,10 @@ kw as (
 sem as (
   select link_id, sim
   from (
-    select link_id, 1 - (embedding <=> query_embedding) as sim
+    select link_id, 1 - (embedding operator(public.<=>) query_embedding) as sim
     from shared
     where query <> '' and query_embedding is not null and embedding is not null
-    order by embedding <=> query_embedding
+    order by embedding operator(public.<=>) query_embedding
     limit match_limit
   ) nearest
   where sim > min_similarity

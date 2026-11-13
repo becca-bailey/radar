@@ -13,7 +13,8 @@ With single-user behavior settled, groups were rebuilt smaller. This overrides t
 - **A group is a shared pool.** Members share saves with a note; the group page shows the owner's **lenses** (saved searches over the pool, so members can browse by recurring topic) and what was shared in the last week.
 - **Anonymous shares.** No display names, credit or name visibility for now: nobody (owner included) sees who shared a link, only how many members did. Members don't see the member list. Names and opt-in credit are a possible later addition and need a display name first.
 - **Export instead of editions.** Any member can export the pool by share date, sorted by how many shared, as a copyable list or Markdown/CSV/JSON. Built for crowdsourcing a newsletter's links post. No scheduled editions, no edition emails, no publishing step.
-- **Moderation is the owner removing a link.** Removing drops every share of it in the group and blocks re-sharing until restored.
+- **A share is a save × group link.** A save belongs to its user and can be shared to many groups; the group sees the save's link and note. Unsharing or leaving a group never touches the save.
+- **Moderation is the owner removing a link.** The link's shares in that group are marked removed (hidden there, can't be shared there again until restored). Members' saves, and their shares to other groups, are untouched; members see "removed by owner" on their save.
 - **Settings: name and invite link.** Cadence, edition size, per-source cap, names visible, categories and contribute-to-public are gone.
 - **Shelved:** the public layer and its flag queue, the ranking (section 7) and the metrics dashboard. They need many groups to mean anything; the code is in git history.
 - **Finite, still.** The non-negotiable now reads: no infinite scroll anywhere. The group page shows one week plus lens previews; older shares are in Export by date.
