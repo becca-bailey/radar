@@ -116,6 +116,15 @@ Possible later:
 - Removing a member (needs some way for the owner to tell members apart).
 - Marking exported links as used, so next week's export skips them.
 
+## Capture beyond iOS
+
+Today: the iOS Shortcut, the desktop bookmarklet and the paste box. Everything goes through `POST /api/saves`, so each of these is mostly packaging around that endpoint.
+
+- [ ] **9.1 (M)** Android: make the site an installable PWA with a Web Share Target (manifest `share_target` posting to `/save`), so Radar shows up in Android's share sheet. Signed-in session, no token needed. Add an Android section to `/setup`.
+- [ ] **9.2 (M)** Browser extension (Chrome + Firefox, one WebExtension): toolbar button and right-click "Save link to Radar", optional note, using an API token from Settings. Replaces the bookmarklet where sites' content security policies block it.
+- [ ] **9.3 (M)** Save by email: a private per-user address (e.g. `save+<token>@…`) via the email provider's inbound webhook. Saves every link in the message; the subject or body becomes the note. Works from any mail app, desktop or phone, including newsletters you forward.
+- [ ] **9.4 (S)** `/setup`: one section per method, chosen by detected platform, so each person sees their own first.
+
 ## Deferred
 
 - Phase 4: native share extension (spike Expo plugin vs Swift), archive theme clustering, year-end view, data-story tooling.
