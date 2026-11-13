@@ -190,14 +190,30 @@ workflow = {
             },
         },
         {
-            # WFCondition 4 is "is" (text equals).
+            # WFCondition 4 is "is" (text equals). Dictionary Value has no
+            # known type, so without the Text coercion the editor offers
+            # only "has any value" and drops the "is yes" condition.
             "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
             "WFWorkflowActionParameters": {
                 "GroupingIdentifier": GROUP_NOTE_IF,
                 "WFControlFlowMode": 0,
                 "WFCondition": 4,
                 "WFConditionalActionString": "yes",
-                "WFInput": {"Type": "Variable", "Variable": output_attachment(UUID_ASK_NOTE, "Dictionary Value")},
+                "WFInput": {
+                    "Type": "Variable",
+                    "Variable": {
+                        "WFSerializationType": "WFTextTokenAttachment",
+                        "Value": {
+                            **output_ref(UUID_ASK_NOTE, "Dictionary Value"),
+                            "Aggrandizements": [
+                                {
+                                    "Type": "WFCoercionVariableAggrandizement",
+                                    "CoercionItemClass": "WFStringContentItem",
+                                }
+                            ],
+                        },
+                    },
+                },
             },
         },
         {
