@@ -5,6 +5,7 @@ import TokenReveal from '../components/TokenReveal.astro';
 import { Alert } from '@/components/ui/alert';
 import { generateApiToken } from '../lib/apiTokens';
 import { createServiceClient } from '../lib/supabase';
+import { groupsEnabled } from '../lib/flags';
 
 // Guided capture setup: get Radar into the iOS share sheet and the
 // desktop bookmarks bar without asking anyone to build anything.
@@ -33,6 +34,7 @@ if (Astro.request.method === 'POST') {
 }
 
 const shortcutHref = '/Put%20it%20on%20Radar.shortcut';
+const groups = groupsEnabled();
 ---
 
 <Layout title="Save from anywhere — Radar" user={user}>
@@ -51,7 +53,8 @@ const shortcutHref = '/Put%20it%20on%20Radar.shortcut';
   </p>
   <ol class="grid gap-2.5">
     <li>
-      Create a token for your phone. It can save links to your archive, nothing else.
+      Create a token for your phone. It can save links to your archive{groups ? ' and share them to your groups' : ''}.
+      It can't read your archive.
       {
         newToken ? (
           <TokenReveal token={newToken} />
@@ -74,8 +77,10 @@ const shortcutHref = '/Put%20it%20on%20Radar.shortcut';
     </li>
   </ol>
   <p>
-    That's it. To save a page, tap <strong>Share → Put it on Radar</strong>. Try one now
-    and it will appear on your <a href="/">home page</a> within a minute.
+    That's it. To save a page, tap <strong>Share → Put it on Radar</strong>. It asks why
+    you're saving it (skip it if you like){groups
+      ? ", and if you're in any groups, whether to share it to one. Just save is always the first choice"
+      : ''}. Try one now and it will appear on your <a href="/">home page</a> within a minute.
   </p>
   <p class="text-sm text-muted-foreground">
     On a Mac, the same file works: double-click it and the shortcut appears in the

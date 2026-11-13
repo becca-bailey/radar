@@ -6,11 +6,16 @@ Signing uses the macOS `shortcuts` CLI, so this must run on a Mac:
 
     python3 scripts/make-shortcut.py
 
-The shortcut accepts a page from the share sheet, extracts the URL, and
-POSTs it to /api/saves with a Bearer token. The token is an import
-question: the Shortcuts app asks the person to paste theirs when they
-first set up the shortcut, and our placeholder value is stripped from
-the shared file.
+The shortcut accepts a page from the share sheet, extracts the URL, asks
+for an optional note, and, if the person is in any groups, asks whether to
+share it to one (GET /api/groups gives the menu, "Just save" first). Then
+it POSTs url + note + share_to to /api/saves with a Bearer token and shows
+the reply's message. The token is an import question: the Shortcuts app
+asks the person to paste theirs when they first set up the shortcut, and
+our placeholder value is stripped from the shared file.
+
+Nothing here can be checked without a device: after signing, import it on
+an iPhone and try a save with no groups, with groups, and with a blank note.
 """
 
 import plistlib
@@ -30,6 +35,14 @@ UUID_LINKS = str(uuid.uuid4()).upper()
 UUID_FIRST = str(uuid.uuid4()).upper()
 UUID_RESP = str(uuid.uuid4()).upper()
 UUID_MSG = str(uuid.uuid4()).upper()
+UUID_NOTE = str(uuid.uuid4()).upper()
+UUID_GROUPS = str(uuid.uuid4()).upper()
+UUID_CHOICES = str(uuid.uuid4()).upper()
+UUID_COUNT = str(uuid.uuid4()).upper()
+UUID_CHOSEN = str(uuid.uuid4()).upper()
+UUID_JUST_SAVE = str(uuid.uuid4()).upper()
+UUID_IF = str(uuid.uuid4()).upper()
+GROUP_IF = str(uuid.uuid4()).upper()
 
 
 def text_token(string, attachments=None):
@@ -48,6 +61,31 @@ def dictionary_field(items):
 
 def text_item(key, value_token):
     return {"WFItemType": 0, "WFKey": text_token(key), "WFValue": value_token}
+
+
+def output_ref(uuid_, name):
+    return {"Type": "ActionOutput", "OutputUUID": uuid_, "OutputName": name}
+
+
+def output_attachment(uuid_, name):
+    return {"WFSerializationType": "WFTextTokenAttachment", "Value": output_ref(uuid_, name)}
+
+
+def output_text(uuid_, name):
+    """A text field holding exactly one action's output."""
+    return text_token(ATTACH, {"{0, 1}": output_ref(uuid_, name)})
+
+
+def auth_headers():
+    # References the token action's output directly; see the gettext note.
+    return dictionary_field(
+        [
+            text_item(
+                "Authorization",
+                text_token(f"Bearer {ATTACH}", {"{7, 1}": output_ref(UUID_TOKEN, "Radar API Token")}),
+            )
+        ]
+    )
 
 
 workflow = {
@@ -134,45 +172,93 @@ workflow = {
             },
         },
         {
+            # Optional: tapping Done with nothing typed saves without a note.
+            "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_NOTE,
+                "WFAskActionPrompt": "Why are you saving it? (optional)",
+                "WFInputType": "Text",
+                "WFAllowsMultilineText": False,
+            },
+        },
+        {
+            # The share menu: ["Just save", group names…].
+            "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_GROUPS,
+                "WFURL": f"{SITE}/api/groups",
+                "WFHTTPMethod": "GET",
+                "ShowHeaders": True,
+                "WFHTTPHeaders": auth_headers(),
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_CHOICES,
+                "WFDictionaryKey": "choices",
+                "WFInput": output_attachment(UUID_GROUPS, "Contents of URL"),
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.count",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_COUNT,
+                "WFCountType": "Items",
+                "Input": output_attachment(UUID_CHOICES, "Dictionary Value"),
+            },
+        },
+        {
+            # Only ask when there's more than "Just save" to pick from.
+            # WFCondition 2 is "is greater than".
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {
+                "GroupingIdentifier": GROUP_IF,
+                "WFControlFlowMode": 0,
+                "WFCondition": 2,
+                "WFNumberValue": "1",
+                "WFInput": {"Type": "Variable", "Variable": output_attachment(UUID_COUNT, "Count")},
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.choosefromlist",
+            "WFWorkflowActionParameters": {
+                "UUID": UUID_CHOSEN,
+                "WFInput": output_attachment(UUID_CHOICES, "Dictionary Value"),
+                "WFChooseFromListActionPrompt": "Share to a group?",
+            },
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {"GroupingIdentifier": GROUP_IF, "WFControlFlowMode": 1},
+        },
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+            "WFWorkflowActionParameters": {"UUID": UUID_JUST_SAVE, "WFTextActionText": "Just save"},
+        },
+        {
+            # The If block's output is whichever branch ran last.
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {
+                "GroupingIdentifier": GROUP_IF,
+                "WFControlFlowMode": 2,
+                "UUID": UUID_IF,
+            },
+        },
+        {
             "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
             "WFWorkflowActionParameters": {
                 "UUID": UUID_RESP,
                 "WFURL": f"{SITE}/api/saves",
                 "WFHTTPMethod": "POST",
                 "ShowHeaders": True,
-                "WFHTTPHeaders": dictionary_field(
-                    [
-                        text_item(
-                            "Authorization",
-                            text_token(
-                                f"Bearer {ATTACH}",
-                                {
-                                    "{7, 1}": {
-                                        "Type": "ActionOutput",
-                                        "OutputUUID": UUID_TOKEN,
-                                        "OutputName": "Radar API Token",
-                                    }
-                                },
-                            ),
-                        )
-                    ]
-                ),
+                "WFHTTPHeaders": auth_headers(),
                 "WFHTTPBodyType": "JSON",
                 "WFJSONValues": dictionary_field(
                     [
-                        text_item(
-                            "url",
-                            text_token(
-                                ATTACH,
-                                {
-                                    "{0, 1}": {
-                                        "Type": "ActionOutput",
-                                        "OutputUUID": UUID_FIRST,
-                                        "OutputName": "Item from List",
-                                    }
-                                },
-                            ),
-                        )
+                        text_item("url", output_text(UUID_FIRST, "Item from List")),
+                        text_item("note", output_text(UUID_NOTE, "Provided Input")),
+                        text_item("share_to", output_text(UUID_IF, "If Result")),
                     ]
                 ),
             },

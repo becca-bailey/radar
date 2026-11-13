@@ -61,7 +61,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
   <h2>API tokens</h2>
   <p>
     For the Radar Shortcut and anything else that saves on your behalf. A token can save
-    links to your archive, nothing else.
+    links to your archive{groupsEnabled() ? ' and share them to your groups' : ''}. It can't read your archive.
   </p>
 
   {newToken && <TokenReveal token={newToken} />}

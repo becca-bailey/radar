@@ -108,6 +108,8 @@ Done (2026-11-16, migration `20261116000000_simplify_groups.sql`, not yet pushed
 Before groups ship:
 
 - [ ] **7.19 (S)** Deleting an account that owns a group deletes the group for every member (`groups.owner_id` cascades). Decide on ownership transfer or a block.
+- [x] **8.8 (M)** Shortcut asks for a note and, when you're in groups, which group to share to ("Just save" first). `GET /api/groups` gives the menu; `share_to` on `POST /api/saves` shares after saving. Tokens can now share to your groups.
+- [ ] **8.9 (S)** On a Mac: `python3 scripts/make-shortcut.py` to sign the new Shortcut, then try it on an iPhone with no groups, with groups, and with a blank note. Deploy the server first: the new file calls `/api/groups`, and the old file keeps working against the new server.
 - [ ] **8.7 (S)** Click through locally with `GROUPS_ENABLED=true`: create group, join, share, add lenses, remove/restore a link, export.
 
 Possible later:
