@@ -126,21 +126,15 @@ workflow = {
     ],
     "WFWorkflowActions": [
         {
-            # The input must be the Shortcut Input magic variable,
-            # serialized as an aggrandizement-free attachment wrapped
-            # TWICE (parameter -> variable -> attachment). A single
-            # wrap, and the implicit-first-action form, both imported
-            # as an unresolved "Input" and produced empty URLs.
+            # Shortcut Input as a text token with the magic variable in
+            # the attachment slot. Copied from a copy fixed by hand in
+            # the Shortcuts editor (iOS, Nov 2026). The implicit form and
+            # both WFTextTokenAttachment forms (single and double wrap)
+            # imported as an unresolved "Input" and sent empty URLs.
             "WFWorkflowActionIdentifier": "is.workflow.actions.detect.link",
             "WFWorkflowActionParameters": {
                 "UUID": UUID_LINKS,
-                "WFInput": {
-                    "WFSerializationType": "WFTextTokenAttachment",
-                    "Value": {
-                        "WFSerializationType": "WFTextTokenAttachment",
-                        "Value": {"Type": "ExtensionInput"},
-                    },
-                },
+                "WFInput": text_token(ATTACH, {"{0, 1}": {"Type": "ExtensionInput"}}),
             },
         },
         {
