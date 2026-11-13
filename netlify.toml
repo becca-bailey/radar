@@ -1,0 +1,11 @@
+# Build settings stay in the Netlify UI; this file only adds redirects.
+
+# onyourradar.fyi is a domain alias. Netlify serves aliases as-is (only
+# www. redirects to the primary on its own), so send it to the primary
+# domain. Sign-in links depend on this: the callback URL is built from the
+# request origin, and only onyourradar.app is on Supabase's allow list.
+[[redirects]]
+  from = "https://onyourradar.fyi/*"
+  to = "https://onyourradar.app/:splat"
+  status = 301
+  force = true
