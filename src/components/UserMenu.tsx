@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { DownloadIcon, FlagIcon, LogOutIcon, MailPlusIcon, SettingsIcon, SmartphoneIcon } from 'lucide-react';
+import { DownloadIcon, FlagIcon, LogOutIcon, MailPlusIcon, SettingsIcon } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ const itemLink = 'text-popover-foreground no-underline hover:no-underline';
 
 /**
  * The account menu at the end of the main nav: who you're signed in as,
- * Settings, Export, setup, admin pages, and Sign out. Sign out stays a plain form
+ * Settings, Export, admin pages, and Sign out. Sign out stays a plain form
  * post to /api/auth/logout; the menu item just submits it.
  */
 export default function UserMenu({ email, admin = false }: Props) {
@@ -50,12 +50,6 @@ export default function UserMenu({ email, admin = false }: Props) {
             <a className={itemLink} href="/export">
               <DownloadIcon aria-hidden="true" />
               Export saves
-            </a>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <a className={itemLink} href="/setup">
-              <SmartphoneIcon aria-hidden="true" />
-              Save from anywhere
             </a>
           </DropdownMenuItem>
           {admin && (

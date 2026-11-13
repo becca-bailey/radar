@@ -57,7 +57,15 @@ export default function LensMenu({ lensId, name, query }: Props) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button ref={triggerRef} variant="ghost" size="icon" aria-label={`Actions for lens ${name}`}>
+          {/* mr-2.5 lines the dots up with the save cards' menus below
+              (card border + padding, minus SaveMenu's -mr-2). */}
+          <Button
+            ref={triggerRef}
+            variant="ghost"
+            size="icon"
+            className="mr-2.5"
+            aria-label={`Actions for lens ${name}`}
+          >
             <MoreHorizontalIcon className="size-5" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>

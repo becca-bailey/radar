@@ -85,11 +85,13 @@ const chip = badgeVariants({ variant: 'chip' });
     method="post"
     action="/api/saves"
   >
-    <h2 class="m-0 mb-0.5 text-[1.15rem]">Save a link</h2>
+    <div class="mb-0.5 flex flex-wrap items-baseline justify-between gap-x-3">
+      <h2 class="m-0 text-[1.15rem]">Save a link</h2>
+      <a class="text-sm text-muted-foreground" href="/setup">Other ways to save →</a>
+    </div>
     <Input type="url" name="url" placeholder="Paste a link to save it" required />
     <Input type="text" name="note" placeholder="Why you're saving it (optional, shown if shared)" />
     <Button type="submit">Save</Button>
-    <p class="m-0 text-sm text-muted-foreground">Saving from your phone or another tab? <a href="/setup">Add Radar to your share sheet and bookmarks</a>.</p>
   </form>
 
   {
