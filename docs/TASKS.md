@@ -94,9 +94,27 @@ Should do during the beta:
 - [ ] **7.17 (S)** Error monitoring (Sentry or similar), or at least a failed-ingest count on an admin page.
 - [ ] **7.18 (S)** Feedback link in the footer (a mailto is enough).
 
+## Stage 8 — Simpler groups (PLAN.md §0)
+
+Done (2026-11-16, migration `20261116000000_simplify_groups.sql`, not yet pushed):
+
+- [x] **8.1 (M)** Removed scheduled editions, edition emails (Resend), the public layer (`/highlights`, `/ranking`, `/dashboard`), the flag queue, and all group settings except name and invite link.
+- [x] **8.2 (S)** Anonymous shares: no names or credit anywhere; members see only their own membership row and no other profiles; display name setting removed.
+- [x] **8.3 (M)** Group lenses: `lenses.group_id`, owner manages, members see them stacked on the group page; `group_pool()` aggregates shares per link (count + notes) with the same keyword + semantic search as the archive.
+- [x] **8.4 (M)** Group export at `/groups/:id/export`: date range, most shared / newest / oldest, copy list or Markdown/CSV/JSON with "shared by N".
+- [x] **8.5 (S)** Moderation: owner removes a link (deletes its shares, blocks re-sharing), with a restore list.
+
 Before groups ship:
 
-- [ ] **7.19 (S)** Deleting an account that owns a group deletes the group for every member (`groups.owner_id` cascades). Decide on ownership transfer or a block, and fix the privacy page's "editions are immutable" line to match.
+- [ ] **7.19 (S)** Deleting an account that owns a group deletes the group for every member (`groups.owner_id` cascades). Decide on ownership transfer or a block.
+- [ ] **8.6 (S)** Members can still read raw `recommendations.user_id` through the API, so shares are anonymous but linkable to each other. Route reads through a security-definer `group_pool` and stop exposing the column.
+- [ ] **8.7 (S)** Click through locally with `GROUPS_ENABLED=true`: create group, join, share, add lenses, remove/restore a link, export.
+
+Possible later:
+
+- Display names, opt-in credit in exports, and name visibility inside a group.
+- Removing a member (needs some way for the owner to tell members apart).
+- Marking exported links as used, so next week's export skips them.
 
 ## Deferred
 

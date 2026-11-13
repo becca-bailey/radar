@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { embedLensQuery, parseLensForm } from '../../../lib/lenses';
+import { embedLensQuery, lensHomePath, parseLensForm } from '../../../lib/lenses';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -7,7 +7,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * POST /api/lenses/:id — manage one lens. The `action` field picks:
  *   edit   — change the name and/or search (re-embeds when the search changes)
  *   delete — remove the lens (saves are untouched)
- * RLS scopes every read and write to the caller's own lenses.
+ * RLS scopes writes to the caller's own lenses, or to lenses of groups the
+ * caller owns. Afterwards it returns to wherever the lens lives.
  */
 export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   const { user, supabase } = locals;
@@ -16,9 +17,22 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   }
 
   const id = params.id ?? '';
-  const fail = (msg: string, lensId?: string) =>
-    redirect(`/explore?${lensId ? `lens=${lensId}&` : ''}error=${encodeURIComponent(msg)}`);
   if (!UUID_RE.test(id)) {
+    return redirect(`/explore?error=${encodeURIComponent('That lens was not found.')}`);
+  }
+
+  // Read first, to know where the lens lives (Explore or a group page).
+  const { data: current } = await supabase
+    .from('lenses')
+    .select('query, group_id')
+    .eq('id', id)
+    .maybeSingle();
+  const groupId: string | null = current?.group_id ?? null;
+  const fail = (msg: string, lensId?: string) => {
+    const path = lensHomePath(groupId, lensId);
+    return redirect(`${path}${path.includes('?') ? '&' : '?'}error=${encodeURIComponent(msg)}`);
+  };
+  if (!current) {
     return fail('That lens was not found.');
   }
 
@@ -28,24 +42,22 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   if (action === 'delete') {
     const { data, error } = await supabase.from('lenses').delete().eq('id', id).select('id');
     if (error) return fail('Could not delete the lens. Try again.', id);
-    if (!data?.length) return fail('That lens was not found.');
-    return redirect('/explore?deleted=1');
+    if (!data?.length) return fail('Only the group owner can change its lenses.', id);
+    return redirect(`${lensHomePath(groupId)}?deleted=1`);
   }
 
   if (action === 'edit') {
     const parsed = parseLensForm(form);
     if ('error' in parsed) return fail(parsed.error, id);
 
-    const { data: current } = await supabase.from('lenses').select('query').eq('id', id).maybeSingle();
-    if (!current) return fail('That lens was not found.');
-
     const patch: Record<string, unknown> = { name: parsed.name, query: parsed.query };
     if (parsed.query !== current.query) {
       patch.query_embedding = await embedLensQuery(parsed.query);
     }
-    const { error } = await supabase.from('lenses').update(patch).eq('id', id);
+    const { data, error } = await supabase.from('lenses').update(patch).eq('id', id).select('id');
     if (error) return fail('Could not update the lens. Try again.', id);
-    return redirect(`/explore?lens=${id}&lens_updated=1`);
+    if (!data?.length) return fail('Only the group owner can change its lenses.', id);
+    return redirect(`${lensHomePath(groupId, id)}&lens_updated=1`);
   }
 
   return fail('Unknown action.', id);

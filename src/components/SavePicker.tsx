@@ -21,6 +21,10 @@ export interface PickerRow extends ExportItem {
 
 interface Props {
   rows: PickerRow[];
+  /** What a row is called in status messages: "save" or "link". */
+  noun?: string;
+  /** Start of downloaded file names. */
+  filePrefix?: string;
 }
 
 const DOWNLOADS = [
@@ -34,7 +38,7 @@ const DOWNLOADS = [
  * picked saves as a list (rich text + Markdown) or download them as
  * Markdown, CSV or JSON. Output follows the on-screen order.
  */
-export default function SavePicker({ rows }: Props) {
+export default function SavePicker({ rows, noun = 'save', filePrefix = 'radar-saves' }: Props) {
   const [selected, setSelected] = React.useState<Set<string>>(() => new Set());
   const [status, setStatus] = React.useState('');
   const allRef = React.useRef<HTMLInputElement>(null);
@@ -67,7 +71,7 @@ export default function SavePicker({ rows }: Props) {
   const copy = async () => {
     const items = picked();
     const markdown = toMarkdownList(items);
-    const label = `Copied ${items.length} ${items.length === 1 ? 'save' : 'saves'}`;
+    const label = `Copied ${items.length} ${noun}${items.length === 1 ? '' : 's'}`;
     // Rich text keeps the links when pasted into an editor like Substack,
     // Notion or Google Docs; the plain-text flavor is Markdown.
     try {
@@ -109,7 +113,7 @@ export default function SavePicker({ rows }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `radar-saves-${new Date().toISOString().slice(0, 10)}.${format.ext}`;
+    a.download = `${filePrefix}-${new Date().toISOString().slice(0, 10)}.${format.ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -153,6 +157,7 @@ export default function SavePicker({ rows }: Props) {
                         <CardTitle>{row.title}</CardTitle>
                         <CardDescription>
                           {row.source ? `${row.source} · ` : ''}
+                          {row.readers && row.readers > 1 ? `shared by ${row.readers} · ` : ''}
                           {row.savedOn}
                         </CardDescription>
                       </CardHeader>

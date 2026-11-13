@@ -71,10 +71,7 @@ const groups = groupsEnabled();
                 <UserMenu client:load email={user.email ?? ''} admin={isAdmin(user)} />
               </>
             ) : (
-              <>
-                {groups && <a href="/highlights">Highlights</a>}
-                <a href="/login">Sign in</a>
-              </>
+              <a href="/login">Sign in</a>
             )
           }
         </nav>
@@ -83,7 +80,6 @@ const groups = groupsEnabled();
       <footer class="mt-14 border-t-[3px] border-foreground pt-4 text-sm text-muted-foreground">
         <a href="/privacy">Privacy</a>
         {user && <> · <a href="/setup">Save from anywhere</a></>}
-        {groups && <> · <a href="/highlights">Highlights</a> · <a href="/ranking">How ranking works</a> · <a href="/dashboard">Dashboard</a></>}
         {' '}· Your archive is yours: export it any time.
       </footer>
     </main>

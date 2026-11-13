@@ -1,9 +1,14 @@
 import type { APIRoute } from 'astro';
-import { embedLensQuery, parseLensForm } from '../../lib/lenses';
+import { embedLensQuery, lensHomePath, parseLensForm } from '../../lib/lenses';
+import { groupsEnabled } from '../../lib/flags';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * POST /api/lenses — create a lens (a saved search) from the Explore page
- * form, then land on it. RLS fills in and enforces the owner.
+ * POST /api/lenses — create a lens (a saved search), then land on it.
+ * Without group_id it's a personal lens on Explore; with one, a group lens
+ * on that group's page. RLS fills in the owner and only lets a group's
+ * owner add lenses to it.
  */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const { user, supabase } = locals;
@@ -11,15 +16,22 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect('/login');
   }
 
-  const parsed = parseLensForm(await request.formData());
+  const form = await request.formData();
+  const rawGroup = String(form.get('group_id') ?? '');
+  const groupId = groupsEnabled() && UUID_RE.test(rawGroup) ? rawGroup : null;
+  const home = lensHomePath(groupId);
+  const fail = (msg: string) => redirect(`${home}?error=${encodeURIComponent(msg)}`);
+
+  const parsed = parseLensForm(form);
   if ('error' in parsed) {
-    return redirect('/explore?error=' + encodeURIComponent(parsed.error));
+    return fail(parsed.error);
   }
 
   const { data, error } = await supabase
     .from('lenses')
     .insert({
       user_id: user.id,
+      group_id: groupId,
       name: parsed.name,
       query: parsed.query,
       query_embedding: await embedLensQuery(parsed.query),
@@ -27,7 +39,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     .select('id')
     .single();
   if (error) {
-    return redirect('/explore?error=' + encodeURIComponent('Could not save the lens. Try again.'));
+    return fail('Could not save the lens. Try again.');
   }
-  return redirect(`/explore?lens=${data.id}&created=1`);
+  return redirect(`${lensHomePath(groupId, data.id)}&created=1`);
 };

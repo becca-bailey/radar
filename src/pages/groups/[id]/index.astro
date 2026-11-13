@@ -1,14 +1,16 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { NativeSelect } from '@/components/ui/native-select';
 import { Alert } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
 import ItemCard from '@/components/ItemCard.astro';
-import Why from '@/components/Why.astro';
+import LensMenu from '@/components/LensMenu.tsx';
+import PoolCard from '@/components/PoolCard.astro';
 import { groupsEnabled } from '../../../lib/flags';
+import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
 
 if (!groupsEnabled()) {
@@ -21,12 +23,12 @@ if (!user) {
 }
 
 const groupId = Astro.params.id!;
-let message: string | null = null;
+const home = `/groups/${groupId}`;
 
 // --- Load group (RLS: members only) ---------------------------------------
 const { data: group } = await supabase
   .from('groups')
-  .select('id, name, owner_id, cadence, edition_size, names_visible, contribute_public, per_source_cap')
+  .select('id, name, owner_id')
   .eq('id', groupId)
   .maybeSingle();
 
@@ -36,61 +38,61 @@ if (!group) {
 const isOwner = group.owner_id === user.id;
 
 // --- Handle actions ---------------------------------------------------------
+// Each action redirects (post/redirect/get) with a short status flag.
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
+  const back = (flag: string, path = home) =>
+    Astro.redirect(`${path}${path.includes('?') ? '&' : '?'}${flag}`);
 
-  if (action === 'settings' && isOwner) {
-    const { error } = await supabase
-      .from('groups')
-      .update({
-        name: String(form.get('name') ?? group.name).trim() || group.name,
-        cadence: String(form.get('cadence') ?? group.cadence),
-        edition_size: Number(form.get('edition_size') ?? group.edition_size),
-        names_visible: form.get('names_visible') === 'on',
-        contribute_public: form.get('contribute_public') === 'on',
-        per_source_cap: Number(form.get('per_source_cap') ?? group.per_source_cap),
-      })
-      .eq('id', group.id);
-    message = error ? `Could not save settings: ${error.message}` : 'Settings saved.';
-    if (!error) return Astro.redirect(`/groups/${group.id}?saved=1`);
+  if (action === 'rename' && isOwner) {
+    const name = String(form.get('name') ?? '').trim().slice(0, 100);
+    if (!name) return back('error=' + encodeURIComponent('Give the group a name.'));
+    const { error } = await supabase.from('groups').update({ name }).eq('id', group.id);
+    return back(error ? 'error=' + encodeURIComponent('Could not rename the group.') : 'renamed=1');
   }
 
   if (action === 'rotate_invite' && isOwner) {
     // Service role: deactivate old, create new (one active per group).
     const service = createServiceClient();
     await service.from('invite_links').update({ active: false }).eq('group_id', group.id).eq('active', true);
-    const { error } = await service.from('invite_links').insert({
-      group_id: group.id,
-      weekly_cap: Number(form.get('weekly_cap') ?? 50) || 50,
-    });
-    message = error ? `Could not rotate link: ${error.message}` : 'New invite link active; the old one is dead.';
+    const { error } = await service.from('invite_links').insert({ group_id: group.id });
+    return back(error ? 'error=' + encodeURIComponent('Could not make a new invite link.') : 'rotated=1');
   }
 
-  if (action === 'invite_cap' && isOwner) {
+  if (action === 'remove_link' && isOwner) {
+    // Moderation: drop every share of the link here and block re-sharing.
+    // The title is snapshotted first, while the owner can still read it.
+    const linkId = String(form.get('link_id') ?? '');
+    const rawReturn = String(form.get('return_path') ?? '');
+    const returnPath = rawReturn === home || rawReturn.startsWith(`${home}?`) ? rawReturn : home;
+    const { data: link } = await supabase
+      .from('links')
+      .select('id, title, canonical_url')
+      .eq('id', linkId)
+      .maybeSingle();
+    if (!link) return back('error=' + encodeURIComponent('That link was not found.'), returnPath);
+    const { error: blockError } = await supabase
+      .from('group_removed_links')
+      .upsert(
+        { group_id: group.id, link_id: link.id, title: link.title, canonical_url: link.canonical_url },
+        { onConflict: 'group_id,link_id', ignoreDuplicates: true }
+      );
     const { error } = await supabase
-      .from('invite_links')
-      .update({ weekly_cap: Number(form.get('weekly_cap') ?? 50) || 50, paused_at: null })
+      .from('recommendations')
+      .delete()
       .eq('group_id', group.id)
-      .eq('active', true);
-    message = error ? `Could not update cap: ${error.message}` : 'Invite cap updated.';
+      .eq('link_id', link.id);
+    if (error || blockError) {
+      return back('error=' + encodeURIComponent('Could not remove the link. Try again.'), returnPath);
+    }
+    return back('removed=1', returnPath);
   }
 
-  if (action === 'remove_member' && isOwner) {
-    const memberId = String(form.get('user_id'));
-    if (memberId === group.owner_id) {
-      message = 'The owner cannot be removed.';
-    } else {
-      // Remove membership and their recommendations here; past editions are
-      // immutable snapshots and keep what they published.
-      await supabase.from('recommendations').delete().eq('group_id', group.id).eq('user_id', memberId);
-      const { error } = await supabase
-        .from('memberships')
-        .delete()
-        .eq('group_id', group.id)
-        .eq('user_id', memberId);
-      message = error ? `Could not remove member: ${error.message}` : 'Member removed.';
-    }
+  if (action === 'restore_link' && isOwner) {
+    const linkId = String(form.get('link_id') ?? '');
+    await supabase.from('group_removed_links').delete().eq('group_id', group.id).eq('link_id', linkId);
+    return back('restored=1');
   }
 
   if (action === 'leave' && !isOwner) {
@@ -98,212 +100,311 @@ if (Astro.request.method === 'POST') {
     await supabase.from('memberships').delete().eq('group_id', group.id).eq('user_id', user.id);
     return Astro.redirect('/groups');
   }
+
+  return back('error=' + encodeURIComponent('Only the group owner can do that.'));
 }
 
-if (Astro.url.searchParams.get('saved') === '1') message = 'Settings saved.';
+// --- Status messages --------------------------------------------------------
+const params = Astro.url.searchParams;
+const NOTICES: Record<string, string> = {
+  created: 'Lens saved.',
+  lens_updated: 'Lens updated.',
+  deleted: 'Lens deleted.',
+  renamed: 'Group renamed.',
+  rotated: 'New invite link active; the old one stopped working.',
+  removed: 'Removed from the group.',
+  restored: 'Restored. Members can share it here again.',
+};
+const notice = Object.entries(NOTICES).find(([key]) => params.get(key) === '1')?.[1] ?? null;
+const error = params.get('error');
 
-// --- Load page data ---------------------------------------------------------
-const [{ data: members }, { data: recs }, { data: editions }, inviteRes] = await Promise.all([
-  supabase
-    .from('memberships')
-    .select('user_id, role, created_at, profiles:user_id(display_name)')
-    .eq('group_id', group.id)
-    .order('created_at'),
-  supabase
-    .from('recommendations')
-    .select('id, note, created_at, user_id, links(title, canonical_url, source), profiles:user_id(display_name)')
-    .eq('group_id', group.id)
-    .order('created_at', { ascending: false })
-    .limit(50),
-  supabase
-    .from('editions')
-    .select('id, period_start, period_end, published_at')
-    .eq('group_id', group.id)
-    .order('period_start', { ascending: false })
-    .limit(20),
-  isOwner
-    ? supabase
-        .from('invite_links')
-        .select('token, weekly_cap, uses_this_week, paused_at')
-        .eq('group_id', group.id)
-        .eq('active', true)
-        .maybeSingle()
-    : Promise.resolve({ data: null }),
+// --- Lenses -----------------------------------------------------------------
+interface Lens {
+  id: string;
+  name: string;
+  query: string;
+  query_embedding: string | null;
+}
+
+const { data: lensRows } = await supabase
+  .from('lenses')
+  .select('id, name, query, query_embedding')
+  .eq('group_id', group.id)
+  .order('created_at');
+const lenses = (lensRows ?? []) as Lens[];
+
+const single = lenses.find((l) => l.id === params.get('lens')) ?? null;
+const shown = single ? [single] : lenses;
+const newQuery = params.get('new');
+const formOpen = isOwner && newQuery !== null;
+
+const LIMIT = 60;
+const PREVIEW = 4;
+const RECENT_DAYS = 7;
+const RECENT_LIMIT = 30;
+
+interface Section {
+  lens: Lens;
+  links: PoolLink[];
+  total: number;
+  error: string | null;
+}
+
+const recentFrom = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+const [sections, recent, ownerData] = await Promise.all([
+  Promise.all(
+    shown.map(async (lens): Promise<Section> => {
+      const { links, error: poolError } = await fetchGroupPool(supabase, group.id, {
+        query: lens.query,
+        embedding: lens.query_embedding,
+        limit: LIMIT,
+      });
+      return { lens, links: single ? links : links.slice(0, PREVIEW), total: links.length, error: poolError };
+    })
+  ),
+  single
+    ? Promise.resolve({ links: [] as PoolLink[], error: null })
+    : fetchGroupPool(supabase, group.id, { limit: RECENT_LIMIT, sharedFrom: recentFrom }),
+  isOwner && !single
+    ? Promise.all([
+        supabase.from('memberships').select('user_id', { count: 'exact', head: true }).eq('group_id', group.id),
+        supabase
+          .from('invite_links')
+          .select('token, paused_at')
+          .eq('group_id', group.id)
+          .eq('active', true)
+          .maybeSingle(),
+        supabase
+          .from('group_removed_links')
+          .select('link_id, title, canonical_url, removed_at')
+          .eq('group_id', group.id)
+          .order('removed_at', { ascending: false }),
+      ])
+    : Promise.resolve(null),
 ]);
 
-const invite = inviteRes.data as {
-  token: string;
-  weekly_cap: number;
-  uses_this_week: number;
-  paused_at: string | null;
-} | null;
+const memberCount = ownerData?.[0].count ?? null;
+const invite = (ownerData?.[1].data ?? null) as { token: string; paused_at: string | null } | null;
+const removedLinks = (ownerData?.[2].data ?? []) as {
+  link_id: string;
+  title: string | null;
+  canonical_url: string;
+  removed_at: string;
+}[];
 
+const returnPath = single ? `${home}?lens=${single.id}` : home;
+const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? 'link' : 'links'}`;
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-
-type RecRow = {
-  id: string;
-  note: string | null;
-  created_at: string;
-  user_id: string;
-  links: { title: string | null; canonical_url: string; source: string | null } | null;
-  profiles: { display_name: string } | null;
-};
-const recRows = (recs ?? []) as unknown as RecRow[];
-type MemberRow = {
-  user_id: string;
-  role: string;
-  profiles: { display_name: string } | null;
-};
-const memberRows = (members ?? []) as unknown as MemberRow[];
 ---
 
-<Layout title={`${group.name} — Radar`} user={user}>
-  <h1>{group.name}</h1>
+<Layout title={single ? `${single.name} — ${group.name} — Radar` : `${group.name} — Radar`} user={user}>
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+    <h1>{group.name}</h1>
+    <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={`${home}/export`}>Export links</a>
+  </div>
   <p class="text-[0.82rem] text-muted-foreground">
-    {group.cadence} editions of {group.edition_size} · {memberRows.length} member{memberRows.length === 1 ? '' : 's'}
+    {isOwner ? `You run this group${memberCount !== null ? ` · ${memberCount} member${memberCount === 1 ? '' : 's'}` : ''} · ` : ''}
+    Shares are anonymous: everyone sees the link and the note, never who shared it.
   </p>
 
-  {message && <Alert>{message}</Alert>}
+  {notice && <Alert>{notice}</Alert>}
+  {error && <Alert variant="error">{error}</Alert>}
 
-  <h2>Editions</h2>
+  {single && (
+    <p class="mt-4 mb-0 text-sm">
+      <a class="text-muted-foreground" href={`${home}#lens-${single.id}`}>← {group.name}</a>
+    </p>
+  )}
+
   {
-    (editions ?? []).length === 0 ? (
-      <Empty>No editions yet. The first one publishes on the group's cadence.</Empty>
-    ) : (
-      <CardList>
-        {(editions ?? []).map((e) => (
-          <ItemCard href={`/groups/${group.id}/editions/${e.id}`} title={`${dateFmt.format(new Date(e.period_start))} – ${dateFmt.format(new Date(e.period_end))}`}>
-          </ItemCard>
-        ))}
-      </CardList>
+    !single && (
+      <div class="mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h2 class="m-0">Topics</h2>
+        {isOwner && lenses.length > 0 && !formOpen && (
+          <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={`${home}?new=`}>
+            + New lens
+          </a>
+        )}
+      </div>
     )
   }
 
-  <h2>Shared this period</h2>
   {
-    recRows.length === 0 ? (
-      <Empty>Nothing shared yet. Share a save from your <a href="/">archive</a>.</Empty>
-    ) : (
-      <CardList>
-        {recRows.map((r) => (
-          <ItemCard href={r.links?.canonical_url} title={r.links?.title ?? r.links?.canonical_url}>
-            <Fragment slot="meta">
-              {r.links?.source ?? ''}
-              {group.names_visible && r.profiles?.display_name ? ` · ${r.profiles.display_name}` : ''}
-              {' · '}
-              {dateFmt.format(new Date(r.created_at))}
-            </Fragment>
-            {r.note && <Why>{r.note}</Why>}
-          </ItemCard>
-        ))}
-      </CardList>
+    !single && lenses.length === 0 && !formOpen && (
+      isOwner ? (
+        <Empty>
+          Add lenses for the topics this group keeps coming back to. Each one is a saved search
+          over everything shared here, and every member sees them.{' '}
+          <a href={`${home}?new=`}>Add the first lens</a>
+        </Empty>
+      ) : (
+        <Empty>The owner hasn't set up any topics yet.</Empty>
+      )
     )
   }
 
-  <h2>Members</h2>
-  <CardList>
-    {
-      memberRows.map((m) => (
-        <ItemCard>
-          <div class="flex items-center justify-between gap-2">
-          <span>
-            {m.profiles?.display_name || 'Unnamed reader'}
-            {m.role === 'owner' ? ' (owner)' : ''}
-          </span>
-          {isOwner && m.user_id !== group.owner_id && (
-            <form method="post">
-              <input type="hidden" name="_action" value="remove_member" />
-              <input type="hidden" name="user_id" value={m.user_id} />
-              <Button variant="destructive" type="submit">
-                Remove
-              </Button>
-            </form>
-          )}
-          </div>
-        </ItemCard>
-      ))
-    }
-  </CardList>
-
   {
-    !isOwner && (
-      <form class="mt-2" method="post">
-        <input type="hidden" name="_action" value="leave" />
-        <Button variant="destructive" type="submit">
-          Leave group
-        </Button>
+    formOpen && (
+      <form
+        class="mt-5 mb-8 grid gap-2.5 rounded-lg border-2 bg-[color-mix(in_srgb,var(--candy-sky)_22%,var(--card))] p-4 shadow-hard"
+        method="post"
+        action="/api/lenses"
+      >
+        <input type="hidden" name="group_id" value={group.id} />
+        <h2 class="m-0 mb-0.5 text-[1.15rem]">New lens</h2>
+        <div class="grid gap-1.5">
+          <Label htmlFor="lens-query">Search for</Label>
+          <Input
+            id="lens-query"
+            type="text"
+            name="query"
+            defaultValue={newQuery ?? ''}
+            placeholder="knitting patterns, sourdough, essays about writing…"
+            maxLength={200}
+            required
+            autoFocus
+          />
+        </div>
+        <div class="grid gap-1.5">
+          <Label htmlFor="lens-name">Name (optional)</Label>
+          <Input id="lens-name" type="text" name="name" placeholder="Defaults to the search" maxLength={60} />
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <Button type="submit">Save lens</Button>
+          <a class="text-sm text-muted-foreground" href={home}>Cancel</a>
+        </div>
+        <p class="m-0 text-sm text-muted-foreground">
+          Every member sees this lens. It matches by meaning as well as words, across
+          everything shared to the group.
+        </p>
       </form>
     )
   }
 
   {
-    isOwner && (
+    sections.map(({ lens, links, total, error: sectionError }) => (
+      <section id={`lens-${lens.id}`} class="mt-6 scroll-mt-4">
+        <div class="flex items-start gap-2">
+          <div class="min-w-0 flex-1">
+            <h3 class="m-0 text-[1.1rem] wrap-anywhere">
+              {single ? (
+                lens.name
+              ) : (
+                <a class="text-foreground no-underline hover:underline" href={`${home}?lens=${lens.id}`}>
+                  {lens.name}
+                </a>
+              )}
+            </h3>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">
+              Searching for “{lens.query}” · {countLabel(total)}
+            </p>
+          </div>
+          {isOwner && <LensMenu client:visible lensId={lens.id} name={lens.name} query={lens.query} inGroup />}
+        </div>
+        {sectionError && <Alert variant="error">{sectionError}</Alert>}
+        {links.length === 0 && !sectionError ? (
+          <Empty>Nothing shared here matches yet.</Empty>
+        ) : (
+          <CardList>
+            {links.map((l) => (
+              <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} snippetLines={single ? 3 : 2} />
+            ))}
+          </CardList>
+        )}
+        {!single && total > links.length && (
+          <a class="text-sm font-semibold" href={`${home}?lens=${lens.id}`}>
+            See all {countLabel(total)} →
+          </a>
+        )}
+      </section>
+    ))
+  }
+
+  {
+    !single && (
       <>
-        <h2>Invite link</h2>
+        <h2 class="mt-10">Shared this week</h2>
+        {recent.error && <Alert variant="error">{recent.error}</Alert>}
+        {recent.links.length === 0 && !recent.error ? (
+          <Empty>
+            Nothing shared in the last {RECENT_DAYS} days. Share a save from your{' '}
+            <a href="/">archive</a> with a note of why.
+          </Empty>
+        ) : (
+          <CardList>
+            {recent.links.map((l) => (
+              <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
+            ))}
+          </CardList>
+        )}
+        <p class="text-sm text-muted-foreground">
+          Older shares are in <a href={`${home}/export`}>Export</a>, by date.
+        </p>
+      </>
+    )
+  }
+
+  {
+    !single && isOwner && (
+      <>
+        <h2 class="mt-10">Invite link</h2>
         {invite ? (
           <>
             <code class="block rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all">{`${Astro.url.origin}/join/${invite.token}`}</code>
-            <p class="text-[0.82rem] text-muted-foreground">
-              {invite.uses_this_week} of {invite.weekly_cap} uses this week
-              {invite.paused_at ? ' · paused (cap reached)' : ''}
-            </p>
-            <form class="mt-4 mb-6 grid gap-2.5" method="post">
-              <input type="hidden" name="_action" value="invite_cap" />
-              <label class="grid gap-1 text-[0.92rem] font-semibold">
-                Weekly cap
-                <Input type="text" name="weekly_cap" defaultValue={String(invite.weekly_cap)} inputMode="numeric" />
-              </label>
-              <Button variant="outline" type="submit">Update cap</Button>
-            </form>
+            {invite.paused_at && (
+              <p class="text-[0.82rem] text-muted-foreground">
+                Paused: it reached its weekly limit and starts working again within a week.
+              </p>
+            )}
           </>
         ) : (
           <p>No active invite link.</p>
         )}
         <form class="mt-2" method="post">
           <input type="hidden" name="_action" value="rotate_invite" />
-          <input type="hidden" name="weekly_cap" value={String(invite?.weekly_cap ?? 50)} />
           <Button variant="outline" type="submit">
-            {invite ? 'Rotate link (kills the old one immediately)' : 'Create invite link'}
+            {invite ? 'New link (the old one stops working)' : 'Create invite link'}
           </Button>
         </form>
 
-        <h2>Settings</h2>
-        <form class="mt-4 mb-6 grid gap-2.5" method="post">
-          <input type="hidden" name="_action" value="settings" />
-          <label class="grid gap-1 text-[0.92rem] font-semibold">
-            Name
-            <Input type="text" name="name" defaultValue={group.name} maxLength={100} />
-          </label>
-          <label class="grid gap-1 text-[0.92rem] font-semibold">
-            Cadence
-            <NativeSelect name="cadence">
-              <option value="daily" selected={group.cadence === 'daily'}>Daily</option>
-              <option value="weekly" selected={group.cadence === 'weekly'}>Weekly</option>
-              <option value="biweekly" selected={group.cadence === 'biweekly'}>Biweekly</option>
-            </NativeSelect>
-          </label>
-          <label class="grid gap-1 text-[0.92rem] font-semibold">
-            Links per edition (K)
-            <Input type="text" name="edition_size" defaultValue={String(group.edition_size)} inputMode="numeric" />
-          </label>
-          <label class="grid gap-1 text-[0.92rem] font-semibold">
-            Max links per source per edition
-            <NativeSelect name="per_source_cap">
-              <option value="1" selected={group.per_source_cap === 1}>1</option>
-              <option value="2" selected={group.per_source_cap === 2}>2</option>
-            </NativeSelect>
-          </label>
-          <label class="flex items-center gap-2 text-sm font-semibold">
-            <input class="size-4 accent-primary" type="checkbox" name="names_visible" checked={group.names_visible} /> Show recommender names to
-            members
-          </label>
-          <label class="flex items-center gap-2 text-sm font-semibold">
-            <input class="size-4 accent-primary" type="checkbox" name="contribute_public" checked={group.contribute_public} /> Contribute
-            anonymous counts to the public layer
-          </label>
-          <Button type="submit">Save settings</Button>
+        {removedLinks.length > 0 && (
+          <>
+            <h2 class="mt-10">Removed links</h2>
+            <p class="text-sm text-muted-foreground">Members can't share these here until you restore them.</p>
+            <CardList>
+              {removedLinks.map((r) => (
+                <ItemCard href={r.canonical_url} title={r.title ?? r.canonical_url}>
+                  <Fragment slot="meta">Removed {dateFmt.format(new Date(r.removed_at))}</Fragment>
+                  <form slot="action" method="post">
+                    <input type="hidden" name="_action" value="restore_link" />
+                    <input type="hidden" name="link_id" value={r.link_id} />
+                    <Button variant="outline" size="sm" type="submit">Restore</Button>
+                  </form>
+                </ItemCard>
+              ))}
+            </CardList>
+          </>
+        )}
+
+        <h2 class="mt-10">Name</h2>
+        <form class="mt-4 mb-6 flex flex-wrap gap-2.5" method="post">
+          <input type="hidden" name="_action" value="rename" />
+          <Input className="w-auto flex-1" type="text" name="name" defaultValue={group.name} maxLength={100} aria-label="Group name" />
+          <Button variant="outline" type="submit">Rename</Button>
         </form>
       </>
+    )
+  }
+
+  {
+    !single && !isOwner && (
+      <form class="mt-10" method="post" onsubmit="return confirm('Leave the group? Your shares to it are removed.')">
+        <input type="hidden" name="_action" value="leave" />
+        <Button variant="destructive" type="submit">
+          Leave group
+        </Button>
+      </form>
     )
   }
 </Layout>

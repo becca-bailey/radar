@@ -1,0 +1,128 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
+import Empty from '@/components/Empty.astro';
+import SavePicker, { type PickerRow } from '@/components/SavePicker.tsx';
+import { groupsEnabled } from '../../../lib/flags';
+import { joinNotes, saveDisplayTitle } from '../../../lib/exportFormats';
+import { fetchGroupPool } from '../../../lib/groupPool';
+
+/**
+ * Export a group's shared links: pick by the dates they were shared, sort by
+ * how many members shared them, copy as a list or download. Built for
+ * crowdsourcing a newsletter's links post. Any member can export what they
+ * can already see; exports carry counts and notes, never names.
+ */
+if (!groupsEnabled()) {
+  return Astro.redirect('/');
+}
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const groupId = Astro.params.id!;
+const home = `/groups/${groupId}`;
+const { data: group } = await supabase.from('groups').select('id, name').eq('id', groupId).maybeSingle();
+if (!group) {
+  return Astro.redirect('/groups');
+}
+
+const params = Astro.url.searchParams;
+const isDate = (s: string | null): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const from = isDate(params.get('from')) ? params.get('from')! : '';
+const to = isDate(params.get('to')) ? params.get('to')! : '';
+const SORTS = { shared: 'Most shared', newest: 'Newest first', oldest: 'Oldest first' } as const;
+type Sort = keyof typeof SORTS;
+const rawSort = params.get('sort') ?? '';
+const sort: Sort = rawSort in SORTS ? (rawSort as Sort) : 'shared';
+
+// Dates are whole UTC days, and "to" includes that day. Counts and notes
+// cover shares inside the range only.
+let sharedBefore: string | null = null;
+if (to) {
+  const end = new Date(`${to}T00:00:00Z`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  sharedBefore = end.toISOString();
+}
+
+const LIMIT = 500;
+const { links, error } = await fetchGroupPool(supabase, group.id, {
+  limit: LIMIT,
+  sharedFrom: from ? `${from}T00:00:00Z` : null,
+  sharedBefore,
+});
+
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const rows: PickerRow[] = links.map((l) => ({
+  id: l.link_id,
+  title: saveDisplayTitle(l.title, l.canonical_url),
+  url: l.canonical_url,
+  source: l.source,
+  note: joinNotes(l.notes),
+  savedAt: l.last_shared_at,
+  readers: l.readers,
+  image: l.image,
+  savedOn: dateFmt.format(new Date(l.last_shared_at)),
+}));
+
+// The pool arrives newest first.
+if (sort === 'oldest') rows.reverse();
+if (sort === 'shared') rows.sort((a, b) => (b.readers ?? 1) - (a.readers ?? 1));
+
+const filtered = !!(from || to);
+const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'group';
+---
+
+<Layout title={`Export — ${group.name} — Radar`} user={user}>
+  <p class="mb-0 text-sm"><a class="text-muted-foreground" href={home}>← {group.name}</a></p>
+  <h1>Export links</h1>
+  <p>
+    Everything shared to {group.name}, one row per link, with how many members shared it and
+    their notes. Pick what you want and copy it into a draft, or download it. Names are never
+    included.
+  </p>
+
+  <form class="mt-4 mb-2 flex flex-wrap items-end gap-2.5" method="get">
+    <label class="grid gap-1 text-sm font-semibold">
+      Shared from
+      <Input type="date" name="from" defaultValue={from} max={to || undefined} className="w-auto" />
+    </label>
+    <label class="grid gap-1 text-sm font-semibold">
+      To
+      <Input type="date" name="to" defaultValue={to} min={from || undefined} className="w-auto" />
+    </label>
+    <label class="grid gap-1 text-sm font-semibold">
+      Sort
+      <NativeSelect name="sort">
+        {Object.entries(SORTS).map(([value, label]) => (
+          <option value={value} selected={value === sort}>{label}</option>
+        ))}
+      </NativeSelect>
+    </label>
+    <Button variant="outline" type="submit">Apply</Button>
+    {(filtered || sort !== 'shared') && (
+      <a class="self-center text-sm text-muted-foreground" href={`${home}/export`}>Reset</a>
+    )}
+  </form>
+
+  {error && <Alert variant="error">{error}</Alert>}
+
+  {rows.length >= LIMIT && (
+    <p class="text-sm text-muted-foreground">
+      Showing the newest {LIMIT}. Narrow the dates to see the rest.
+    </p>
+  )}
+
+  {
+    rows.length === 0 && !error ? (
+      <Empty>{filtered ? 'Nothing shared in those dates.' : 'Nothing shared yet.'}</Empty>
+    ) : (
+      <SavePicker client:load rows={rows} noun="link" filePrefix={`radar-${slug}`} />
+    )
+  }
+</Layout>

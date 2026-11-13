@@ -34,13 +34,15 @@ interface Props {
   lensId: string;
   name: string;
   query: string;
+  /** Group lenses search the group's shared links, not your archive. */
+  inGroup?: boolean;
 }
 
 /**
  * The three-dot menu on a lens: edit its name or search, or delete it.
  * Both are plain form posts to /api/lenses/:id, like SaveMenu.
  */
-export default function LensMenu({ lensId, name, query }: Props) {
+export default function LensMenu({ lensId, name, query, inGroup = false }: Props) {
   const [editing, setEditing] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -88,7 +90,11 @@ export default function LensMenu({ lensId, name, query }: Props) {
             <input type="hidden" name="action" value="edit" />
             <DialogHeader>
               <DialogTitle>Edit lens</DialogTitle>
-              <DialogDescription>Changing the search re-runs it across your whole archive.</DialogDescription>
+              <DialogDescription>
+                {inGroup
+                  ? 'Changing the search re-runs it across everything shared to the group.'
+                  : 'Changing the search re-runs it across your whole archive.'}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-1.5">
               <Label htmlFor={nameId}>Name</Label>
@@ -117,7 +123,9 @@ export default function LensMenu({ lensId, name, query }: Props) {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete this lens?</AlertDialogTitle>
               <AlertDialogDescription className="wrap-anywhere">
-                “{name}” will be removed from Explore. Your saves stay in your archive.
+                {inGroup
+                  ? `“${name}” will be removed from the group page for everyone. The shared links stay.`
+                  : `“${name}” will be removed from Explore. Your saves stay in your archive.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

@@ -24,15 +24,6 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
 
-  if (action === 'display_name') {
-    const displayName = String(form.get('display_name') ?? '').trim();
-    const { error } = await supabase
-      .from('profiles')
-      .update({ display_name: displayName })
-      .eq('id', user.id);
-    message = error ? `Could not save: ${error.message}` : 'Display name saved.';
-  }
-
   if (action === 'create_token') {
     const { raw, hash } = generateApiToken();
     const label = String(form.get('label') ?? '').trim() || 'Shortcut';
@@ -54,7 +45,6 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', user.id).single();
 const { data: tokens } = await supabase
   .from('api_tokens')
   .select('id, label, created_at, last_used_at')
@@ -67,25 +57,6 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
   <h1>Settings</h1>
 
   {message && <Alert>{message}</Alert>}
-
-  {
-    groupsEnabled() && (
-      <>
-        <h2>Display name</h2>
-        <p>Shown only inside private groups that choose to show recommender names.</p>
-        <form class="mt-4 mb-6 grid gap-2.5" method="post">
-          <input type="hidden" name="_action" value="display_name" />
-          <Input
-            type="text"
-            name="display_name"
-            defaultValue={profile?.display_name ?? ''}
-            placeholder="Your name"
-          />
-          <Button type="submit">Save</Button>
-        </form>
-      </>
-    )
-  }
 
   <h2>API tokens</h2>
   <p>

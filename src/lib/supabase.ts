@@ -36,7 +36,7 @@ let serviceClient: SupabaseClient | undefined;
 
 /**
  * Service-role client: bypasses RLS. Only for server code that has already
- * resolved the acting user (save endpoint, ingest worker, edition builder).
+ * resolved the acting user (save endpoint, ingest worker, invite links).
  */
 export function createServiceClient(): SupabaseClient {
   serviceClient ??= createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'), {

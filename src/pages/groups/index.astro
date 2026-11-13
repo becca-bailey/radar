@@ -39,16 +39,17 @@ if (Astro.request.method === 'POST') {
 
 const { data: groups } = await supabase
   .from('groups')
-  .select('id, name, cadence, edition_size, owner_id')
+  .select('id, name, owner_id')
   .order('created_at', { ascending: true });
 ---
 
 <Layout title="Groups — Radar" user={user}>
   <h1>Groups</h1>
   <p>
-    A group is a few people who trust each other's taste. Share a save with a
-    short note of why; the group publishes a finite edition on a fixed cadence. No
-    comments, no likes, no feed.
+    A group is a shared pool of links. Members share saves from their archive with a
+    short note of why; nobody sees who shared what. The owner sets up topics to browse
+    by, and anyone can export the links, say for a newsletter's links post. No comments,
+    no likes, no feed.
   </p>
 
   {message && <Alert variant="error">{message}</Alert>}
@@ -58,10 +59,7 @@ const { data: groups } = await supabase
       <CardList>
         {(groups ?? []).map((g) => (
           <ItemCard href={`/groups/${g.id}`} title={g.name}>
-            <Fragment slot="meta">
-              {g.cadence} · {g.edition_size} links per edition
-              {g.owner_id === user.id ? ' · you run this' : ''}
-            </Fragment>
+            {g.owner_id === user.id && <Fragment slot="meta">You run this</Fragment>}
           </ItemCard>
         ))}
       </CardList>

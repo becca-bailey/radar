@@ -8,9 +8,6 @@ interface ImportMetaEnv {
   readonly OPENAI_CLASSIFY_MODEL?: string;
   readonly CATEGORY_SIM_THRESHOLD?: string;
   readonly CRON_SECRET?: string;
-  readonly RESEND_API_KEY?: string;
-  readonly EDITION_FROM_EMAIL?: string;
-  readonly SITE_URL?: string;
   readonly SAFE_BROWSING_API_KEY?: string;
   readonly ADMIN_EMAILS?: string;
   readonly GROUPS_ENABLED?: string;

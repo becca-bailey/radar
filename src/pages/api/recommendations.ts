@@ -3,8 +3,9 @@ import { groupsEnabled } from '../../lib/flags';
 
 /**
  * Share a save to a group (PLAN.md §5): the group gets the link + note,
- * nothing else. RLS verifies membership and save ownership; the note is
- * copied at share time so editions stay stable snapshots.
+ * never who shared it. RLS verifies membership and save ownership, and
+ * refuses links the owner removed from the group. The note is copied at
+ * share time, so editing it in your archive later doesn't change the group.
  */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   if (!groupsEnabled()) {
@@ -19,7 +20,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const saveId = String(form.get('save_id') ?? '');
   const groupId = String(form.get('group_id') ?? '');
   const note = String(form.get('note') ?? '').trim() || null;
-  const attributionOk = form.get('attribution_ok') === 'on';
 
   if (!saveId || !groupId) {
     return redirect('/?error=' + encodeURIComponent('Pick a group to share to.'));
@@ -42,11 +42,19 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     user_id: user.id,
     link_id: save.link_id,
     note: finalNote,
-    attribution_ok: attributionOk,
   });
 
   if (error) {
-    const msg = error.code === '23505' ? 'Already shared to that group.' : error.message;
+    let msg = error.code === '23505' ? 'Already shared to that group.' : 'Could not share that. Try again.';
+    if (error.code === '42501') {
+      const { data: removed } = await supabase
+        .from('group_removed_links')
+        .select('link_id')
+        .eq('group_id', groupId)
+        .eq('link_id', save.link_id)
+        .maybeSingle();
+      if (removed) msg = "The group's owner removed this link from the group.";
+    }
     return redirect('/?error=' + encodeURIComponent(msg));
   }
 

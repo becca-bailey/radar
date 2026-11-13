@@ -34,10 +34,11 @@ interface Lens {
   query_embedding: string | null;
 }
 
-// RLS scopes to the signed-in user's lenses.
+// RLS also returns lenses of your groups; Explore shows personal ones only.
 const { data: lensRows } = await supabase
   .from('lenses')
   .select('id, name, query, query_embedding')
+  .is('group_id', null)
   .order('created_at');
 const lenses = (lensRows ?? []) as Lens[];
 

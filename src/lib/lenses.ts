@@ -33,3 +33,12 @@ export async function embedLensQuery(query: string): Promise<number[] | null> {
     return null;
   }
 }
+
+/**
+ * Where a lens lives: personal lenses on Explore, group lenses on their
+ * group's page. With a lens id, the path opens that lens in full.
+ */
+export function lensHomePath(groupId: string | null, lensId?: string): string {
+  const base = groupId ? `/groups/${groupId}` : '/explore';
+  return lensId ? `${base}?lens=${lensId}` : base;
+}

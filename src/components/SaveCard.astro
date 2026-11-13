@@ -95,13 +95,9 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
             type="text"
             name="note"
             defaultValue={row.note ?? ''}
-            placeholder="Why you're recommending it (the group sees this)"
+            placeholder="Why you're recommending it (the group sees this, not your name)"
             aria-label="Note for the group"
           />
-          <label class="flex items-center gap-2 text-sm font-semibold">
-            <input class="size-4 accent-primary" type="checkbox" name="attribution_ok" /> OK to credit me by
-            name in a published roundup
-          </label>
           <Button variant="outline" type="submit">
             Share
           </Button>
