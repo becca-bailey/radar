@@ -1,0 +1,110 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
+import Empty from '@/components/Empty.astro';
+import SavePicker, { type PickerRow } from '@/components/SavePicker.tsx';
+import { saveDisplayTitle } from '../lib/exportFormats';
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const params = Astro.url.searchParams;
+const isDate = (s: string | null): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const from = isDate(params.get('from')) ? params.get('from')! : '';
+const to = isDate(params.get('to')) ? params.get('to')! : '';
+const SORTS = { newest: 'Newest first', oldest: 'Oldest first', title: 'Title (A–Z)' } as const;
+type Sort = keyof typeof SORTS;
+const rawSort = params.get('sort') ?? '';
+const sort: Sort = rawSort in SORTS ? (rawSort as Sort) : 'newest';
+
+interface Row {
+  id: string;
+  original_url: string;
+  note: string | null;
+  created_at: string;
+  links: { title: string | null; source: string | null; canonical_url: string; image: string | null } | null;
+}
+
+const LIMIT = 500;
+// RLS scopes to the signed-in user's saves. Dates are whole UTC days, and
+// "to" includes that day.
+let query = supabase
+  .from('saves')
+  .select('id, original_url, note, created_at, links(title, source, canonical_url, image:metadata->>image)');
+if (from) query = query.gte('created_at', `${from}T00:00:00Z`);
+if (to) {
+  const end = new Date(`${to}T00:00:00Z`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  query = query.lt('created_at', end.toISOString());
+}
+const { data } = await query.order('created_at', { ascending: sort === 'oldest' }).limit(LIMIT);
+
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const rows: PickerRow[] = ((data ?? []) as unknown as Row[]).map((r) => {
+  const url = r.links?.canonical_url ?? r.original_url;
+  return {
+    id: r.id,
+    title: saveDisplayTitle(r.links?.title, url),
+    url,
+    source: r.links?.source ?? null,
+    note: r.note,
+    savedAt: r.created_at,
+    image: r.links?.image ?? null,
+    savedOn: dateFmt.format(new Date(r.created_at)),
+  };
+});
+if (sort === 'title') {
+  rows.sort((a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' }));
+}
+
+const filtered = !!(from || to);
+---
+
+<Layout title="Export — Radar" user={user}>
+  <h1>Export saves</h1>
+  <p>
+    Narrow by date, pick the saves you want, then copy them as a list or download them.
+    For everything at once, with the archived text, use the <a href="/api/export?format=markdown">full archive export</a>.
+  </p>
+
+  <form class="mt-4 mb-2 flex flex-wrap items-end gap-2.5" method="get" action="/export">
+    <label class="grid gap-1 text-sm font-semibold">
+      From
+      <Input type="date" name="from" defaultValue={from} max={to || undefined} className="w-auto" />
+    </label>
+    <label class="grid gap-1 text-sm font-semibold">
+      To
+      <Input type="date" name="to" defaultValue={to} min={from || undefined} className="w-auto" />
+    </label>
+    <label class="grid gap-1 text-sm font-semibold">
+      Sort
+      <NativeSelect name="sort">
+        {Object.entries(SORTS).map(([value, label]) => (
+          <option value={value} selected={value === sort}>{label}</option>
+        ))}
+      </NativeSelect>
+    </label>
+    <Button variant="outline" type="submit">Apply</Button>
+    {(filtered || sort !== 'newest') && (
+      <a class="self-center text-sm text-muted-foreground" href="/export">Reset</a>
+    )}
+  </form>
+
+  {rows.length >= LIMIT && (
+    <p class="text-sm text-muted-foreground">
+      Showing the first {LIMIT}. Narrow the dates to see the rest.
+    </p>
+  )}
+
+  {
+    rows.length === 0 ? (
+      <Empty>{filtered ? 'Nothing saved in those dates.' : 'Nothing saved yet.'}</Empty>
+    ) : (
+      <SavePicker client:load rows={rows} />
+    )
+  }
+</Layout>
