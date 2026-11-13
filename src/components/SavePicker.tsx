@@ -165,7 +165,7 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'radar-sa
                     </div>
                     {row.image && (
                       <img
-                        className="mt-1 h-[60px] w-[88px] shrink-0 rounded-md border-2 border-border object-cover shadow-hard-xs"
+                        className="mt-1 h-12 w-16 shrink-0 rounded-md sm:h-[60px] sm:w-[88px] border-2 border-border object-cover shadow-hard-xs"
                         src={row.image}
                         alt=""
                         loading="lazy"

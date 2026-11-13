@@ -90,24 +90,31 @@ const chip = badgeVariants({ variant: 'chip' });
       <a class="text-sm text-muted-foreground" href="/setup">Other ways to save →</a>
     </div>
     <Input type="url" name="url" placeholder="Paste a link to save it" required />
-    <Input type="text" name="note" placeholder="Why you're saving it (optional, shown if shared)" />
+    <Input type="text" name="note" placeholder="Why you're saving it (optional)" />
     <Button type="submit">Save</Button>
   </form>
 
   {
     totalSaves > 0 && (
-      <div class="mt-8 mb-1.5 flex items-baseline gap-2.5">
-        <h2 class="m-0">Recent saves</h2>
+      <div class="mt-8 mb-1.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        <h2 class="m-0 whitespace-nowrap">Recent saves</h2>
         <Badge className="-rotate-2">{totalSaves}</Badge>
-        <a class="ml-auto text-sm text-muted-foreground" href="/export">Export</a>
-        <a class="text-sm text-muted-foreground" href="/search">Search your archive →</a>
+        <div class="flex w-full gap-3.5 text-sm whitespace-nowrap sm:ml-auto sm:w-auto">
+          <a class="text-muted-foreground" href="/export">Export</a>
+          <a class="text-muted-foreground" href="/search">Search your archive →</a>
+        </div>
       </div>
     )
   }
 
   {
     topicChips.length > 0 && (
-      <nav class="mt-2.5 mb-1.5 flex flex-wrap gap-2" aria-label="Filter by topic">
+      // Phones: one row that scrolls sideways, bleeding to the screen edges.
+      // Wider screens: chips wrap onto as many rows as they need.
+      <nav
+        class="-mx-4 mt-1.5 mb-0.5 flex gap-2 overflow-x-auto px-4 pt-1 pb-2.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+        aria-label="Filter by topic"
+      >
         <a class={chip} href="/" aria-current={!topic ? 'true' : undefined}>
           All · {totalSaves}
         </a>
