@@ -151,13 +151,38 @@ An experiment from a UX review: help people come back to read, and give group me
 - [x] **11.4 (S)** Owner-only things share one look (dashed plum panel, "Only you see this"): suggestions and an "Owner tools" section (invite link, removed links, rename). "Preview as a member" (`?view=member`) hides every owner control.
 - [ ] **11.5 (S)** Push the migration to prod before merging (`npx supabase db push --remote`), then try suggestions on the real group once it has 10+ shares.
 
+## Stage 12 — Landing page and open source
+
+- [x] **12.1 (S)** Landing page for signed-out visitors: `/` rewrites to `/about` (also reachable directly), covering what Radar is for, how it works (save / share / find), who it's for, and what it won't do. Copy describes only what exists today. "About" in the signed-out nav.
+- [x] **12.2 (S)** AGPL-3.0-or-later `LICENSE`, `license` in `package.json`, "Source" link in the footer (AGPL §13 asks hosted apps to offer their source).
+- [x] **12.3 (S)** `CONTRIBUTING.md` (non-negotiables, setup, checks, conventions, conduct), `SECURITY.md` (private reporting through GitHub), and a pull request template.
+- [ ] **12.4 (S)** On GitHub: make the repository public if it isn't, turn on private vulnerability reporting (Settings → Security), and add a description and topics.
+
+## Stage 13 — Meet members where they are (PLAN.md §0a)
+
+In priority order. Run 13.1 alongside, not after.
+
+- [ ] **13.1 (S)** Phase 0 with real members: invite about ten paid subscribers. Track the share who share a second link in their second week; interview a few (PLAN §11).
+- [ ] **13.2 (M)** Group invite links grant sign-up: a valid, unpaused invite link lets a new email create an account (today the login refuses anyone not in `beta_invites`, so a subscriber clicking the group link from a welcome email is turned away). Carry the token through `/login?next=/join/…`.
+- [ ] **13.3 (M)** Save by email (was 9.3, moved up): private per-user address via the email provider's inbound webhook; every link in the message is saved; subject or body becomes the note. A `to a group` variant (e.g. `save+<token>+<group>@…`) shares too.
+- [ ] **13.4 (M)** Weekly group email: one per group per week, what was shared that week (same content as the group page's week), with lens headings. Members can turn it off. Replying with a link shares it to that group (needs 13.3's inbound handling).
+- [ ] **13.5 (S)** Picked email: when the owner marks a link picked, email each sharer once ("Your link made this week's roundup"). Off with the weekly email setting.
+- [ ] **13.6 (M)** Opt-in credit in exports: a member who has a group nickname can allow it in exports; exports then read "Thanks to Ana, Sam and 4 others". Default off.
+- [ ] **13.7 (S)** Join line in exports: optional footer in the group export ("Found by readers. Add yours →" with the invite link), owner-controlled.
+- [ ] **13.8 (M)** Share before signing up: the join page asks for one link and a note first, keeps them through the magic-link round trip, then saves and shares them on arrival.
+- [ ] **13.9 (M)** Reader view: a clean page for each save rendering the archived text (sanitized snapshot), with the note and a link to the original.
+- [ ] **13.10 (M)** Installable PWA with offline reading of recent saves' archived text; includes the Android share target (9.1).
+- [ ] **13.11 (S)** Weekly prompt: the owner sets an optional theme for the week, shown at the top of the group page, in the weekly email and in the Shortcut's group menu.
+- [ ] **13.12 (S)** "First time in this group" label on the group page and in exports: the link's source was never shared to this group before.
+- [ ] **13.13 (S)** Free and paid tiers as two groups: document the pattern on `/setup` for owners; decide whether a group needs a "send-only" mode (members share and get the email, but don't browse the pool).
+
 ## Capture beyond iOS
 
 Today: the iOS Shortcut, the desktop bookmarklet and the paste box. Everything goes through `POST /api/saves`, so each of these is mostly packaging around that endpoint.
 
-- [ ] **9.1 (M)** Android: make the site an installable PWA with a Web Share Target (manifest `share_target` posting to `/save`), so Radar shows up in Android's share sheet. Signed-in session, no token needed. Add an Android section to `/setup`.
+- [ ] **9.1 (M)** *(Folded into 13.10.)* Android: make the site an installable PWA with a Web Share Target (manifest `share_target` posting to `/save`), so Radar shows up in Android's share sheet. Signed-in session, no token needed. Add an Android section to `/setup`.
 - [ ] **9.2 (M)** Browser extension (Chrome + Firefox, one WebExtension): toolbar button and right-click "Save link to Radar", optional note, using an API token from Settings. Replaces the bookmarklet where sites' content security policies block it.
-- [ ] **9.3 (M)** Save by email: a private per-user address (e.g. `save+<token>@…`) via the email provider's inbound webhook. Saves every link in the message; the subject or body becomes the note. Works from any mail app, desktop or phone, including newsletters you forward.
+- [ ] **9.3 (M)** *(Moved up to 13.3.)* Save by email: a private per-user address (e.g. `save+<token>@…`) via the email provider's inbound webhook. Saves every link in the message; the subject or body becomes the note. Works from any mail app, desktop or phone, including newsletters you forward.
 - [ ] **9.4 (S)** `/setup`: one section per method, chosen by detected platform, so each person sees their own first.
 
 ## Deferred

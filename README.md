@@ -30,3 +30,15 @@ npm run dev
 npm test         # vitest
 npm run check    # typecheck
 ```
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: it covers
+setup, the checks CI runs, and the product decisions that aren't up for change.
+Report security problems privately, as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+[GNU Affero General Public License v3.0 or later](LICENSE). You're free to use,
+change and self-host Radar. If you run a modified version as a service for other
+people, you must offer them its source code.

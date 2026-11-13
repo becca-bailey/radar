@@ -1,0 +1,121 @@
+---
+// The signed-out home page: what Radar is for, how it works, and what it
+// won't do. Copy describes only what the app does today.
+import { buttonVariants } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+
+const SOURCE_URL = 'https://github.com/becca-bailey/radar';
+
+const steps = [
+  {
+    n: '1',
+    title: 'Save',
+    tint: 'var(--candy-butter)',
+    body: 'Share a link from your phone or browser, with a note about why if you like. Radar keeps the full text, so it’s still there when the page isn’t, and you can search it later by the words or the idea.',
+  },
+  {
+    n: '2',
+    title: 'Share',
+    tint: 'var(--candy-pink)',
+    body: 'Send a save to a group you’re in. The group sees the link, your note, and how many people shared it. Not who you are, and never the rest of your archive.',
+  },
+  {
+    n: '3',
+    title: 'Find',
+    tint: 'var(--candy-sky)',
+    body: 'A group shows what members found this week, gathered into topics. When the week is read, you’re done. A newsletter writer can export it straight into a roundup post.',
+  },
+];
+
+const wont = [
+  'No infinite scroll. A group shows one week, then it ends.',
+  'No comments, likes, follower counts or profiles. A recommendation is a link and a sentence.',
+  'No ads, and nothing you save is used to train a model.',
+  'No lock-in. Export your whole archive, full text included, any time.',
+];
+---
+
+<section class="pt-4 pb-2">
+  <Badge className="-rotate-2">In beta</Badge>
+  <h1 class="mt-3 mb-3 text-[2.6rem] sm:text-[3.2rem]">Put it on your radar.</h1>
+  <p class="m-0 text-[1.2rem] leading-normal">
+    A place to keep the good things you read, and pass the best of them to people who’ll read them too.
+  </p>
+  <p class="text-muted-foreground">
+    Feeds decide what you see and bury anything that links away. That makes good reading hard to find.
+    Radar works the other way around: you save what you loved, it keeps a copy, and the people you
+    trust see the best of it. No feed, no algorithm, no ads.
+  </p>
+  <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <a class={buttonVariants()} href="/login">Sign in</a>
+    <span class="text-sm text-muted-foreground">Invite-only while in beta. No password, just an email link.</span>
+  </div>
+</section>
+
+<section aria-labelledby="how-heading">
+  <h2 id="how-heading">How it works</h2>
+  <ol class="m-0 grid list-none gap-4 p-0">
+    {
+      steps.map((s, i) => (
+        <li
+          class:list={[
+            'rounded-lg border-2 bg-card p-4 shadow-hard',
+            i % 2 === 0 ? 'sm:-rotate-[0.4deg]' : 'sm:rotate-[0.4deg]',
+          ]}
+          style={`background: color-mix(in srgb, ${s.tint} 22%, var(--card))`}
+        >
+          <h3 class="m-0 flex items-baseline gap-2.5 text-[1.25rem]">
+            <span
+              class="inline-grid size-8 shrink-0 place-items-center rounded-full border-2 bg-card text-base"
+              aria-hidden="true"
+            >
+              {s.n}
+            </span>
+            {s.title}
+          </h3>
+          <p class="mt-2 mb-0">{s.body}</p>
+        </li>
+      ))
+    }
+  </ol>
+</section>
+
+<section aria-labelledby="who-heading">
+  <h2 id="who-heading">Who it’s for</h2>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="rounded-lg border-2 bg-card p-4">
+      <h3 class="m-0 text-[1.1rem]">Readers</h3>
+      <p class="mt-2 mb-0">
+        A read-later archive that doesn’t ask you to tag or file anything. Old saves come back on
+        their own, one a day, and your notes remind you why you kept them.
+      </p>
+    </div>
+    <div class="rounded-lg border-2 bg-card p-4">
+      <h3 class="m-0 text-[1.1rem]">Newsletter writers</h3>
+      <p class="mt-2 mb-0">
+        Start a group and put its invite link in your welcome email. Readers send you what they’re
+        reading all week; you export it, sorted by how many shared each link, and paste it into your
+        links post. Works with any platform, and syncs with none.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="wont-heading">
+  <h2 id="wont-heading">What Radar won’t do</h2>
+  <ul class="m-0 grid list-none gap-2 p-0">
+    {
+      wont.map((line) => (
+        <li class="flex gap-2.5">
+          <span class="mt-[0.55em] size-2.5 shrink-0 rounded-full border-2 bg-candy-orange" aria-hidden="true" />
+          <span>{line}</span>
+        </li>
+      ))
+    }
+  </ul>
+  <p>
+    Radar is open source under the <a href={`${SOURCE_URL}/blob/main/LICENSE`}>AGPL</a>.{' '}
+    Read <a href="/privacy">exactly what’s stored and where it goes</a>, or{' '}
+    <a href={SOURCE_URL}>read the code</a>.
+  </p>
+</section>

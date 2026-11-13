@@ -19,6 +19,21 @@ With single-user behavior settled, groups were rebuilt smaller. This overrides t
 - **Shelved:** the public layer and its flag queue, the ranking (section 7) and the metrics dashboard. They need many groups to mean anything; the code is in git history.
 - **Finite, still.** The non-negotiable now reads: no infinite scroll anywhere. The group page shows one week plus lens previews; older shares are in Export by date.
 
+## 0a. Revision: meet members where they are
+
+After the UX pass (TASKS Stages 10–11), the question became how to make Radar worth using for a newsletter's free and paid subscribers without turning it into another social app. This adds to §0; the non-negotiables (§2) and refusals (§14) stand.
+
+- **The newsletter is the social space; Radar is the backstage.** Members shouldn't need to hang out in Radar. Most should be able to take part without opening the app: every extra install or home-screen icon loses readers who already live in their inbox.
+- **Email first.** Save by email (forward a newsletter, or email a link to a private address) moves ahead of the browser extension. Each group sends **one weekly email** of what was shared that week: finite, no other notifications, and replying with a link shares it. This is not the old edition machinery (no ranking, no edition size); it's the group's week, delivered.
+- **Close the loop.** A member whose link is picked gets an email saying so. Exports can credit sharers by their group nickname, opt-in per member, so the roundup post can say "thanks to Ana, Sam and 4 others." The roundup post carries a join line ("Found by readers. Add yours"): the post is the recruiting channel and shows the payoff before sign-up.
+- **The personal side is a real read-later app.** Pocket and Omnivore are gone, and Radar already keeps the readable text. A clean reader view of the archived text and offline reading through an installable PWA make the archive worth opening daily, independent of any group.
+- **A weekly prompt.** The owner can set the week's theme ("the best thing you read about burnout"). A call for submissions, not a thread: it gives members a reason to share this week and lines up with the roundup.
+- **Share before signing up.** The join page asks "What's one thing you read this month that stuck with you?" first, then confirms by magic link. A group invite link lets a new person create an account (today only `beta_invites` can).
+- **Free and paid are two groups.** Two invite links, one in each welcome email. For example: free subscribers send links and get the weekly email; paid subscribers also browse the pool, lenses and export. Nothing syncs with the newsletter platform.
+- **One cheap piece of the shelved ranking.** A "First time in this group" label (a source never shared to the group before) on the group page and in exports. Makes the small-sources stance visible without the public layer.
+- **Validate before building much more.** Run Phase 0 (§6, §11) with about ten paid subscribers. Watch one number: **the share of members who share a second link in their second week.** Interviews explain whatever the number says.
+- **Public face.** Signed-out visitors get a landing page at `/` that says what Radar is for and what it won't do. The code is open source under AGPL-3.0-or-later, with contributor guidelines and a security policy; the footer links to the source.
+
 ## 1. Premise
 
 People read things they love and have nowhere good to put them. Bookmark managers fail because managing the manager is a job. Social platforms turn sharing into performance and reading into scrolling.
@@ -282,6 +297,7 @@ Written down now so the first request doesn't reopen it:
 - Default for recommender names in private groups (current lean: visible). **Build default: visible.**
 - Default edition cadence for new groups (current lean: weekly, K = 10). **Build default: weekly, K = 10.**
 - Whether Wayback saving is default-on for public pages or opt-in everywhere (current lean: opt-in). **Build default: opt-in everywhere.**
+- License. **Decided: AGPL-3.0-or-later**, so anyone can self-host or change it, but a modified version run as a service must share its source.
 - Whether the personal archive clusters themes before Phase 4 if the owner's own archive is large enough to test on.
 
 ## 16. Related prior work (Becca's)

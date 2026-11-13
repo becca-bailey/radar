@@ -13,7 +13,8 @@ import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
-  return Astro.redirect('/login');
+  // Signed out: show the landing page at the same URL.
+  return Astro.rewrite('/about');
 }
 
 const saved = Astro.url.searchParams.get('saved') === '1';

@@ -1,0 +1,15 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Landing from '@/components/Landing.astro';
+
+// Also served at / for signed-out visitors (index.astro rewrites here).
+const { user } = Astro.locals;
+---
+
+<Layout
+  title="On Your Radar: keep what you read, share the best of it"
+  description="Save the good things you read, with the full text kept for you, and pass the best of them to a small group. No feed, no algorithm, no ads."
+  user={user}
+>
+  <Landing />
+</Layout>
