@@ -78,6 +78,15 @@ function displayTitle(r: Result): string {
     <Button type="submit">Search</Button>
   </form>
 
+  <script>
+    // autofocus parks the caret at position 0 when the input already has a
+    // value; move it to the end so refining a query continues from there.
+    const q = document.querySelector<HTMLInputElement>('input[name="q"]');
+    if (q?.value) {
+      q.setSelectionRange(q.value.length, q.value.length);
+    }
+  </script>
+
   {searchError && <Alert variant="error">{searchError}</Alert>}
 
   {
