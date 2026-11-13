@@ -16,6 +16,9 @@ if (!user) {
 
 const saved = Astro.url.searchParams.get('saved') === '1';
 const shared = Astro.url.searchParams.get('shared') === '1';
+const updated = Astro.url.searchParams.get('updated') === '1';
+const deleted = Astro.url.searchParams.get('deleted') === '1';
+const retrying = Astro.url.searchParams.get('retrying') === '1';
 const error = Astro.url.searchParams.get('error');
 const topic = Astro.url.searchParams.get('topic');
 
@@ -72,6 +75,9 @@ const chip = badgeVariants({ variant: 'chip' });
 <Layout title="Radar" user={user}>
   {saved && <Alert>Saved.</Alert>}
   {shared && <Alert>Shared.</Alert>}
+  {updated && <Alert>Note updated.</Alert>}
+  {deleted && <Alert>Deleted.</Alert>}
+  {retrying && <Alert>Trying to archive it again…</Alert>}
   {error && <Alert variant="error">{error}</Alert>}
 
   <form
@@ -140,7 +146,7 @@ const chip = badgeVariants({ variant: 'chip' });
     ) : (
       <CardList>
         {rows.map((row) => (
-          <SaveCard row={row} groups={shareGroups} defaultGroupId={defaultGroupId} />
+          <SaveCard row={row} groups={shareGroups} defaultGroupId={defaultGroupId} topic={topic} />
         ))}
       </CardList>
     )

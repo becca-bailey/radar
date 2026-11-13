@@ -132,3 +132,32 @@ export async function createSave(
 
   return { saveId: save.id, linkId: link.id, canonicalUrl, alreadySaved: false };
 }
+
+/**
+ * Give a failed link a fresh set of ingest attempts. Links are shared rows,
+ * so the caller must first check the user actually has a save of this link.
+ * Only acts on links in the 'failed' state, so it can't disturb a job that
+ * is queued or running.
+ */
+export async function requeueIngest(service: SupabaseClient, linkId: string): Promise<void> {
+  const reset = await service
+    .from('links')
+    .update({ status: 'pending' })
+    .eq('id', linkId)
+    .eq('status', 'failed')
+    .select('id');
+  if (reset.error) throw new Error(`Failed to reset link: ${reset.error.message}`);
+  if (!reset.data?.length) return; // someone else already retried it
+
+  const job = await service.from('ingest_jobs').upsert(
+    {
+      link_id: linkId,
+      status: 'queued',
+      attempts: 0,
+      last_error: null,
+      run_after: new Date().toISOString(),
+    },
+    { onConflict: 'link_id' }
+  );
+  if (job.error) throw new Error(`Failed to enqueue ingest: ${job.error.message}`);
+}

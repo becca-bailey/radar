@@ -13,7 +13,8 @@ public categories through a ranking designed to surface new and small sources.
 
 ## Stack
 
-Astro + React islands + TypeScript, deployed on Netlify (functions, background
+Astro + React islands + TypeScript, styled with Tailwind and shadcn/ui components
+(`src/components/ui`), deployed on Netlify (functions, background
 functions, scheduled functions). Supabase: Postgres + pgvector + Auth, with Row Level
 Security enforcing the three-layer privacy model (archive / group / public).
 

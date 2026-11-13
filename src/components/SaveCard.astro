@@ -1,5 +1,6 @@
 ---
 import ItemCard from '@/components/ItemCard.astro';
+import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,9 +26,11 @@ interface Props {
   /** Groups this save can be shared to; empty hides the share form. */
   groups?: { id: string; name: string }[];
   defaultGroupId?: string;
+  /** Active topic filter, passed through so actions return to the same view. */
+  topic?: string | null;
 }
 
-const { row, groups = [], defaultGroupId = '' } = Astro.props;
+const { row, groups = [], defaultGroupId = '', topic = null } = Astro.props;
 const link = row.links;
 const kind = link?.kind && link.kind !== 'article' ? link.kind : null;
 
@@ -41,12 +44,14 @@ function displayTitle(): string {
   }
 }
 
+const title = displayTitle();
+
 const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 
 <ItemCard
   href={link?.canonical_url ?? row.original_url}
-  title={displayTitle()}
+  title={title}
   kind={kind}
   data-save-id={row.id}
   data-pending={link?.status === 'pending' ? '' : undefined}
@@ -59,6 +64,15 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     {link?.status === 'pending' ? ' · archiving…' : ''}
     {link?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
   </Fragment>
+  <SaveMenu
+    slot="action"
+    client:visible
+    saveId={row.id}
+    title={title}
+    note={row.note}
+    canRetry={link?.status === 'failed'}
+    topic={topic}
+  />
   {row.note && <Why>{row.note}</Why>}
   {
     groups.length > 0 && (
