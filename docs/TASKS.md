@@ -93,6 +93,7 @@ Should do during the beta:
 - [ ] **7.16 (S)** Block private and localhost addresses in `fetchPage`, including after redirects (SSRF).
 - [ ] **7.17 (S)** Error monitoring (Sentry or similar), or at least a failed-ingest count on an admin page.
 - [ ] **7.18 (S)** Feedback link in the footer (a mailto is enough).
+- [ ] **7.20 (M)** Dates and time zones. Pages render on Netlify in UTC, so dates are UTC everywhere: a save made at 8pm Pacific shows as the next day, the export date filters (`/export`, `/groups/:id/export`) treat "from/to" as UTC days, and download filenames use the UTC date. Some formatters pin `timeZone: 'UTC'`, others use the server's zone by accident. Fix: learn each person's zone from the browser (a cookie set on load, saved to `profiles.time_zone` so the Shortcut-free pages and emails agree), format every date through one helper in `src/lib/dates.ts`, and turn local "from/to" days into UTC instants for queries. Show "today"/"yesterday" for recent saves while there.
 
 ## Stage 8 — Simpler groups (PLAN.md §0)
 
