@@ -1,5 +1,10 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
 import { groupsEnabled } from '../../lib/flags';
 
 if (!groupsEnabled()) {
@@ -46,29 +51,26 @@ const { data: groups } = await supabase
     comments, no likes, no feed.
   </p>
 
-  {message && <div class="notice error">{message}</div>}
+  {message && <Alert variant="error">{message}</Alert>}
 
   {
     (groups ?? []).length > 0 && (
-      <ul class="saves">
+      <CardList>
         {(groups ?? []).map((g) => (
-          <li>
-            <a class="title" href={`/groups/${g.id}`}>
-              {g.name}
-            </a>
-            <div class="meta">
+          <ItemCard href={`/groups/${g.id}`} title={g.name}>
+            <Fragment slot="meta">
               {g.cadence} · {g.edition_size} links per edition
               {g.owner_id === user.id ? ' · you run this' : ''}
-            </div>
-          </li>
+            </Fragment>
+          </ItemCard>
         ))}
-      </ul>
+      </CardList>
     )
   }
 
   <h2>Start a group</h2>
-  <form class="stack" method="post">
-    <input type="text" name="name" placeholder="Group name" required maxlength="100" />
-    <button type="submit">Create group</button>
+  <form class="mt-4 mb-6 grid gap-2.5" method="post">
+    <Input type="text" name="name" placeholder="Group name" required maxLength={100} />
+    <Button type="submit">Create group</Button>
   </form>
 </Layout>

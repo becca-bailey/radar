@@ -1,5 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
 import { groupsEnabled } from '../lib/flags';
 import { computeDashboardMetrics } from '../lib/metrics';
 import { createServiceClient } from '../lib/supabase';
@@ -31,34 +34,33 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
   <p>Of sources first recommended in a month, how many reached 3 recommendations within 90 days.</p>
   {
     metrics.cohorts.length === 0 ? (
-      <p class="empty">No recommendation history yet.</p>
+      <Empty>No recommendation history yet.</Empty>
     ) : (
-      <ul class="saves">
+      <CardList>
         {metrics.cohorts.map((c) => (
-          <li>
-            <strong>{c.month}</strong>
-            <div class="meta">
+          <ItemCard title={c.month}>
+            <Fragment slot="meta">
               {c.surfaced} of {c.sources} sources surfaced ({c.sources ? pct(c.surfaced / c.sources) : '—'})
-            </div>
+            </Fragment>
             <svg width="100%" height="10" role="img" aria-label={`${c.month} surfacing rate`}>
               <rect width="100%" height="10" fill="var(--border)" rx="5" />
               <rect
                 width={`${c.sources ? Math.round((c.surfaced / c.sources) * 100) : 0}%`}
                 height="10"
-                fill="var(--accent)"
+                fill="var(--link)"
                 rx="5"
               />
             </svg>
-          </li>
+          </ItemCard>
         ))}
-      </ul>
+      </CardList>
     )
   }
 
   <h2>Concentration</h2>
   {
     metrics.topTenShare === null ? (
-      <p class="empty">No editions in the last 90 days.</p>
+      <Empty>No editions in the last 90 days.</Empty>
     ) : (
       <p>
         The top 10 sources hold <strong>{pct(metrics.topTenShare)}</strong> of edition slots
@@ -72,18 +74,17 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
   <p>Median distinct sources per edition, by month.</p>
   {
     metrics.diversity.length === 0 ? (
-      <p class="empty">No editions yet.</p>
+      <Empty>No editions yet.</Empty>
     ) : (
-      <ul class="saves">
+      <CardList>
         {metrics.diversity.map((d) => (
-          <li>
-            <strong>{d.month}</strong>
-            <div class="meta">
+          <ItemCard title={d.month}>
+            <Fragment slot="meta">
               median {d.medianDistinctSources} distinct sources across {d.editions} edition{d.editions === 1 ? '' : 's'}
-            </div>
-          </li>
+            </Fragment>
+          </ItemCard>
         ))}
-      </ul>
+      </CardList>
     )
   }
 </Layout>

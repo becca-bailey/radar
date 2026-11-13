@@ -1,5 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
 import { groupsEnabled } from '../lib/flags';
 import { computePublicHighlights } from '../lib/publicLayer';
 import { createServiceClient } from '../lib/supabase';
@@ -31,26 +34,23 @@ for (const h of highlights) {
 
   {
     highlights.length === 0 ? (
-      <p class="empty">
+      <Empty>
         Nothing here yet. A link appears when at least three independent groups
         recommend it in the same month.
-      </p>
+      </Empty>
     ) : (
       [...byCategory.entries()].map(([category, links]) => (
         <section>
           <h2>{category}</h2>
-          <ul class="saves">
+          <CardList>
             {links.map((h) => (
-              <li>
-                <a class="title" href={h.canonicalUrl}>
-                  {h.title ?? h.canonicalUrl}
-                </a>
-                <div class="meta">
+              <ItemCard href={h.canonicalUrl} title={h.title ?? h.canonicalUrl}>
+                <Fragment slot="meta">
                   {h.source ?? ''} · recommended in {h.groupCount} groups
-                </div>
-              </li>
+                </Fragment>
+              </ItemCard>
             ))}
-          </ul>
+          </CardList>
         </section>
       ))
     )

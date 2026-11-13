@@ -1,5 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import { Badge, badgeVariants } from '@/components/ui/badge';
+import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
 import { groupsEnabled } from '../lib/flags';
 
 const { user, supabase } = Astro.locals;
@@ -57,74 +64,57 @@ const foldedChips = topicChips.slice(CHIP_LIMIT);
 const groups = (myGroups ?? []) as { id: string; name: string }[];
 const defaultGroupId = profile?.last_shared_group_id ?? groups[0]?.id ?? '';
 
-type SaveRow = {
-  id: string;
-  original_url: string;
-  note: string | null;
-  created_at: string;
-  links: {
-    title: string | null;
-    source: string | null;
-    canonical_url: string;
-    status: string;
-    kind: string;
-  } | null;
-};
-
 const rows = (saves ?? []) as unknown as SaveRow[];
-
-function displayTitle(row: SaveRow): string {
-  if (row.links?.title) return row.links.title;
-  try {
-    const u = new URL(row.links?.canonical_url ?? row.original_url);
-    return u.hostname.replace(/^www\./, '') + u.pathname;
-  } catch {
-    return row.original_url;
-  }
-}
-
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const shareGroups = groupsEnabled() ? groups : [];
+const chip = badgeVariants({ variant: 'chip' });
 ---
 
 <Layout title="Radar" user={user}>
-  {saved && <div class="notice">Saved.</div>}
-  {shared && <div class="notice">Shared.</div>}
-  {error && <div class="notice error">{error}</div>}
+  {saved && <Alert>Saved.</Alert>}
+  {shared && <Alert>Shared.</Alert>}
+  {error && <Alert variant="error">{error}</Alert>}
 
-  <form class="stack capture" method="post" action="/api/saves">
-    <h2>Save a link</h2>
-    <input type="url" name="url" placeholder="Paste a link to save it" required />
-    <input type="text" name="note" placeholder="Why you're saving it (optional, shown if shared)" />
-    <button type="submit">Save</button>
+  <form
+    class="mt-5 mb-10 grid gap-2.5 rounded-lg border-2 bg-[color-mix(in_srgb,var(--candy-butter)_22%,var(--card))] p-4 shadow-hard"
+    method="post"
+    action="/api/saves"
+  >
+    <h2 class="m-0 mb-0.5 text-[1.15rem]">Save a link</h2>
+    <Input type="url" name="url" placeholder="Paste a link to save it" required />
+    <Input type="text" name="note" placeholder="Why you're saving it (optional, shown if shared)" />
+    <Button type="submit">Save</Button>
   </form>
 
   {
     totalSaves > 0 && (
-      <div class="list-head">
-        <h2>Recent saves</h2>
-        <span class="count">{totalSaves}</span>
-        <a class="head-link" href="/search">Search your archive →</a>
+      <div class="mt-8 mb-1.5 flex items-baseline gap-2.5">
+        <h2 class="m-0">Recent saves</h2>
+        <Badge className="-rotate-2">{totalSaves}</Badge>
+        <a class="ml-auto text-sm text-muted-foreground" href="/search">Search your archive →</a>
       </div>
     )
   }
 
   {
     topicChips.length > 0 && (
-      <nav class="chips" aria-label="Filter by topic">
-        <a class="chip" href="/" aria-current={!topic ? 'true' : undefined}>
+      <nav class="mt-2.5 mb-1.5 flex flex-wrap gap-2" aria-label="Filter by topic">
+        <a class={chip} href="/" aria-current={!topic ? 'true' : undefined}>
           All · {totalSaves}
         </a>
         {shownChips.map((c) => (
-          <a class="chip" href={`/?topic=${c.slug}`} aria-current={topic === c.slug ? 'true' : undefined}>
+          <a class={chip} href={`/?topic=${c.slug}`} aria-current={topic === c.slug ? 'true' : undefined}>
             {c.name} · {c.count}
           </a>
         ))}
         {foldedChips.length > 0 && (
-          <details class="chips-more">
-            <summary class="chip">More…</summary>
-            <div class="chips">
+          // display:contents keeps the folded chips flowing in the same row.
+          <details class="group contents">
+            <summary class:list={[chip, 'list-none text-muted-foreground group-open:hidden [&::-webkit-details-marker]:hidden']}>
+              More…
+            </summary>
+            <div class="contents">
               {foldedChips.map((c) => (
-                <a class="chip" href={`/?topic=${c.slug}`} aria-current={topic === c.slug ? 'true' : undefined}>
+                <a class={chip} href={`/?topic=${c.slug}`} aria-current={topic === c.slug ? 'true' : undefined}>
                   {c.name} · {c.count}
                 </a>
               ))}
@@ -132,11 +122,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
           </details>
         )}
         {uncategorized > 0 && (
-          <a
-            class="chip"
-            href="/?topic=uncategorized"
-            aria-current={topic === 'uncategorized' ? 'true' : undefined}
-          >
+          <a class={chip} href="/?topic=uncategorized" aria-current={topic === 'uncategorized' ? 'true' : undefined}>
             Uncategorized · {uncategorized}
           </a>
         )}
@@ -146,60 +132,17 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   {
     rows.length === 0 ? (
-      <p class="empty">
+      <Empty>
         {topic
           ? `Nothing saved under ${activeCat?.name ?? 'that topic'} yet.`
           : "Your archive is empty. Save the first thing you don't want to lose."}
-      </p>
+      </Empty>
     ) : (
-      <ul class="saves">
+      <CardList>
         {rows.map((row) => (
-          <li
-            data-save-id={row.id}
-            data-pending={row.links?.status === 'pending' ? '' : undefined}
-            data-kind={row.links?.kind && row.links.kind !== 'article' ? row.links.kind : undefined}
-          >
-            <a class="title" href={row.links?.canonical_url ?? row.original_url}>
-              {displayTitle(row)}
-            </a>
-            <div class="meta">
-              {row.links?.kind && row.links.kind !== 'article' ? `${row.links.kind} · ` : ''}
-              {row.links?.source ?? ''}
-              {row.links?.source ? ' · ' : ''}
-              {dateFmt.format(new Date(row.created_at))}
-              {row.links?.status === 'pending' ? ' · archiving…' : ''}
-              {row.links?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
-            </div>
-            {row.note && <p class="why">{row.note}</p>}
-            {groupsEnabled() && groups.length > 0 && (
-              <details style="margin-top:0.5rem">
-                <summary style="cursor:pointer; font-size:0.85rem; color:var(--muted)">Share…</summary>
-                <form class="stack" method="post" action="/api/recommendations" style="margin:0.5rem 0 0">
-                  <input type="hidden" name="save_id" value={row.id} />
-                  <select name="group_id">
-                    {groups.map((g) => (
-                      <option value={g.id} selected={g.id === defaultGroupId}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    name="note"
-                    value={row.note ?? ''}
-                    placeholder="Why you're recommending it (the group sees this)"
-                  />
-                  <label style="font-size:0.85rem">
-                    <input type="checkbox" name="attribution_ok" /> OK to credit me by name in a published
-                    roundup
-                  </label>
-                  <button class="quiet" type="submit">Share</button>
-                </form>
-              </details>
-            )}
-          </li>
+          <SaveCard row={row} groups={shareGroups} defaultGroupId={defaultGroupId} />
         ))}
-      </ul>
+      </CardList>
     )
   }
 
@@ -207,7 +150,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     // While any save is still archiving, poll its status and re-render the
     // page when the worker finishes (or gives up), instead of making the
     // user refresh. Gives up after two minutes; a plain refresh still works.
-    const pending = [...document.querySelectorAll<HTMLElement>('li[data-pending]')].map(
+    const pending = [...document.querySelectorAll<HTMLElement>('[data-pending]')].map(
       (el) => el.dataset.saveId as string
     );
     if (pending.length > 0) {

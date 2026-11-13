@@ -1,0 +1,94 @@
+---
+import ItemCard from '@/components/ItemCard.astro';
+import Why from '@/components/Why.astro';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
+
+/** One save in the archive list. */
+export interface SaveRow {
+  id: string;
+  original_url: string;
+  note: string | null;
+  created_at: string;
+  links: {
+    title: string | null;
+    source: string | null;
+    canonical_url: string;
+    status: string;
+    kind: string;
+  } | null;
+}
+
+interface Props {
+  row: SaveRow;
+  /** Groups this save can be shared to; empty hides the share form. */
+  groups?: { id: string; name: string }[];
+  defaultGroupId?: string;
+}
+
+const { row, groups = [], defaultGroupId = '' } = Astro.props;
+const link = row.links;
+const kind = link?.kind && link.kind !== 'article' ? link.kind : null;
+
+function displayTitle(): string {
+  if (link?.title) return link.title;
+  try {
+    const u = new URL(link?.canonical_url ?? row.original_url);
+    return u.hostname.replace(/^www\./, '') + u.pathname;
+  } catch {
+    return row.original_url;
+  }
+}
+
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+---
+
+<ItemCard
+  href={link?.canonical_url ?? row.original_url}
+  title={displayTitle()}
+  kind={kind}
+  data-save-id={row.id}
+  data-pending={link?.status === 'pending' ? '' : undefined}
+>
+  <Fragment slot="meta">
+    {kind ? `${kind} · ` : ''}
+    {link?.source ?? ''}
+    {link?.source ? ' · ' : ''}
+    {dateFmt.format(new Date(row.created_at))}
+    {link?.status === 'pending' ? ' · archiving…' : ''}
+    {link?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
+  </Fragment>
+  {row.note && <Why>{row.note}</Why>}
+  {
+    groups.length > 0 && (
+      <details>
+        <summary class="cursor-pointer text-[0.85rem] font-semibold text-muted-foreground">Share…</summary>
+        <form class="mt-2 grid gap-2.5" method="post" action="/api/recommendations">
+          <input type="hidden" name="save_id" value={row.id} />
+          <NativeSelect name="group_id" aria-label="Group">
+            {groups.map((g) => (
+              <option value={g.id} selected={g.id === defaultGroupId}>
+                {g.name}
+              </option>
+            ))}
+          </NativeSelect>
+          <Input
+            type="text"
+            name="note"
+            defaultValue={row.note ?? ''}
+            placeholder="Why you're recommending it (the group sees this)"
+            aria-label="Note for the group"
+          />
+          <label class="flex items-center gap-2 text-sm font-semibold">
+            <input class="size-4 accent-primary" type="checkbox" name="attribution_ok" /> OK to credit me by
+            name in a published roundup
+          </label>
+          <Button variant="outline" type="submit">
+            Share
+          </Button>
+        </form>
+      </details>
+    )
+  }
+</ItemCard>

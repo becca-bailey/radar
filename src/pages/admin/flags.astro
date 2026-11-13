@@ -1,5 +1,10 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
 import { createServiceClient } from '../../lib/supabase';
 
 // Flag-and-review queue (PLAN.md §9). Admin = emails in ADMIN_EMAILS.
@@ -55,47 +60,44 @@ const flags = (open ?? []) as unknown as FlagRow[];
 
 <Layout title="Flags — Radar" user={user}>
   <h1>Flag queue</h1>
-  {message && <div class="notice">{message}</div>}
+  {message && <Alert>{message}</Alert>}
 
   {
     flags.length === 0 ? (
-      <p class="empty">Nothing flagged. Good.</p>
+      <Empty>Nothing flagged. Good.</Empty>
     ) : (
-      <ul class="saves">
+      <CardList>
         {flags.map((f) => (
-          <li>
-            <a class="title" href={f.links?.canonical_url}>
-              {f.links?.title ?? f.links?.canonical_url}
-            </a>
-            <div class="meta">
+          <ItemCard href={f.links?.canonical_url} title={f.links?.title ?? f.links?.canonical_url}>
+            <Fragment slot="meta">
               {f.links?.source ?? ''} · status: {f.links?.status} · flagged {f.created_at.slice(0, 10)}
-            </div>
-            {f.reason && <p class="note">{f.reason}</p>}
-            <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
+            </Fragment>
+            {f.reason && <p class="m-0 text-[0.9rem] whitespace-pre-wrap text-muted-foreground">{f.reason}</p>}
+            <div class="flex flex-wrap gap-2">
               <form method="post">
                 <input type="hidden" name="_action" value="hold" />
                 <input type="hidden" name="flag_id" value={f.id} />
                 <input type="hidden" name="link_id" value={f.link_id} />
-                <button class="danger" type="submit">Hold link</button>
+                <Button variant="destructive" type="submit">Hold link</Button>
               </form>
               <form method="post">
                 <input type="hidden" name="_action" value="dismiss" />
                 <input type="hidden" name="flag_id" value={f.id} />
                 <input type="hidden" name="link_id" value={f.link_id} />
-                <button class="quiet" type="submit">Dismiss</button>
+                <Button variant="outline" type="submit">Dismiss</Button>
               </form>
               {f.links?.status === 'held' && (
                 <form method="post">
                   <input type="hidden" name="_action" value="unhold" />
                   <input type="hidden" name="flag_id" value={f.id} />
                   <input type="hidden" name="link_id" value={f.link_id} />
-                  <button class="quiet" type="submit">Release</button>
+                  <Button variant="outline" type="submit">Release</Button>
                 </form>
               )}
             </div>
-          </li>
+          </ItemCard>
         ))}
-      </ul>
+      </CardList>
     )
   }
 </Layout>
