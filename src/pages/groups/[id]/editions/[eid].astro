@@ -1,11 +1,22 @@
 ---
 import Layout from '../../../../layouts/Layout.astro';
+import ItemCard from '@/components/ItemCard.astro';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import Why from '@/components/Why.astro';
 import { LABEL_TEXT } from '../../../../lib/editionEmail';
 import { groupsEnabled } from '../../../../lib/flags';
 
 if (!groupsEnabled()) {
   return Astro.redirect('/');
 }
+
+type LabelVariant = 'hot' | 'first_time' | 'small_source' | 'rising';
+const LABEL_VARIANTS: readonly string[] = ['hot', 'first_time', 'small_source', 'rising'];
+const labelVariant = (label: string): LabelVariant =>
+  LABEL_VARIANTS.includes(label) ? (label as LabelVariant) : 'hot';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -81,41 +92,37 @@ if (Astro.url.searchParams.get('format') === 'markdown') {
 
 <Layout title={`${group.name} — ${periodLabel}`} user={user}>
   <h1>{group.name}</h1>
-  <p class="meta" style="color:var(--muted)">
+  <p class="text-[0.82rem] text-muted-foreground">
     {periodLabel} · {entries.length} link{entries.length === 1 ? '' : 's'} · that's all of them
   </p>
 
   <p><a href={`/groups/${groupId}/editions/${editionId}?format=markdown`}>Export as markdown (roundup draft)</a></p>
 
-  <ul class="saves">
+  <CardList>
     {
       entries.map((e) => (
-        <li>
-          <span class={`label-chip ${e.label}`}>{LABEL_TEXT[e.label] ?? e.label}</span>
-          <br />
-          <a class="title" href={e.canonical_url}>
-            {e.title ?? e.canonical_url}
-          </a>
-          <div class="meta">
+        <ItemCard href={e.canonical_url} title={e.title ?? e.canonical_url}>
+          <Badge slot="before" variant={labelVariant(e.label)} className="mb-1">{LABEL_TEXT[e.label] ?? e.label}</Badge>
+          <Fragment slot="meta">
             {e.source ?? ''} · {e.recommender_count} reader{e.recommender_count === 1 ? '' : 's'}
             {group.names_visible && e.recommender_names.length > 0
               ? ` · ${e.recommender_names.join(', ')}`
               : ''}
-          </div>
+          </Fragment>
           {e.notes.map((s) => (
-            <p class="why">“{s}”</p>
+            <Why>“{s}”</Why>
           ))}
-          <form method="post" action="/api/flags" style="margin-top:0.4rem">
+          <form method="post" action="/api/flags">
             <input type="hidden" name="link_id" value={e.link_id} />
             <input type="hidden" name="back" value={`/groups/${groupId}/editions/${editionId}`} />
-            <button class="quiet" type="submit" style="font-size:0.78rem; padding:0.25rem 0.6rem">
+            <Button variant="outline" size="sm" type="submit">
               Flag
-            </button>
+            </Button>
           </form>
-        </li>
+        </ItemCard>
       ))
     }
-  </ul>
+  </CardList>
 
-  <p class="empty">When you've seen them, you're done.</p>
+  <Empty>When you've seen them, you're done.</Empty>
 </Layout>

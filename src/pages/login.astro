@@ -1,5 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 if (Astro.locals.user) {
   return Astro.redirect('/');
@@ -15,20 +18,20 @@ const next = Astro.url.searchParams.get('next') ?? '';
   <p>Enter your email and we'll send you a sign-in link. No password.</p>
 
   {sent && (
-    <div class="notice">
+    <Alert>
       Check your email for the sign-in link.
       {import.meta.env.DEV && (
         <>
           {' '}In local dev, mail lands at <a href="http://localhost:55324">localhost:55324</a>.
         </>
       )}
-    </div>
+    </Alert>
   )}
-  {error && <div class="notice error">{error}</div>}
+  {error && <Alert variant="error">{error}</Alert>}
 
-  <form class="stack" method="post" action="/api/auth/login">
+  <form class="mt-4 mb-6 grid gap-2.5" method="post" action="/api/auth/login">
     <input type="hidden" name="next" value={next} />
-    <input type="email" name="email" placeholder="you@example.com" required autofocus />
-    <button type="submit">Send sign-in link</button>
+    <Input type="email" name="email" placeholder="you@example.com" required autoFocus />
+    <Button type="submit">Send sign-in link</Button>
   </form>
 </Layout>

@@ -2,16 +2,21 @@
  * Radar — handmade, maximalist, modern.
  * Cream paper, chunky friendly display type (Fraunces soft), candy accents,
  * ink borders with hard offset shadows, organic blob details.
+ *
+ * Styling is Tailwind utilities in the markup plus shadcn/ui components in
+ * src/components/ui. This file only holds the theme: the palette as shadcn
+ * tokens, and base styles for bare prose elements.
  */
 
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
 :root {
-  --bg: #faf4e8;
-  --text: #2b2118;
+  --radius: 14px;
+
   --ink: #2b2118;
-  --muted: #7a6f60;
-  --card: #fffdf7;
-  --border: #2b2118;
   --hairline: #e7dcc8;
+  --link: #d05f1e;
 
   --candy-lime: #b5cf49;
   --candy-orange: #f28a2e;
@@ -20,23 +25,34 @@
   --candy-plum: #b89ae0;
   --candy-butter: #f7d154;
 
-  --accent: #d05f1e;
-  --danger: #c23a22;
-  --shadow: 3px 3px 0 var(--ink);
-  --radius: 14px;
+  /* shadcn tokens, mapped onto the palette above */
+  --background: #faf4e8;
+  --foreground: #2b2118;
+  --card: #fffdf7;
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: var(--candy-orange);
+  --primary-foreground: var(--ink);
+  --secondary: var(--candy-butter);
+  --secondary-foreground: var(--ink);
+  --muted: var(--hairline);
+  --muted-foreground: #7a6f60;
+  --accent: var(--candy-sky);
+  --accent-foreground: var(--ink);
+  --destructive: #c23a22;
+  --border: var(--ink);
+  --input: var(--ink);
+  --ring: var(--candy-sky);
 
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #221c15;
-    --text: #f1e8d8;
     --ink: #0f0c08;
-    --muted: #a3988a;
-    --card: #2e261d;
-    --border: #0f0c08;
     --hairline: #42382c;
+    --link: #f0a35e;
 
     --candy-lime: #93a93d;
     --candy-orange: #d97c2b;
@@ -45,498 +61,119 @@
     --candy-plum: #9479bb;
     --candy-butter: #cfae45;
 
-    --accent: #f0a35e;
-    --danger: #e07a62;
-    --shadow: 3px 3px 0 var(--ink);
+    --background: #221c15;
+    --foreground: #f1e8d8;
+    --card: #2e261d;
+    --muted-foreground: #a3988a;
+    --destructive: #e07a62;
   }
 }
 
-* {
-  box-sizing: border-box;
+@theme inline {
+  --font-sans: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink: var(--ink);
+  --color-hairline: var(--hairline);
+  --color-link: var(--link);
+  --color-candy-lime: var(--candy-lime);
+  --color-candy-orange: var(--candy-orange);
+  --color-candy-pink: var(--candy-pink);
+  --color-candy-sky: var(--candy-sky);
+  --color-candy-plum: var(--candy-plum);
+  --color-candy-butter: var(--candy-butter);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: var(--radius);
+
+  /* the hard offset "sticker" shadows */
+  --shadow-hard-xs: 1px 1px 0 var(--ink);
+  --shadow-hard-sm: 2px 2px 0 var(--ink);
+  --shadow-hard: 3px 3px 0 var(--ink);
+  --shadow-hard-lg: 4px 4px 0 var(--ink);
 }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-main {
-  max-width: 660px;
-  margin: 0 auto;
-  padding: 1rem 16px 4rem;
-  position: relative;
-}
-
-h1,
-h2,
-h3,
-.brand {
-  font-family: 'Fraunces', Georgia, serif;
+/* Fraunces' soft, wonky cut — used with font-display on headings and the brand. */
+@utility font-wonk {
   font-variation-settings: 'SOFT' 100, 'WONK' 1;
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
 }
 
-h1 {
-  font-size: 2.1rem;
-  margin: 1.2rem 0 0.6rem;
-}
-
-h2 {
-  font-size: 1.3rem;
-  margin: 2.2rem 0 0.5rem;
-}
-
-a {
-  color: var(--accent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 2px;
-}
-
-/* --- header ---------------------------------------------------------- */
-
-header.site {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  padding: 0.9rem 0;
-  border-bottom: 3px solid var(--text);
-  margin-bottom: 1.5rem;
-}
-
-header.site .brand {
-  font-size: 1.45rem;
-  text-decoration: none;
-  color: var(--text);
-  display: inline-flex;
-  align-items: baseline;
-}
-
-/* a radar blip pings off the end of the wordmark */
-.brand .blip {
-  width: 0.34em;
-  height: 0.34em;
-  margin-left: 0.22em;
-  border-radius: 50%;
-  background: var(--candy-orange);
-  border: 2px solid var(--text);
-  box-shadow:
-    0 0 0 3px var(--bg),
-    0 0 0 5px var(--text);
-  align-self: center;
-  transform: translateY(-0.3em);
-}
-
-header.site nav {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  font-size: 0.92rem;
-  font-weight: 600;
-}
-
-header.site nav a {
-  color: var(--text);
-  text-decoration: none;
-  border-bottom: 2.5px solid transparent;
-}
-
-header.site nav a:hover {
-  border-bottom-color: var(--candy-orange);
-}
-
-/* --- forms ------------------------------------------------------------ */
-
-form.stack {
-  display: grid;
-  gap: 0.65rem;
-  margin: 1rem 0 1.6rem;
-}
-
-/* The capture box: the save form is the page's one action, so it sits in
-   its own tinted card instead of floating on the page background. */
-form.capture {
-  background: color-mix(in srgb, var(--candy-butter) 22%, var(--card));
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 1rem;
-  margin: 1.4rem 0 2.6rem;
-}
-
-form.capture h2 {
-  margin: 0 0 0.1rem;
-  font-size: 1.15rem;
-}
-
-input[type='url'],
-input[type='email'],
-input[type='text'],
-input[type='search'],
-select,
-textarea {
-  width: 100%;
-  padding: 0.65rem 0.8rem;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  background: var(--card);
-  color: var(--text);
-  font: inherit;
-  box-shadow: inset 2px 2px 0 rgb(0 0 0 / 0.05);
-}
-
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-button:focus-visible {
-  outline: 3px solid var(--candy-sky);
-  outline-offset: 1px;
-}
-
-textarea {
-  min-height: 4.5rem;
-  resize: vertical;
-}
-
-label {
-  font-weight: 600;
-  font-size: 0.92rem;
-  display: grid;
-  gap: 0.25rem;
-}
-
-button {
-  padding: 0.55rem 1.2rem;
-  border: 2px solid var(--border);
-  border-radius: 999px;
-  background: var(--candy-orange);
-  color: var(--ink);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  justify-self: start;
-  box-shadow: var(--shadow);
-  transition: transform 80ms ease, box-shadow 80ms ease;
-}
-
-button:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--ink);
-}
-
-button:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--ink);
-}
-
-button.quiet {
-  background: var(--card);
-  color: var(--text);
-  font-weight: 600;
-}
-
-button.danger {
-  background: var(--card);
-  color: var(--danger);
-}
-
-/* --- the archive list -------------------------------------------------- */
-
-ul.saves {
-  list-style: none;
-  margin: 1rem 0;
-  padding: 0;
-  display: grid;
-  gap: 0.9rem;
-}
-
-ul.saves li {
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.9rem 1rem;
-  box-shadow: var(--shadow);
-  position: relative;
-}
-
-/* Corner dot: media kind. Articles (the default) stay quiet; the four
-   exceptional kinds get palette colors, and the kind is also written in the
-   card's meta line so color is never the only signal. */
-ul.saves li::before {
-  content: '';
-  position: absolute;
-  top: -7px;
-  right: 14px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50% 50% 50% 4px;
-  border: 2px solid var(--border);
-  background: var(--card);
-  transform: rotate(8deg);
-}
-
-ul.saves li[data-kind='video']::before {
-  background: var(--candy-sky);
-}
-
-ul.saves li[data-kind='audio']::before {
-  background: var(--candy-plum);
-  border-radius: 50% 4px 50% 50%;
-}
-
-ul.saves li[data-kind='product']::before {
-  background: var(--candy-lime);
-  border-radius: 4px 50% 50% 50%;
-  transform: rotate(-6deg);
-}
-
-ul.saves li[data-kind='other']::before {
-  background: var(--candy-pink);
-  transform: rotate(14deg);
-}
-
-ul.saves .title {
-  font-weight: 700;
-  font-size: 1.05rem;
-  text-decoration: none;
-  color: var(--text);
-  overflow-wrap: anywhere;
-}
-
-ul.saves .title:hover {
-  text-decoration: underline;
-  text-decoration-color: var(--candy-orange);
-  text-decoration-thickness: 3px;
-}
-
-ul.saves .meta {
-  font-size: 0.82rem;
-  color: var(--muted);
-  margin-top: 0.15rem;
-}
-
-ul.saves .why {
-  margin: 0.45rem 0 0;
-  font-family: 'Fraunces', Georgia, serif;
-  font-style: italic;
-  font-size: 1.02rem;
-}
-
-ul.saves .note {
-  margin: 0.4rem 0 0;
-  font-size: 0.9rem;
-  color: var(--muted);
-  white-space: pre-wrap;
-}
-
-mark {
-  background: var(--candy-butter);
-  border-radius: 3px;
-  padding: 0 2px;
-}
-
-/* --- archive list header + topic chips ---------------------------------- */
-
-.list-head {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  margin: 2rem 0 0.4rem;
-}
-
-.list-head h2 {
-  margin: 0;
-}
-
-.list-head .count {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--ink);
-  background: var(--candy-butter);
-  border: 2px solid var(--border);
-  border-radius: 999px;
-  padding: 0 0.55rem;
-  transform: rotate(-2deg);
-}
-
-.list-head .head-link {
-  margin-left: auto;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin: 0.6rem 0 0.4rem;
-}
-
-.chip {
-  display: inline-block;
-  font-size: 0.82rem;
-  line-height: 1;
-  color: var(--text);
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: 999px;
-  padding: 0.35rem 0.7rem;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.chip:hover {
-  background: var(--candy-sky);
-  color: var(--ink);
-}
-
-.chip[aria-current] {
-  background: var(--candy-orange);
-  color: var(--ink);
-  font-weight: 700;
-  box-shadow: 2px 2px 0 var(--ink);
-}
-
-.chips-more {
-  display: contents;
-}
-
-.chips-more summary {
-  list-style: none;
-  color: var(--muted);
-}
-
-.chips-more summary::-webkit-details-marker {
-  display: none;
-}
-
-.chips-more[open] summary {
-  display: none;
-}
-
-.chips-more .chips {
-  display: contents;
-}
-
-/* --- labels (edition "why it's here") ----------------------------------- */
-
-.label-chip {
-  display: inline-block;
-  font-family: 'Work Sans', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink);
-  padding: 0.12rem 0.6rem;
-  border: 2px solid var(--border);
-  border-radius: 999px;
-  margin-bottom: 0.3rem;
-}
-
-.label-chip.hot {
-  background: var(--candy-orange);
-}
-
-.label-chip.first_time {
-  background: var(--candy-lime);
-}
-
-.label-chip.small_source {
-  background: var(--candy-pink);
-}
-
-.label-chip.rising {
-  background: var(--candy-sky);
-}
-
-/* --- notices ------------------------------------------------------------ */
-
-.notice {
-  background: var(--candy-lime);
-  color: var(--ink);
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 0.7rem 0.95rem;
-  margin: 1rem 0;
-  font-weight: 600;
-}
-
-.notice.error {
-  background: var(--candy-pink);
-}
-
-.notice a {
-  color: inherit;
-}
-
-code.token {
-  display: block;
-  padding: 0.65rem;
-  background: var(--bg);
-  border: 2px dashed var(--border);
-  border-radius: 10px;
-  overflow-wrap: anywhere;
-  user-select: all;
-  font-size: 0.88rem;
-}
-
-.empty {
-  color: var(--muted);
-  text-align: center;
-  padding: 2.5rem 1rem;
-  font-family: 'Fraunces', Georgia, serif;
-  font-style: italic;
-  font-size: 1.05rem;
-}
-
-details summary {
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-footer.site {
-  margin-top: 3.5rem;
-  padding-top: 1rem;
-  border-top: 3px solid var(--text);
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-/* decorative blobs behind the page (fixed, behind everything) */
-.blob {
-  position: fixed;
-  z-index: -1;
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.blob.one {
-  top: -60px;
-  right: -80px;
-  width: 260px;
-  color: var(--candy-pink);
-}
-
-.blob.two {
-  bottom: -90px;
-  left: -100px;
-  width: 320px;
-  color: var(--candy-sky);
-}
-
-@media (max-width: 720px) {
-  .blob {
-    opacity: 0.3;
+@layer base {
+  * {
+    @apply border-border outline-ring;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans text-base leading-[1.6];
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-wonk leading-[1.15] font-extrabold tracking-[-0.01em];
+  }
+
+  h1 {
+    @apply text-[2.1rem];
+  }
+
+  h2 {
+    @apply text-[1.3rem];
+  }
+
+  a {
+    @apply text-link underline decoration-2 underline-offset-2;
+  }
+
+  mark {
+    @apply bg-candy-butter rounded-[3px] px-0.5 text-ink;
+  }
+
+  /* Bare prose inside the page column (privacy, ranking, intros). Scoped to
+     main so dialogs and menus, which portal to body, are unaffected. Any
+     utility class on the element overrides these. */
+  main h1 {
+    @apply mt-5 mb-2.5;
+  }
+
+  main h2 {
+    @apply mt-9 mb-2;
+  }
+
+  main p {
+    @apply my-4;
+  }
+
+  main ul,
+  main ol {
+    @apply my-4 pl-10;
+  }
+
+  main ul {
+    @apply list-disc;
+  }
+
+  main ol {
+    @apply list-decimal;
   }
 }

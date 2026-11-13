@@ -1,5 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
 import { generateApiToken } from '../lib/apiTokens';
 import { groupsEnabled } from '../lib/flags';
 import { createServiceClient } from '../lib/supabase';
@@ -58,22 +63,22 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 <Layout title="Settings — Radar" user={user}>
   <h1>Settings</h1>
 
-  {message && <div class="notice">{message}</div>}
+  {message && <Alert>{message}</Alert>}
 
   {
     groupsEnabled() && (
       <>
         <h2>Display name</h2>
         <p>Shown only inside private groups that choose to show recommender names.</p>
-        <form class="stack" method="post">
+        <form class="mt-4 mb-6 grid gap-2.5" method="post">
           <input type="hidden" name="_action" value="display_name" />
-          <input
+          <Input
             type="text"
             name="display_name"
-            value={profile?.display_name ?? ''}
+            defaultValue={profile?.display_name ?? ''}
             placeholder="Your name"
           />
-          <button type="submit">Save</button>
+          <Button type="submit">Save</Button>
         </form>
       </>
     )
@@ -86,39 +91,38 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   {
     newToken && (
-      <div class="notice">
+      <Alert>
         <strong>Copy this token now — it won't be shown again.</strong>
-        <code class="token">{newToken}</code>
-      </div>
+        <code class="block rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all">{newToken}</code>
+      </Alert>
     )
   }
 
-  <form class="stack" method="post">
+  <form class="mt-4 mb-6 grid gap-2.5" method="post">
     <input type="hidden" name="_action" value="create_token" />
-    <input type="text" name="label" placeholder="Label (e.g. iPhone Shortcut)" />
-    <button type="submit">Create token</button>
+    <Input type="text" name="label" placeholder="Label (e.g. iPhone Shortcut)" />
+    <Button type="submit">Create token</Button>
   </form>
 
   {
     (tokens ?? []).length > 0 && (
-      <ul class="saves">
+      <CardList>
         {(tokens ?? []).map((t) => (
-          <li>
-            <strong>{t.label || 'Token'}</strong>
-            <div class="meta">
+          <ItemCard title={t.label || 'Token'}>
+            <Fragment slot="meta">
               Created {dateFmt.format(new Date(t.created_at))}
               {t.last_used_at ? ` · last used ${dateFmt.format(new Date(t.last_used_at))}` : ' · never used'}
-            </div>
-            <form method="post" style="margin-top:0.5rem">
+            </Fragment>
+            <form class="mt-2" method="post">
               <input type="hidden" name="_action" value="revoke_token" />
               <input type="hidden" name="id" value={t.id} />
-              <button class="danger" type="submit">
+              <Button variant="destructive" type="submit">
                 Revoke
-              </button>
+              </Button>
             </form>
-          </li>
+          </ItemCard>
         ))}
-      </ul>
+      </CardList>
     )
   }
 

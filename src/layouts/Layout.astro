@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { Button } from '@/components/ui/button';
 import { groupsEnabled } from '../lib/flags';
 
 interface Props {
@@ -26,22 +27,40 @@ const groups = groupsEnabled();
     <title>{title}</title>
   </head>
   <body>
-    <svg class="blob one" viewBox="0 0 200 200" aria-hidden="true">
+    <svg
+      class="pointer-events-none fixed -top-[60px] -right-20 -z-10 w-[260px] text-candy-pink opacity-30 min-[721px]:opacity-55"
+      viewBox="0 0 200 200"
+      aria-hidden="true"
+    >
       <path
         fill="currentColor"
         d="M48 15c25-14 62-18 84-2s24 48 17 76-23 54-49 62-61-4-77-27S5 66 17 44 32 24 48 15Z"></path>
     </svg>
-    <svg class="blob two" viewBox="0 0 200 200" aria-hidden="true">
+    <svg
+      class="pointer-events-none fixed -bottom-[90px] -left-[100px] -z-10 w-80 text-candy-sky opacity-30 min-[721px]:opacity-55"
+      viewBox="0 0 200 200"
+      aria-hidden="true"
+    >
       <path
         fill="currentColor"
         d="M103 8c28 2 57 16 68 40s2 55-13 77-38 36-64 34S41 139 26 115 7 62 22 40 75 6 103 8Z"></path>
     </svg>
-    <main>
-      <header class="site">
-        <a class="brand" href="/" aria-label="Radar"
-          >radar<span class="blip" aria-hidden="true"></span></a
+    <main class="relative mx-auto max-w-[660px] px-4 pt-4 pb-16">
+      <header
+        class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-[3px] border-foreground py-3.5"
+      >
+        <a
+          class="font-display font-wonk inline-flex items-baseline text-[1.45rem] leading-[1.15] font-extrabold tracking-[-0.01em] text-foreground no-underline"
+          href="/"
+          aria-label="Radar"
+          >radar<span
+            class="ml-[0.22em] size-[0.34em] -translate-y-[0.3em] self-center rounded-full border-2 border-foreground bg-candy-orange shadow-[0_0_0_3px_var(--background),0_0_0_5px_var(--foreground)]"
+            aria-hidden="true"></span></a
         >
-        <nav>
+        <nav
+          aria-label="Main"
+          class="flex items-center gap-3.5 text-[0.92rem] font-semibold [&_a]:border-b-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-candy-orange"
+        >
           {
             user ? (
               <>
@@ -49,10 +68,10 @@ const groups = groupsEnabled();
                 {groups && <a href="/groups">Groups</a>}
                 {groups && <a href="/explore">Explore</a>}
                 <a href="/settings">Settings</a>
-                <form method="post" action="/api/auth/logout" style="display:inline">
-                  <button class="quiet" type="submit" style="padding:0.3rem 0.8rem; font-size:0.85rem">
+                <form class="inline" method="post" action="/api/auth/logout">
+                  <Button variant="outline" size="sm" type="submit">
                     Sign out
-                  </button>
+                  </Button>
                 </form>
               </>
             ) : (
@@ -65,7 +84,7 @@ const groups = groupsEnabled();
         </nav>
       </header>
       <slot />
-      <footer class="site">
+      <footer class="mt-14 border-t-[3px] border-foreground pt-4 text-sm text-muted-foreground">
         <a href="/privacy">Privacy</a>
         {groups && <> · <a href="/ranking">How ranking works</a> · <a href="/dashboard">Dashboard</a></>}
         {' '}· Your archive is yours: export it any time.

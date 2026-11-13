@@ -1,5 +1,13 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
+import { NativeSelect } from '@/components/ui/native-select';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
+import Why from '@/components/Why.astro';
 import { groupsEnabled } from '../../../lib/flags';
 import { createServiceClient } from '../../../lib/supabase';
 
@@ -151,58 +159,53 @@ const memberRows = (members ?? []) as unknown as MemberRow[];
 
 <Layout title={`${group.name} — Radar`} user={user}>
   <h1>{group.name}</h1>
-  <p class="meta" style="color:var(--muted)">
+  <p class="text-[0.82rem] text-muted-foreground">
     {group.cadence} editions of {group.edition_size} · {memberRows.length} member{memberRows.length === 1 ? '' : 's'}
   </p>
 
-  {message && <div class="notice">{message}</div>}
+  {message && <Alert>{message}</Alert>}
 
   <h2>Editions</h2>
   {
     (editions ?? []).length === 0 ? (
-      <p class="empty">No editions yet. The first one publishes on the group's cadence.</p>
+      <Empty>No editions yet. The first one publishes on the group's cadence.</Empty>
     ) : (
-      <ul class="saves">
+      <CardList>
         {(editions ?? []).map((e) => (
-          <li>
-            <a class="title" href={`/groups/${group.id}/editions/${e.id}`}>
-              {dateFmt.format(new Date(e.period_start))} – {dateFmt.format(new Date(e.period_end))}
-            </a>
-          </li>
+          <ItemCard href={`/groups/${group.id}/editions/${e.id}`} title={`${dateFmt.format(new Date(e.period_start))} – ${dateFmt.format(new Date(e.period_end))}`}>
+          </ItemCard>
         ))}
-      </ul>
+      </CardList>
     )
   }
 
   <h2>Shared this period</h2>
   {
     recRows.length === 0 ? (
-      <p class="empty">Nothing shared yet. Share a save from your <a href="/">archive</a>.</p>
+      <Empty>Nothing shared yet. Share a save from your <a href="/">archive</a>.</Empty>
     ) : (
-      <ul class="saves">
+      <CardList>
         {recRows.map((r) => (
-          <li>
-            <a class="title" href={r.links?.canonical_url}>
-              {r.links?.title ?? r.links?.canonical_url}
-            </a>
-            <div class="meta">
+          <ItemCard href={r.links?.canonical_url} title={r.links?.title ?? r.links?.canonical_url}>
+            <Fragment slot="meta">
               {r.links?.source ?? ''}
               {group.names_visible && r.profiles?.display_name ? ` · ${r.profiles.display_name}` : ''}
               {' · '}
               {dateFmt.format(new Date(r.created_at))}
-            </div>
-            {r.note && <p class="why">{r.note}</p>}
-          </li>
+            </Fragment>
+            {r.note && <Why>{r.note}</Why>}
+          </ItemCard>
         ))}
-      </ul>
+      </CardList>
     )
   }
 
   <h2>Members</h2>
-  <ul class="saves">
+  <CardList>
     {
       memberRows.map((m) => (
-        <li style="display:flex; justify-content:space-between; align-items:center">
+        <ItemCard>
+          <div class="flex items-center justify-between gap-2">
           <span>
             {m.profiles?.display_name || 'Unnamed reader'}
             {m.role === 'owner' ? ' (owner)' : ''}
@@ -211,23 +214,24 @@ const memberRows = (members ?? []) as unknown as MemberRow[];
             <form method="post">
               <input type="hidden" name="_action" value="remove_member" />
               <input type="hidden" name="user_id" value={m.user_id} />
-              <button class="danger" type="submit">
+              <Button variant="destructive" type="submit">
                 Remove
-              </button>
+              </Button>
             </form>
           )}
-        </li>
+          </div>
+        </ItemCard>
       ))
     }
-  </ul>
+  </CardList>
 
   {
     !isOwner && (
-      <form method="post" style="margin-top:0.5rem">
+      <form class="mt-2" method="post">
         <input type="hidden" name="_action" value="leave" />
-        <button class="danger" type="submit">
+        <Button variant="destructive" type="submit">
           Leave group
-        </button>
+        </Button>
       </form>
     )
   }
@@ -238,66 +242,66 @@ const memberRows = (members ?? []) as unknown as MemberRow[];
         <h2>Invite link</h2>
         {invite ? (
           <>
-            <code class="token">{`${Astro.url.origin}/join/${invite.token}`}</code>
-            <p class="meta" style="color:var(--muted)">
+            <code class="block rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all">{`${Astro.url.origin}/join/${invite.token}`}</code>
+            <p class="text-[0.82rem] text-muted-foreground">
               {invite.uses_this_week} of {invite.weekly_cap} uses this week
               {invite.paused_at ? ' · paused (cap reached)' : ''}
             </p>
-            <form class="stack" method="post">
+            <form class="mt-4 mb-6 grid gap-2.5" method="post">
               <input type="hidden" name="_action" value="invite_cap" />
-              <label>
+              <label class="grid gap-1 text-[0.92rem] font-semibold">
                 Weekly cap
-                <input type="text" name="weekly_cap" value={String(invite.weekly_cap)} inputmode="numeric" />
+                <Input type="text" name="weekly_cap" defaultValue={String(invite.weekly_cap)} inputMode="numeric" />
               </label>
-              <button class="quiet" type="submit">Update cap</button>
+              <Button variant="outline" type="submit">Update cap</Button>
             </form>
           </>
         ) : (
           <p>No active invite link.</p>
         )}
-        <form method="post" style="margin-top:0.5rem">
+        <form class="mt-2" method="post">
           <input type="hidden" name="_action" value="rotate_invite" />
           <input type="hidden" name="weekly_cap" value={String(invite?.weekly_cap ?? 50)} />
-          <button class="quiet" type="submit">
+          <Button variant="outline" type="submit">
             {invite ? 'Rotate link (kills the old one immediately)' : 'Create invite link'}
-          </button>
+          </Button>
         </form>
 
         <h2>Settings</h2>
-        <form class="stack" method="post">
+        <form class="mt-4 mb-6 grid gap-2.5" method="post">
           <input type="hidden" name="_action" value="settings" />
-          <label>
+          <label class="grid gap-1 text-[0.92rem] font-semibold">
             Name
-            <input type="text" name="name" value={group.name} maxlength="100" />
+            <Input type="text" name="name" defaultValue={group.name} maxLength={100} />
           </label>
-          <label>
+          <label class="grid gap-1 text-[0.92rem] font-semibold">
             Cadence
-            <select name="cadence">
+            <NativeSelect name="cadence">
               <option value="daily" selected={group.cadence === 'daily'}>Daily</option>
               <option value="weekly" selected={group.cadence === 'weekly'}>Weekly</option>
               <option value="biweekly" selected={group.cadence === 'biweekly'}>Biweekly</option>
-            </select>
+            </NativeSelect>
           </label>
-          <label>
+          <label class="grid gap-1 text-[0.92rem] font-semibold">
             Links per edition (K)
-            <input type="text" name="edition_size" value={String(group.edition_size)} inputmode="numeric" />
+            <Input type="text" name="edition_size" defaultValue={String(group.edition_size)} inputMode="numeric" />
           </label>
-          <label>
+          <label class="grid gap-1 text-[0.92rem] font-semibold">
             Max links per source per edition
-            <select name="per_source_cap">
+            <NativeSelect name="per_source_cap">
               <option value="1" selected={group.per_source_cap === 1}>1</option>
               <option value="2" selected={group.per_source_cap === 2}>2</option>
-            </select>
+            </NativeSelect>
           </label>
-          <label style="font-size:0.95rem">
-            <input type="checkbox" name="names_visible" checked={group.names_visible} /> Show recommender names to
+          <label class="flex items-center gap-2 text-sm font-semibold">
+            <input class="size-4 accent-primary" type="checkbox" name="names_visible" checked={group.names_visible} /> Show recommender names to
             members
           </label>
-          <label style="font-size:0.95rem">
-            <input type="checkbox" name="contribute_public" checked={group.contribute_public} /> Contribute
+          <label class="flex items-center gap-2 text-sm font-semibold">
+            <input class="size-4 accent-primary" type="checkbox" name="contribute_public" checked={group.contribute_public} /> Contribute
             anonymous counts to the public layer
           </label>
-          <button type="submit">Save settings</button>
+          <Button type="submit">Save settings</Button>
         </form>
       </>
     )
