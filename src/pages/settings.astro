@@ -17,6 +17,8 @@ if (!user) {
 
 let newToken: string | null = null;
 let message: string | null = null;
+// Set by /api/account/delete when it bounces back here.
+const deleteError = Astro.url.searchParams.get('error');
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
@@ -133,4 +135,33 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
   <h2>Export</h2>
   <p>Your whole archive, any time: <a href="/api/export?format=markdown">Markdown</a> · <a href="/api/export?format=json">JSON</a></p>
   <p>Or <a href="/export">pick specific saves</a> by date and export just those.</p>
+
+  <h2 id="delete-account">Delete your account</h2>
+  <p>
+    Permanently deletes your account, every save and note, your lenses and your API
+    tokens{groupsEnabled() ? ', and your group memberships. Groups you own are deleted for everyone' : ''}.
+    Archived pages that nobody else saved are deleted too. This can't be undone, so <a href="/api/export?format=markdown">export your archive</a> first if you want to keep it.
+  </p>
+  {deleteError && <Alert variant="error">{deleteError}</Alert>}
+  <form
+    class="mt-4 mb-6 grid gap-2.5 rounded-lg border-2 border-destructive p-4"
+    method="post"
+    action="/api/account/delete"
+  >
+    <label class="grid gap-1.5 text-sm font-semibold" for="confirm-delete">
+      Type “delete” to confirm
+      <Input
+        id="confirm-delete"
+        type="text"
+        name="confirm"
+        autoComplete="off"
+        required
+        pattern="[Dd][Ee][Ll][Ee][Tt][Ee]"
+        title="Type delete to confirm"
+      />
+    </label>
+    <Button variant="destructive" type="submit">
+      Delete my account
+    </Button>
+  </form>
 </Layout>

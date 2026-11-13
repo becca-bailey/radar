@@ -61,7 +61,9 @@ const groups = groupsEnabled();
       <strong>OpenAI</strong> (embeddings and, occasionally, a single categorization
       call): the <em>title and lead text of the public web page</em> you saved — never
       your notes, never your name, never which user saved it. OpenAI's API terms exclude
-      training on this data.
+      training on this data. When you search your archive or save a lens, the words you
+      searched for go to OpenAI as well, so results can match by meaning. They aren't sent
+      with your name or account.
     </li>
     <li>
       <strong>Internet Archive (Wayback Machine)</strong>: only when you tick "also save
@@ -86,6 +88,8 @@ const groups = groupsEnabled();
   <p>
     Your whole archive exports to markdown or JSON — full archived text included — any
     time, from <a href="/settings">Settings</a>. Deleting your account deletes your
-    saves, tokens{groups ? ', and memberships. Past group editions are immutable and keep the links they published, without your name' : ' — everything tied to you'}.
+    saves, lenses, tokens{groups ? ', and memberships. Past group editions are immutable and keep the links they published, without your name' : ' — everything tied to you'}.
+    You can delete your account at the bottom of <a href="/settings#delete-account">Settings</a>,
+    and archived pages that nobody else saved are deleted along with it.
   </p>
 </Layout>

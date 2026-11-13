@@ -9,6 +9,7 @@ if (Astro.locals.user) {
 }
 
 const sent = Astro.url.searchParams.get('sent') === '1';
+const accountDeleted = Astro.url.searchParams.get('account_deleted') === '1';
 const error = Astro.url.searchParams.get('error');
 const next = Astro.url.searchParams.get('next') ?? '';
 ---
@@ -27,6 +28,7 @@ const next = Astro.url.searchParams.get('next') ?? '';
       )}
     </Alert>
   )}
+  {accountDeleted && <Alert>Your account and archive were deleted.</Alert>}
   {error && <Alert variant="error">{error}</Alert>}
 
   <form class="mt-4 mb-6 grid gap-2.5" method="post" action="/api/auth/login">

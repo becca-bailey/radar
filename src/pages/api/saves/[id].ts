@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { requeueIngest } from '../../../lib/saves';
+import { safeLocalPath } from '../../../lib/redirects';
 import { createServiceClient } from '../../../lib/supabase';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -23,8 +24,7 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   const topic = String(form.get('topic') ?? '');
   // Where to land afterwards: the page the menu was used on. Only a
   // same-site relative path is accepted ("//host" would leave the site).
-  const rawReturn = String(form.get('return_path') ?? '');
-  const returnPath = rawReturn.startsWith('/') && !rawReturn.startsWith('//') ? rawReturn : '/';
+  const returnPath = safeLocalPath(String(form.get('return_path') ?? ''));
   const back = (query: string) =>
     redirect(
       returnPath +

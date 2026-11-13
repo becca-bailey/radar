@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { safeLocalPath } from '../../lib/redirects';
 
 /** Flagging: the one interaction a non-owner can take on a link (PLAN.md §9). */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
@@ -10,8 +11,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const form = await request.formData();
   const linkId = String(form.get('link_id') ?? '');
   const reason = String(form.get('reason') ?? '').slice(0, 500);
-  const back = String(form.get('back') ?? '/');
-  const dest = back.startsWith('/') && !back.startsWith('//') ? back : '/';
+  const dest = safeLocalPath(String(form.get('back') ?? '/'));
 
   if (!linkId) return redirect(dest);
 

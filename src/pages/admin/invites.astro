@@ -1,0 +1,108 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
+import { isAdmin } from '../../lib/admin';
+import { normalizeEmail } from '../../lib/invites';
+import { createServiceClient } from '../../lib/supabase';
+
+// Beta invite list. Admin = emails in ADMIN_EMAILS (who are always invited).
+const { user } = Astro.locals;
+if (!isAdmin(user)) {
+  return new Response('Not found', { status: 404 });
+}
+
+const service = createServiceClient();
+let message: string | null = null;
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+
+  if (action === 'add') {
+    // One per line or comma-separated, so a batch of testers goes in at once.
+    const raw = String(form.get('emails') ?? '');
+    const note = String(form.get('note') ?? '').trim().slice(0, 200);
+    const parts = raw.split(/[\s,;]+/).filter(Boolean);
+    const emails = [...new Set(parts.map(normalizeEmail).filter((e): e is string => !!e))];
+    const rejected = parts.filter((p) => !normalizeEmail(p));
+    if (emails.length > 0) {
+      const { error: upsertError } = await service
+        .from('beta_invites')
+        .upsert(emails.map((email) => ({ email, note })), { onConflict: 'email', ignoreDuplicates: true });
+      if (upsertError) error = `Could not add: ${upsertError.message}`;
+      else message = `Invited ${emails.length} ${emails.length === 1 ? 'address' : 'addresses'}.`;
+    }
+    if (rejected.length > 0) error = `Not valid emails: ${rejected.join(', ')}`;
+  }
+
+  if (action === 'remove') {
+    const email = String(form.get('email') ?? '');
+    const { error: deleteError } = await service.from('beta_invites').delete().eq('email', email);
+    if (deleteError) error = `Could not remove: ${deleteError.message}`;
+    else message = `Removed ${email}. An account they already made still works.`;
+  }
+}
+
+const { data: invites } = await service
+  .from('beta_invites')
+  .select('email, note, created_at')
+  .order('created_at', { ascending: false });
+
+const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+---
+
+<Layout title="Invites — Radar" user={user}>
+  <h1>Beta invites</h1>
+  <p>
+    Only these addresses (plus admins) can create an account. Send people to
+    <code>{Astro.url.origin}/login</code> once they're on the list.
+  </p>
+
+  {message && <Alert>{message}</Alert>}
+  {error && <Alert variant="error">{error}</Alert>}
+
+  <form class="mt-4 mb-6 grid gap-2.5" method="post">
+    <input type="hidden" name="_action" value="add" />
+    <label class="grid gap-1.5 text-sm font-semibold">
+      Emails (one per line, or comma-separated)
+      <textarea
+        name="emails"
+        rows="3"
+        required
+        class="w-full rounded-md border-2 border-input bg-card px-3 py-2.5 font-sans text-base text-foreground"
+      ></textarea>
+    </label>
+    <Input type="text" name="note" placeholder="Note (optional, e.g. knitting group)" maxLength={200} />
+    <Button type="submit">Invite</Button>
+  </form>
+
+  {
+    (invites ?? []).length === 0 ? (
+      <Empty>No invites yet.</Empty>
+    ) : (
+      <CardList>
+        {(invites ?? []).map((i) => (
+          <ItemCard title={i.email}>
+            <Fragment slot="meta">
+              Invited {dateFmt.format(new Date(i.created_at))}
+              {i.note ? ` · ${i.note}` : ''}
+            </Fragment>
+            <form method="post">
+              <input type="hidden" name="_action" value="remove" />
+              <input type="hidden" name="email" value={i.email} />
+              <Button variant="outline" size="sm" type="submit">
+                Remove
+              </Button>
+            </form>
+          </ItemCard>
+        ))}
+      </CardList>
+    )
+  }
+</Layout>
