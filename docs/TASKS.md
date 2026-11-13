@@ -62,8 +62,43 @@ pgvector + Auth + RLS). Embeddings via API with no-training terms.
 - [x] **6.4 (M)** Metrics dashboard (visx): cohort surfacing rate, top-10 concentration, distinct sources per edition.
 - [ ] **6.5 (S)** Apple + Google OAuth (needs developer credentials).
 
+## Stage 7 — Beta launch (small invited group)
+
+Done (2026-11-14/15, not yet deployed):
+
+- [x] **7.1 (M)** Export page: pick saves by date range, sort, copy as a list or download Markdown/CSV/JSON.
+- [x] **7.2 (M)** Personal Explore: lenses (saved searches) stacked with previews and thumbnails; public page moved to `/highlights`.
+- [x] **7.3 (M)** Links readable only when you saved them or they were shared to your group (was: any signed-in user).
+- [x] **7.4 (S)** Invite-only sign-up: `beta_invites` + `ADMIN_EMAILS`, managed at `/admin/invites`.
+- [x] **7.5 (S)** Account deletion in Settings, with cleanup of archived links nobody else saved.
+- [x] **7.6 (S)** Profile menu in the nav; setup page linked from the save box, empty archive and footer.
+
+Before inviting anyone (Becca, outside the code):
+
+- [ ] **7.7 (S)** Custom SMTP for sign-in emails (Resend or similar). Supabase's built-in sender sends 2 emails/hour and only to org members, so testers get nothing without this. Then raise the email rate limit under Authentication → Rate Limits.
+- [ ] **7.8 (S)** Push migrations to prod: `npx supabase db push --remote` (lenses + beta hardening).
+- [ ] **7.9 (S)** Netlify env: set `ADMIN_EMAILS` (your email) and `SAFE_BROWSING_API_KEY` (the malware check at ingest is skipped without it).
+- [ ] **7.10 (S)** Supabase dashboard: turn off "Allow new users to sign up". Invites keep working (accounts are created through the admin API); this closes the direct sign-up endpoint.
+- [ ] **7.11 (S)** Check the Supabase plan: free tier caps the database at 500 MB and pauses after a week idle. Full text + snapshots per link will grow fast.
+- [ ] **7.12 (S)** Deploy (`npx netlify deploy --build --prod`), then invite testers at `/admin/invites`.
+
+Verify after deploy:
+
+- [ ] **7.13 (S)** Click through what wasn't checked locally: `/admin/invites` (needs `ADMIN_EMAILS`), Sign out from the profile menu, a lens's "See all" link (needs more than 4 matches), rich-text paste from Copy list into Substack.
+
+Should do during the beta:
+
+- [ ] **7.14 (M)** Export paging: load 50 at a time, keep selection across loads, "select all N matching" exports on the server from the same filters. Move title sort into the database (it's only correct within the first 500 today).
+- [ ] **7.15 (S)** Home archive paging: it shows the newest 200 with no "load more".
+- [ ] **7.16 (S)** Block private and localhost addresses in `fetchPage`, including after redirects (SSRF).
+- [ ] **7.17 (S)** Error monitoring (Sentry or similar), or at least a failed-ingest count on an admin page.
+- [ ] **7.18 (S)** Feedback link in the footer (a mailto is enough).
+
+Before groups ship:
+
+- [ ] **7.19 (S)** Deleting an account that owns a group deletes the group for every member (`groups.owner_id` cascades). Decide on ownership transfer or a block, and fix the privacy page's "editions are immutable" line to match.
+
 ## Deferred
 
 - Phase 4: native share extension (spike Expo plugin vs Swift), archive theme clustering, year-end view, data-story tooling.
 - Phase 0 as validation: interviews + six-week group test, run against the real app.
-- Production accounts + deploy: Supabase project, Netlify site, Resend key, embeddings API key.
