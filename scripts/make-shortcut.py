@@ -20,7 +20,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-SITE = "https://radar-saves.netlify.app"
+SITE = "https://onyourradar.app"
 
 # U+FFFC marks where Shortcuts splices an attachment into a string.
 ATTACH = "￼"
