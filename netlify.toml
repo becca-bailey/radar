@@ -9,3 +9,6 @@
   to = "https://onyourradar.app/:splat"
   status = 301
   force = true
+
+[context.production.environment]
+  GROUPS_ENABLED = "true"

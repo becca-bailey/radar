@@ -45,7 +45,7 @@ const DOWNLOADS = [
  * picked saves as a list (rich text + Markdown) or download them as
  * Markdown, CSV or JSON. Output follows the on-screen order.
  */
-export default function SavePicker({ rows, noun = 'save', filePrefix = 'radar-saves', recordExport, pickUrl }: Props) {
+export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-radar', recordExport, pickUrl }: Props) {
   const [selected, setSelected] = React.useState<Set<string>>(() => new Set());
   const [status, setStatus] = React.useState('');
   // Ids of the last export, offered for "Mark as picked".
