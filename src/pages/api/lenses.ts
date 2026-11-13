@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { embedLensQuery, lensHomePath, parseLensForm } from '../../lib/lenses';
 import { groupsEnabled } from '../../lib/flags';
+import { retireSuggestion } from '../../lib/topicSuggestions';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -41,5 +42,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   if (error) {
     return fail('Could not save the lens. Try again.');
   }
+  // Pinned from a suggested topic: stop suggesting it, even if the owner
+  // changed the search before saving.
+  const suggestion = String(form.get('suggestion') ?? '');
+  if (groupId && suggestion) await retireSuggestion(supabase, groupId, suggestion);
   return redirect(`${lensHomePath(groupId, data.id)}&created=1`);
 };

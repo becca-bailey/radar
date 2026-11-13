@@ -143,6 +143,14 @@ An experiment from a UX review: help people come back to read, and give group me
 - [x] **10.9** Settings → iPhone Shortcut: turn off the note question. The Shortcut now reads `GET /api/shortcut-options` (`ask_note`, `choices`); needs re-signing on a Mac (see 8.9).
 - [ ] **10.10** Try it on a phone with real data before merging; decide per item what stays.
 
+## Stage 11 — Suggested group topics and owner view (branch `claude/group-topic-suggestions`, migration `20261118000000_group_topic_suggestions.sql`)
+
+- [x] **11.1 (M)** Suggested topics for a group's owner: cluster the pool's embeddings (average linkage, stopping at the pool's own 75th-percentile similarity), name clusters with one LLM call (titles only, told to avoid the group's theme words), then run each search phrase as a lens. Shown only when it matches 3+ links and at most half the pool, doesn't overlap a lens, and wasn't dismissed or pinned. Cached in `group_topic_suggestions`, recomputed after 3 new shares or a week. Starts at 10 shared links.
+- [x] **11.2 (S)** "Make it a lens" opens the lens form prefilled; saving retires the suggestion. Dismiss (×) remembers its links, so a renamed version doesn't come back.
+- [x] **11.3 (S)** `group_pool`'s semantic floor adapts to the pool: with 10+ embedded links, a match must beat the mean similarity by one standard deviation (never below 0.3). In a focused group a fixed 0.3 matched nearly everything ("therapy for performance anxiety" matched 42 of 45 test links). Changes hand-made group lenses too; broad groups are unaffected. Personal search is unchanged.
+- [x] **11.4 (S)** Owner-only things share one look (dashed plum panel, "Only you see this"): suggestions and an "Owner tools" section (invite link, removed links, rename). "Preview as a member" (`?view=member`) hides every owner control.
+- [ ] **11.5 (S)** Push the migration to prod before merging (`npx supabase db push --remote`), then try suggestions on the real group once it has 10+ shares.
+
 ## Capture beyond iOS
 
 Today: the iOS Shortcut, the desktop bookmarklet and the paste box. Everything goes through `POST /api/saves`, so each of these is mostly packaging around that endpoint.

@@ -69,7 +69,10 @@ const groups = groupsEnabled();
       your notes, never your name, never which user saved it. OpenAI's API terms exclude
       training on this data. When you search your archive or save a lens, the words you
       searched for go to OpenAI as well, so results can match by meaning. They aren't sent
-      with your name or account.
+      with your name or account.{groups && (
+        <> To suggest topics to a group's owner, the titles of links shared to that group
+        go to OpenAI in batches, without notes or who shared them.</>
+      )}
     </li>
     <li>
       <strong>Internet Archive (Wayback Machine)</strong>: only when you tick "also save

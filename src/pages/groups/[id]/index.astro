@@ -9,6 +9,8 @@ import CardList from '@/components/CardList.astro';
 import ItemCard from '@/components/ItemCard.astro';
 import LensMenu from '@/components/LensMenu.tsx';
 import PoolCard from '@/components/PoolCard.astro';
+import OwnerPanel from '@/components/OwnerPanel.tsx';
+import TopicSuggestions from '@/components/TopicSuggestions.tsx';
 import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
@@ -36,6 +38,12 @@ if (!group) {
   return Astro.redirect('/groups');
 }
 const isOwner = group.owner_id === user.id;
+// The owner can preview the page as a member sees it: same data, none of
+// the owner-only panels or controls.
+const preview = isOwner && Astro.url.searchParams.get('view') === 'member';
+const ownerView = isOwner && !preview;
+/** Keep the member preview on while moving around the page. */
+const withView = (path: string) => (preview ? `${path}${path.includes('?') ? '&' : '?'}view=member` : path);
 
 // --- Handle actions ---------------------------------------------------------
 // Each action redirects (post/redirect/get) with a short status flag.
@@ -110,7 +118,7 @@ const NOTICES: Record<string, string> = {
 };
 // Record this visit; the previous one draws "since your last visit". A
 // lens view doesn't count as a visit to the group's front page.
-const previousVisit: string | null = params.get('lens')
+const previousVisit: string | null = params.get('lens') || preview
   ? null
   : (((await supabase.rpc('mark_group_visited', { gid: group.id })).data as string | null) ?? null);
 const { data: myMembership } = await supabase
@@ -142,7 +150,10 @@ const lenses = (lensRows ?? []) as Lens[];
 const single = lenses.find((l) => l.id === params.get('lens')) ?? null;
 const shown = single ? [single] : lenses;
 const newQuery = params.get('new');
-const formOpen = isOwner && newQuery !== null;
+const formOpen = ownerView && newQuery !== null;
+// Prefilled from a suggested topic ("Make it a lens").
+const newName = params.get('name');
+const fromSuggestion = params.get('suggestion');
 
 const LIMIT = 60;
 const PREVIEW = 4;
@@ -211,8 +222,26 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     <h1>{group.name}</h1>
     <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={`${home}/export`}>Export links</a>
   </div>
+  {
+    preview && (
+      <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border-2 bg-candy-plum px-4 py-2.5 shadow-hard-sm">
+        <p class="m-0 text-sm font-semibold">You're previewing what members see.</p>
+        <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={home}>Back to owner view</a>
+      </div>
+    )
+  }
+  {
+    ownerView && !single && (
+      <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem]">
+        <span class="text-muted-foreground">
+          You run this group{memberCount !== null ? ` · ${memberCount} member${memberCount === 1 ? '' : 's'}` : ''}
+        </span>
+        <a class="font-semibold" href={`${home}?view=member`}>Preview as a member</a>
+        <a class="font-semibold" href="#owner-tools">Owner tools ↓</a>
+      </div>
+    )
+  }
   <p class="text-[0.82rem] text-muted-foreground">
-    {isOwner ? `You run this group${memberCount !== null ? ` · ${memberCount} member${memberCount === 1 ? '' : 's'}` : ''} · ` : ''}
     Shares are anonymous unless the sharer picks a name for this group. Emails are never shown.
   </p>
 
@@ -221,7 +250,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   {single && (
     <p class="mt-4 mb-0 text-sm">
-      <a class="text-muted-foreground" href={`${home}#lens-${single.id}`}>← {group.name}</a>
+      <a class="text-muted-foreground" href={`${withView(home)}#lens-${single.id}`}>← {group.name}</a>
     </p>
   )}
 
@@ -229,7 +258,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     !single && (
       <div class="mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 class="m-0">Topics</h2>
-        {isOwner && lenses.length > 0 && !formOpen && (
+        {ownerView && lenses.length > 0 && !formOpen && (
           <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={`${home}?new=`}>
             + New lens
           </a>
@@ -240,11 +269,10 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
   {
     !single && lenses.length === 0 && !formOpen && (
-      isOwner ? (
+      ownerView ? (
         <Empty>
-          Add lenses for the topics this group keeps coming back to. Each one is a saved search
-          over everything shared here, and every member sees them.{' '}
-          <a href={`${home}?new=`}>Add the first lens</a>
+          Lenses are the topics members see: saved searches over everything shared here. Pick
+          one from the suggestions below or <a href={`${home}?new=`}>add your own</a>.
         </Empty>
       ) : (
         <Empty>The owner hasn't set up any topics yet.</Empty>
@@ -258,9 +286,16 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
         class="mt-5 mb-8 grid gap-2.5 rounded-lg border-2 bg-[color-mix(in_srgb,var(--candy-sky)_22%,var(--card))] p-4 shadow-hard"
         method="post"
         action="/api/lenses"
+        id="new-lens"
       >
         <input type="hidden" name="group_id" value={group.id} />
-        <h2 class="m-0 mb-0.5 text-[1.15rem]">New lens</h2>
+        {fromSuggestion && <input type="hidden" name="suggestion" value={fromSuggestion} />}
+        <h2 class="m-0 mb-0.5 text-[1.15rem]">{fromSuggestion && newName ? `Make “${newName}” a lens` : 'New lens'}</h2>
+        {fromSuggestion && (
+          <p class="m-0 text-sm text-muted-foreground">
+            Change the search or the name first if you like. The suggestion goes away once it's a lens.
+          </p>
+        )}
         <div class="grid gap-1.5">
           <Label htmlFor="lens-query">Search for</Label>
           <Input
@@ -276,7 +311,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
         </div>
         <div class="grid gap-1.5">
           <Label htmlFor="lens-name">Name (optional)</Label>
-          <Input id="lens-name" type="text" name="name" placeholder="Defaults to the search" maxLength={60} />
+          <Input id="lens-name" type="text" name="name" defaultValue={newName ?? ''} placeholder="Defaults to the search" maxLength={60} />
         </div>
         <div class="flex flex-wrap items-center gap-3">
           <Button type="submit">Save lens</Button>
@@ -299,7 +334,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
               {single ? (
                 lens.name
               ) : (
-                <a class="text-foreground no-underline hover:underline" href={`${home}?lens=${lens.id}`}>
+                <a class="text-foreground no-underline hover:underline" href={withView(`${home}?lens=${lens.id}`)}>
                   {lens.name}
                 </a>
               )}
@@ -308,7 +343,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
               Searching for “{lens.query}” · {countLabel(total)}
             </p>
           </div>
-          {isOwner && <LensMenu client:visible lensId={lens.id} name={lens.name} query={lens.query} inGroup />}
+          {ownerView && <LensMenu client:visible lensId={lens.id} name={lens.name} query={lens.query} inGroup />}
         </div>
         {sectionError && <Alert variant="error">{sectionError}</Alert>}
         {links.length === 0 && !sectionError ? (
@@ -316,18 +351,20 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
         ) : (
           <CardList>
             {links.map((l) => (
-              <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} snippetLines={single ? 3 : 2} />
+              <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} snippetLines={single ? 3 : 2} />
             ))}
           </CardList>
         )}
         {!single && total > links.length && (
-          <a class="text-sm font-semibold" href={`${home}?lens=${lens.id}`}>
+          <a class="text-sm font-semibold" href={withView(`${home}?lens=${lens.id}`)}>
             See all {countLabel(total)} →
           </a>
         )}
       </section>
     ))
   }
+
+  {!single && ownerView && !formOpen && <TopicSuggestions client:load groupId={group.id} home={home} />}
 
   {
     !single && (
@@ -346,7 +383,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
                 <p class="m-0 mt-3 text-sm font-semibold">New since your last visit</p>
                 <CardList>
                   {recentNew.map((l) => (
-                    <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
+                    <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} />
                   ))}
                 </CardList>
                 {recentEarlier.length > 0 && (
@@ -359,7 +396,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
             {recentEarlier.length > 0 && (
               <CardList>
                 {recentEarlier.map((l) => (
-                  <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
+                  <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} />
                 ))}
               </CardList>
             )}
@@ -390,9 +427,13 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
   }
 
   {
-    !single && isOwner && (
-      <>
-        <h2 class="mt-10">Invite link</h2>
+    !single && ownerView && (
+      <OwnerPanel title="Owner tools" id="owner-tools" className="mt-12">
+        <p class="m-0 mt-2 text-sm text-muted-foreground">
+          Members never see this section, or the Remove buttons and lens menus above.{' '}
+          <a href={`${home}?view=member`}>Preview as a member</a>
+        </p>
+        <h3 class="mt-6 text-[1.1rem]">Invite link</h3>
         {invite ? (
           <>
             <code class="block rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all">{`${Astro.url.origin}/join/${invite.token}`}</code>
@@ -414,7 +455,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 
         {removedLinks.length > 0 && (
           <>
-            <h2 class="mt-10">Removed links</h2>
+            <h3 class="mt-8 text-[1.1rem]">Removed links</h3>
             <p class="text-sm text-muted-foreground">
               Hidden from the group and can't be shared here again. Members keep them in their
               archives. Restoring brings back the shares that were removed.
@@ -434,13 +475,22 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
           </>
         )}
 
-        <h2 class="mt-10">Name</h2>
-        <form class="mt-4 mb-6 flex flex-wrap gap-2.5" method="post">
+        <h3 class="mt-8 text-[1.1rem]">Group name</h3>
+        <form class="mt-3 flex flex-wrap gap-2.5" method="post">
           <input type="hidden" name="_action" value="rename" />
           <Input className="w-auto flex-1" type="text" name="name" defaultValue={group.name} maxLength={100} aria-label="Group name" />
           <Button variant="outline" type="submit">Rename</Button>
         </form>
-      </>
+      </OwnerPanel>
+    )
+  }
+
+  {
+    !single && preview && (
+      <div class="mt-10">
+        <Button variant="destructive" type="button" disabled>Leave group</Button>
+        <p class="mt-2 text-sm text-muted-foreground">Members can leave from here. You run the group, so it's off for you.</p>
+      </div>
     )
   }
 
