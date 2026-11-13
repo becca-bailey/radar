@@ -9,6 +9,7 @@ import ItemCard from '@/components/ItemCard.astro';
 import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
 import { embedTexts, embeddingsConfigured } from '../lib/embeddings';
+import { sanitizeSnippet } from '../lib/snippet';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -54,18 +55,6 @@ if (q) {
   results = (data ?? []) as Result[];
 }
 
-/**
- * Snippets contain raw page text with [[[…]]] highlight markers from
- * ts_headline. Escape everything, then convert only the markers to <mark>.
- */
-function sanitizeSnippet(snippet: string): string {
-  const escaped = snippet
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  return escaped.replace(/\[\[\[/g, '<mark>').replace(/\]\]\]/g, '</mark>');
-}
-
 function displayTitle(r: Result): string {
   if (r.title) return r.title;
   try {
@@ -103,9 +92,14 @@ function displayTitle(r: Result): string {
         <Empty>Nothing found for “{q}”.</Empty>
       ) : (
         <>
-        <h2>
-          {results.length} {results.length === 1 ? 'result' : 'results'} for “{q}”
-        </h2>
+        <div class="flex flex-wrap items-baseline gap-x-3">
+          <h2>
+            {results.length} {results.length === 1 ? 'result' : 'results'} for “{q}”
+          </h2>
+          <a class="ml-auto text-sm text-muted-foreground" href={`/explore?new=${encodeURIComponent(q)}`}>
+            Save as a lens →
+          </a>
+        </div>
         <CardList>
           {results.map((r) => (
             <ItemCard href={r.canonical_url} title={displayTitle(r)}>

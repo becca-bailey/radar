@@ -65,8 +65,8 @@ const groups = groupsEnabled();
             user ? (
               <>
                 <a href="/search">Search</a>
+                <a href="/explore">Explore</a>
                 {groups && <a href="/groups">Groups</a>}
-                {groups && <a href="/explore">Explore</a>}
                 <a href="/settings">Settings</a>
                 <form class="inline" method="post" action="/api/auth/logout">
                   <Button variant="outline" size="sm" type="submit">
@@ -76,7 +76,7 @@ const groups = groupsEnabled();
               </>
             ) : (
               <>
-                {groups && <a href="/explore">Explore</a>}
+                {groups && <a href="/highlights">Highlights</a>}
                 <a href="/login">Sign in</a>
               </>
             )
@@ -86,7 +86,7 @@ const groups = groupsEnabled();
       <slot />
       <footer class="mt-14 border-t-[3px] border-foreground pt-4 text-sm text-muted-foreground">
         <a href="/privacy">Privacy</a>
-        {groups && <> · <a href="/ranking">How ranking works</a> · <a href="/dashboard">Dashboard</a></>}
+        {groups && <> · <a href="/highlights">Highlights</a> · <a href="/ranking">How ranking works</a> · <a href="/dashboard">Dashboard</a></>}
         {' '}· Your archive is yours: export it any time.
       </footer>
     </main>

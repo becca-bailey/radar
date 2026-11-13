@@ -1,0 +1,236 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
+import LensMenu from '@/components/LensMenu.tsx';
+import SaveMenu from '@/components/SaveMenu.tsx';
+import Why from '@/components/Why.astro';
+import { saveDisplayTitle } from '../lib/exportFormats';
+import { sanitizeSnippet } from '../lib/snippet';
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const params = Astro.url.searchParams;
+const lensParam = params.get('lens');
+const newQuery = params.get('new');
+const created = params.get('created') === '1';
+const lensUpdated = params.get('lens_updated') === '1';
+const noteUpdated = params.get('updated') === '1';
+const deleted = params.get('deleted') === '1';
+const error = params.get('error');
+
+interface Lens {
+  id: string;
+  name: string;
+  query: string;
+  query_embedding: string | null;
+}
+
+// RLS scopes to the signed-in user's lenses.
+const { data: lensRows } = await supabase
+  .from('lenses')
+  .select('id, name, query, query_embedding')
+  .order('created_at');
+const lenses = (lensRows ?? []) as Lens[];
+
+// One lens in full (?lens=id), else every lens stacked with a preview.
+const single = lenses.find((l) => l.id === lensParam) ?? null;
+const shown = single ? [single] : lenses;
+
+interface Result {
+  save_id: string;
+  link_id: string;
+  title: string | null;
+  canonical_url: string;
+  source: string | null;
+  snippet: string;
+  note: string | null;
+  created_at: string;
+}
+
+interface Section {
+  lens: Lens;
+  results: Result[];
+  /** Matches found, capped at LIMIT. */
+  total: number;
+  error: string | null;
+}
+
+const LIMIT = 60;
+const PREVIEW = 4;
+// One search per lens, in parallel. The embedding was computed when the
+// lens was saved, so this costs no embedding calls.
+const sections: Section[] = await Promise.all(
+  shown.map(async (lens) => {
+    const { data, error: rpcError } = await supabase.rpc('search_archive', {
+      query: lens.query,
+      query_embedding: lens.query_embedding,
+      match_limit: LIMIT,
+    });
+    const all = (data ?? []) as Result[];
+    return {
+      lens,
+      results: single ? all : all.slice(0, PREVIEW),
+      total: all.length,
+      error: rpcError?.message ?? null,
+    };
+  })
+);
+
+// search_archive doesn't return thumbnails, so look them up in one query.
+const linkIds = [...new Set(sections.flatMap((s) => s.results.map((r) => r.link_id)))];
+const thumbs = new Map<string, string>();
+if (linkIds.length > 0) {
+  const { data: imageRows } = await supabase
+    .from('links')
+    .select('id, image:metadata->>image')
+    .in('id', linkIds);
+  for (const row of (imageRows ?? []) as { id: string; image: string | null }[]) {
+    if (row.image) thumbs.set(row.id, row.image);
+  }
+}
+
+const formOpen = lenses.length === 0 || newQuery !== null;
+const returnPath = single ? `/explore?lens=${single.id}` : '/explore';
+const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? 'save' : 'saves'}`;
+---
+
+<Layout title={single ? `${single.name} — Explore — Radar` : 'Explore — Radar'} user={user}>
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+    <h1>Explore</h1>
+    {lenses.length > 0 && !formOpen && (
+      <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href="/explore?new=">
+        + New lens
+      </a>
+    )}
+  </div>
+  <p>
+    Lenses are saved searches. Each one keeps gathering matching saves as your archive
+    grows, with no tagging.
+  </p>
+
+  {created && <Alert>Lens saved.</Alert>}
+  {lensUpdated && <Alert>Lens updated.</Alert>}
+  {noteUpdated && <Alert>Note updated.</Alert>}
+  {deleted && <Alert>Deleted.</Alert>}
+  {error && <Alert variant="error">{error}</Alert>}
+
+  {
+    formOpen && (
+      <form
+        class="mt-5 mb-8 grid gap-2.5 rounded-lg border-2 bg-[color-mix(in_srgb,var(--candy-sky)_22%,var(--card))] p-4 shadow-hard"
+        method="post"
+        action="/api/lenses"
+      >
+        <h2 class="m-0 mb-0.5 text-[1.15rem]">New lens</h2>
+        <div class="grid gap-1.5">
+          <Label htmlFor="lens-query">Search for</Label>
+          <Input
+            id="lens-query"
+            type="text"
+            name="query"
+            defaultValue={newQuery ?? ''}
+            placeholder="knitting patterns, sourdough, essays about writing…"
+            maxLength={200}
+            required
+            autoFocus={!newQuery}
+          />
+        </div>
+        <div class="grid gap-1.5">
+          <Label htmlFor="lens-name">Name (optional)</Label>
+          <Input id="lens-name" type="text" name="name" placeholder="Defaults to the search" maxLength={60} />
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <Button type="submit">Save lens</Button>
+          {lenses.length > 0 && (
+            <a class="text-sm text-muted-foreground" href="/explore">
+              Cancel
+            </a>
+          )}
+        </div>
+        <p class="m-0 text-sm text-muted-foreground">
+          Matches by meaning as well as words, so “knitting patterns” also finds a page
+          about sock heels. <a href="/search">Try a search first</a> to see what it picks up.
+        </p>
+      </form>
+    )
+  }
+
+  {single && (
+    <p class="mt-4 mb-0 text-sm">
+      <a class="text-muted-foreground" href={`/explore#lens-${single.id}`}>← All lenses</a>
+    </p>
+  )}
+
+  {
+    sections.map(({ lens, results, total, error: sectionError }) => (
+      <section id={`lens-${lens.id}`} class="mt-8 scroll-mt-4">
+        <div class="flex items-start gap-2">
+          <div class="min-w-0 flex-1">
+            <h2 class="m-0 wrap-anywhere">
+              {single ? (
+                lens.name
+              ) : (
+                <a class="text-foreground no-underline hover:underline" href={`/explore?lens=${lens.id}`}>
+                  {lens.name}
+                </a>
+              )}
+            </h2>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">
+              Searching for “{lens.query}” · {countLabel(total)}
+            </p>
+          </div>
+          <LensMenu client:visible lensId={lens.id} name={lens.name} query={lens.query} />
+        </div>
+        {sectionError && <Alert variant="error">{sectionError}</Alert>}
+        {results.length === 0 && !sectionError ? (
+          <Empty>Nothing in your archive matches yet. New saves that match will show up here.</Empty>
+        ) : (
+          <CardList>
+            {results.map((r) => {
+              const title = saveDisplayTitle(r.title, r.canonical_url);
+              return (
+                <ItemCard href={r.canonical_url} title={title} thumb={thumbs.get(r.link_id) ?? null}>
+                  <Fragment slot="meta">{r.source ?? ''}</Fragment>
+                  <SaveMenu
+                    slot="action"
+                    client:visible
+                    saveId={r.save_id}
+                    title={title}
+                    url={r.canonical_url}
+                    note={r.note}
+                    canRetry={false}
+                    returnPath={returnPath}
+                  />
+                  {r.snippet && (
+                    <p
+                      class:list={[
+                        'm-0 text-[0.9rem] whitespace-pre-wrap text-muted-foreground',
+                        single ? 'line-clamp-3' : 'line-clamp-2',
+                      ]}
+                      set:html={sanitizeSnippet(r.snippet)}
+                    />
+                  )}
+                  {r.note && <Why>{r.note}</Why>}
+                </ItemCard>
+              );
+            })}
+          </CardList>
+        )}
+        {!single && total > results.length && (
+          <a class="text-sm font-semibold" href={`/explore?lens=${lens.id}`}>
+            See all {countLabel(total)} →
+          </a>
+        )}
+      </section>
+    ))
+  }
+</Layout>
