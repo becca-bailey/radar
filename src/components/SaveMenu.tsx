@@ -1,5 +1,12 @@
 import * as React from 'react';
-import { MoreHorizontalIcon, PencilIcon, RotateCwIcon, Trash2Icon } from 'lucide-react';
+import {
+  CheckIcon,
+  LinkIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  RotateCwIcon,
+  Trash2Icon,
+} from 'lucide-react';
 
 import {
   AlertDialog,
@@ -34,6 +41,8 @@ interface Props {
   saveId: string;
   /** Names the save in accessible labels and the delete confirmation. */
   title: string;
+  /** The saved page's URL, for the copy-link action. */
+  url: string;
   note: string | null;
   /** Archiving failed, so offer to try again. */
   canRetry: boolean;
@@ -48,9 +57,10 @@ interface Props {
  * delete. Every action is a plain form post to /api/saves/:id — React only
  * provides the menu and dialogs around them.
  */
-export default function SaveMenu({ saveId, title, note, canRetry, topic, returnPath }: Props) {
+export default function SaveMenu({ saveId, title, url, note, canRetry, topic, returnPath }: Props) {
   const [editing, setEditing] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const retryForm = React.useRef<HTMLFormElement>(null);
   const noteId = React.useId();
@@ -71,6 +81,31 @@ export default function SaveMenu({ saveId, title, note, canRetry, topic, returnP
     triggerRef.current?.focus();
   };
 
+  // The menu closes on select, so the trigger icon flashes a check as the
+  // copied signal. The textarea fallback covers blocked clipboard APIs.
+  const copyLink = async () => {
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(url);
+      ok = true;
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        ok = document.execCommand('copy');
+      } catch {
+        /* nothing to fall back to */
+      }
+      ta.remove();
+    }
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -82,10 +117,18 @@ export default function SaveMenu({ saveId, title, note, canRetry, topic, returnP
             className="-mt-1 -mr-2"
             aria-label={`Actions for ${title}`}
           >
-            <MoreHorizontalIcon className="size-5" aria-hidden="true" />
+            {copied ? (
+              <CheckIcon className="size-5" aria-hidden="true" />
+            ) : (
+              <MoreHorizontalIcon className="size-5" aria-hidden="true" />
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => void copyLink()}>
+            <LinkIcon aria-hidden="true" />
+            Copy link
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setEditing(true)}>
             <PencilIcon aria-hidden="true" />
             {note ? 'Edit note' : 'Add a note'}

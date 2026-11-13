@@ -72,6 +72,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
     client:visible
     saveId={row.id}
     title={title}
+    url={link?.canonical_url ?? row.original_url}
     note={row.note}
     canRetry={link?.status === 'failed'}
     topic={topic}

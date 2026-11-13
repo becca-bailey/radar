@@ -115,6 +115,7 @@ function displayTitle(r: Result): string {
                 client:visible
                 saveId={r.save_id}
                 title={displayTitle(r)}
+                url={r.canonical_url}
                 note={r.note}
                 canRetry={false}
                 returnPath={`/search?q=${encodeURIComponent(q)}`}
