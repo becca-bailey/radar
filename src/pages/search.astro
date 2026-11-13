@@ -71,21 +71,20 @@ function displayTitle(r: Result): string {
 }
 ---
 
-<Layout title="Search — Radar" user={user}>
+<Layout title={q ? `${q} — Search — Radar` : 'Search — Radar'} user={user}>
   <h1>Search your archive</h1>
   <form class="mt-4 mb-6 grid gap-2.5" method="get" action="/search">
-    <Input type="search" name="q" defaultValue={q} placeholder="Words, ideas, half-remembered phrases" autoFocus />
+    {/* Autofocus only the empty box: results pages leave focus at the top,
+        and autofocusing a pre-filled input puts the caret at position 0. */}
+    <Input
+      type="search"
+      name="q"
+      defaultValue={q}
+      placeholder="Words, ideas, half-remembered phrases"
+      autoFocus={!q}
+    />
     <Button type="submit">Search</Button>
   </form>
-
-  <script>
-    // autofocus parks the caret at position 0 when the input already has a
-    // value; move it to the end so refining a query continues from there.
-    const q = document.querySelector<HTMLInputElement>('input[name="q"]');
-    if (q?.value) {
-      q.setSelectionRange(q.value.length, q.value.length);
-    }
-  </script>
 
   {searchError && <Alert variant="error">{searchError}</Alert>}
 
@@ -94,6 +93,10 @@ function displayTitle(r: Result): string {
       results.length === 0 ? (
         <Empty>Nothing found for “{q}”.</Empty>
       ) : (
+        <>
+        <h2>
+          {results.length} {results.length === 1 ? 'result' : 'results'} for “{q}”
+        </h2>
         <CardList>
           {results.map((r) => (
             <ItemCard href={r.canonical_url} title={displayTitle(r)}>
@@ -103,6 +106,7 @@ function displayTitle(r: Result): string {
             </ItemCard>
           ))}
         </CardList>
+        </>
       )
     )
   }
