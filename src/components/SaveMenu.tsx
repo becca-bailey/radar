@@ -39,6 +39,8 @@ interface Props {
   canRetry: boolean;
   /** Active topic filter, so the page returns to the same view. */
   topic?: string | null;
+  /** Same-site path to return to after an action (default: home). */
+  returnPath?: string | null;
 }
 
 /**
@@ -46,7 +48,7 @@ interface Props {
  * delete. Every action is a plain form post to /api/saves/:id — React only
  * provides the menu and dialogs around them.
  */
-export default function SaveMenu({ saveId, title, note, canRetry, topic }: Props) {
+export default function SaveMenu({ saveId, title, note, canRetry, topic, returnPath }: Props) {
   const [editing, setEditing] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -58,6 +60,7 @@ export default function SaveMenu({ saveId, title, note, canRetry, topic }: Props
     <>
       <input type="hidden" name="action" value={name} />
       <input type="hidden" name="topic" value={topic ?? ''} />
+      <input type="hidden" name="return_path" value={returnPath ?? ''} />
     </>
   );
 

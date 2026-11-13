@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
 import ItemCard from '@/components/ItemCard.astro';
+import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
 import { embedTexts, embeddingsConfigured } from '../lib/embeddings';
 
@@ -15,6 +16,11 @@ if (!user) {
 }
 
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
+
+// Confirmations after a menu action round-trips back here.
+const updated = Astro.url.searchParams.get('updated') === '1';
+const deleted = Astro.url.searchParams.get('deleted') === '1';
+const actionError = Astro.url.searchParams.get('error');
 
 interface Result {
   save_id: string;
@@ -86,6 +92,9 @@ function displayTitle(r: Result): string {
     <Button type="submit">Search</Button>
   </form>
 
+  {updated && <Alert>Note updated.</Alert>}
+  {deleted && <Alert>Deleted.</Alert>}
+  {actionError && <Alert variant="error">{actionError}</Alert>}
   {searchError && <Alert variant="error">{searchError}</Alert>}
 
   {
@@ -101,6 +110,15 @@ function displayTitle(r: Result): string {
           {results.map((r) => (
             <ItemCard href={r.canonical_url} title={displayTitle(r)}>
               <Fragment slot="meta">{r.source ?? ''}</Fragment>
+              <SaveMenu
+                slot="action"
+                client:visible
+                saveId={r.save_id}
+                title={displayTitle(r)}
+                note={r.note}
+                canRetry={false}
+                returnPath={`/search?q=${encodeURIComponent(q)}`}
+              />
               {r.snippet && <p class="m-0 text-[0.9rem] whitespace-pre-wrap text-muted-foreground" set:html={sanitizeSnippet(r.snippet)} />}
               {r.note && <Why>{r.note}</Why>}
             </ItemCard>

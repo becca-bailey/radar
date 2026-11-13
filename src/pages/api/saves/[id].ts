@@ -21,9 +21,17 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   const form = await request.formData();
   const action = String(form.get('action') ?? '');
   const topic = String(form.get('topic') ?? '');
-  // Return to the same topic filter the user was looking at.
+  // Where to land afterwards: the page the menu was used on. Only a
+  // same-site relative path is accepted ("//host" would leave the site).
+  const rawReturn = String(form.get('return_path') ?? '');
+  const returnPath = rawReturn.startsWith('/') && !rawReturn.startsWith('//') ? rawReturn : '/';
   const back = (query: string) =>
-    redirect('/?' + query + (/^[a-z0-9-]+$/.test(topic) ? `&topic=${topic}` : ''));
+    redirect(
+      returnPath +
+        (returnPath.includes('?') ? '&' : '?') +
+        query +
+        (/^[a-z0-9-]+$/.test(topic) ? `&topic=${topic}` : '')
+    );
   const fail = (msg: string) => back('error=' + encodeURIComponent(msg));
 
   const id = params.id ?? '';
