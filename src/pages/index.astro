@@ -89,6 +89,7 @@ const chip = badgeVariants({ variant: 'chip' });
     <Input type="url" name="url" placeholder="Paste a link to save it" required />
     <Input type="text" name="note" placeholder="Why you're saving it (optional, shown if shared)" />
     <Button type="submit">Save</Button>
+    <p class="m-0 text-sm text-muted-foreground">Saving from your phone or another tab? <a href="/setup">Add Radar to your share sheet and bookmarks</a>.</p>
   </form>
 
   {
@@ -140,9 +141,11 @@ const chip = badgeVariants({ variant: 'chip' });
   {
     rows.length === 0 ? (
       <Empty>
-        {topic
-          ? `Nothing saved under ${activeCat?.name ?? 'that topic'} yet.`
-          : "Your archive is empty. Save the first thing you don't want to lose."}
+        {topic ? (
+          `Nothing saved under ${activeCat?.name ?? 'that topic'} yet.`
+        ) : (
+          <>Your archive is empty. Save the first thing you don't want to lose, here or <a href="/setup">from your phone and browser</a>.</>
+        )}
       </Empty>
     ) : (
       <CardList>

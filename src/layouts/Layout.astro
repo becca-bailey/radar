@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
-import { Button } from '@/components/ui/button';
+import UserMenu from '@/components/UserMenu.tsx';
+import { isAdmin } from '../lib/admin';
 import { groupsEnabled } from '../lib/flags';
 
 interface Props {
@@ -67,12 +68,7 @@ const groups = groupsEnabled();
                 <a href="/search">Search</a>
                 <a href="/explore">Explore</a>
                 {groups && <a href="/groups">Groups</a>}
-                <a href="/settings">Settings</a>
-                <form class="inline" method="post" action="/api/auth/logout">
-                  <Button variant="outline" size="sm" type="submit">
-                    Sign out
-                  </Button>
-                </form>
+                <UserMenu client:load email={user.email ?? ''} admin={isAdmin(user)} />
               </>
             ) : (
               <>
@@ -86,6 +82,7 @@ const groups = groupsEnabled();
       <slot />
       <footer class="mt-14 border-t-[3px] border-foreground pt-4 text-sm text-muted-foreground">
         <a href="/privacy">Privacy</a>
+        {user && <> · <a href="/setup">Save from anywhere</a></>}
         {groups && <> · <a href="/highlights">Highlights</a> · <a href="/ranking">How ranking works</a> · <a href="/dashboard">Dashboard</a></>}
         {' '}· Your archive is yours: export it any time.
       </footer>
