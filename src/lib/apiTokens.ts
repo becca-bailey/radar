@@ -44,7 +44,12 @@ export async function userIdForBearerToken(
     .eq('token_hash', hash)
     .maybeSingle();
   if (!data) return { userId: null, failure: 'unknown_token' };
-  // Fire-and-forget usage timestamp.
-  void service.from('api_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', data.id);
+  // Awaited on purpose: supabase-js queries only execute when awaited,
+  // so a fire-and-forget version of this never ran at all. Failures are
+  // ignored — a stale timestamp must not block a save.
+  await service
+    .from('api_tokens')
+    .update({ last_used_at: new Date().toISOString() })
+    .eq('id', data.id);
   return { userId: data.user_id as string };
 }
