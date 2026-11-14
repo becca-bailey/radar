@@ -37,10 +37,16 @@ production breaks for the minutes in between. For a PR with a migration:
 2. Run `npx supabase db push --remote`.
 3. Merge.
 
+## How Linear is organized
+
+- **Team** Radar (`RAD`), statuses Backlog, Todo, In Progress, In Review, Done.
+- **Projects**: Beta launch, Meet members where they are, Capture beyond iOS.
+- **Labels**: Bug, Feature and Improvement for code work; **Manual** for things
+  only I can do (dashboards, prod migrations, phone testing). Don't hand a
+  Manual issue to a Claude session.
+
 ## Things to set up once
 
-- **Linear team** named Radar with the key `RAD`. Statuses: Backlog, Todo,
-  In Progress, In Review, Done.
 - **Linear GitHub integration** (Linear → Settings → Integrations → GitHub),
   connected to `becca-bailey/radar`. Turn on the automations that move issues
   to In Review when a PR opens and to Done when it merges.
