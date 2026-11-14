@@ -12,8 +12,8 @@ the person turned that off in Settings, and, if they're in any groups, asks
 which to share it to (pick any number; none just saves). Then
 it POSTs url + note + share_to to /api/saves with a Bearer token and shows
 the reply's message. The token is an import question: the Shortcuts app
-asks the person to paste theirs when they first set up the shortcut, and
-our placeholder value is stripped from the shared file.
+asks the person to paste theirs when they first set up the shortcut, into
+an empty field.
 
 Nothing here can be checked without a device: after signing, import it on
 an iPhone and try a save with no groups, with groups (picking none, one and
@@ -115,8 +115,7 @@ workflow = {
         "WFArticleContentItem",
     ],
     "WFWorkflowOutputContentItemClasses": [],
-    # Asked once, on first run after install; our placeholder is cleared
-    # from the shared file by Shortcuts itself.
+    # Asked once, as the shortcut is added; the Text action ships empty.
     "WFWorkflowImportQuestions": [
         {
             "ActionIndex": 3,
@@ -167,7 +166,10 @@ workflow = {
             "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
             "WFWorkflowActionParameters": {
                 "UUID": UUID_TOKEN,
-                "WFTextActionText": "paste-your-radar-token",
+                # Empty, so the import question's field starts blank: a
+                # default value had to be selected and deleted before
+                # pasting. An empty token gets the API's "no token" message.
+                "WFTextActionText": "",
                 "CustomOutputName": "Radar API Token",
             },
         },
