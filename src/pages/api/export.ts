@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { dayKey } from '../../lib/dates';
 
 interface ExportRow {
   original_url: string;
@@ -38,12 +39,13 @@ export const GET: APIRoute = async ({ locals, url }) => {
   }
 
   const rows = (data ?? []) as unknown as ExportRow[];
-  const stamp = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const stamp = dayKey(now, locals.timeZone);
 
   if (format === 'json') {
     const body = JSON.stringify(
       {
-        exported_at: new Date().toISOString(),
+        exported_at: now.toISOString(),
         count: rows.length,
         saves: rows.map((r) => ({
           saved_at: r.created_at,
@@ -73,7 +75,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
     parts.push(`\n---\n\n## ${title}\n`);
     parts.push(`- URL: ${r.links?.canonical_url ?? r.original_url}`);
     if (r.links?.source) parts.push(`- Source: ${r.links.source}`);
-    parts.push(`- Saved: ${r.created_at.slice(0, 10)}`);
+    parts.push(`- Saved: ${dayKey(r.created_at, locals.timeZone)}`);
     if (r.note) parts.push(`- Why: ${r.note}`);
     if (r.links?.full_text) parts.push(`\n### Archived text\n\n${r.links.full_text}`);
   }

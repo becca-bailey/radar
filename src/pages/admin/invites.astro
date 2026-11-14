@@ -9,6 +9,7 @@ import ItemCard from '@/components/ItemCard.astro';
 import { isAdmin } from '../../lib/admin';
 import { normalizeEmail } from '../../lib/invites';
 import { createServiceClient } from '../../lib/supabase';
+import { formatDate } from '../../lib/dates';
 
 // Beta invite list. Admin = emails in ADMIN_EMAILS (who are always invited).
 const { user } = Astro.locals;
@@ -54,7 +55,6 @@ const { data: invites } = await service
   .select('email, note, created_at')
   .order('created_at', { ascending: false });
 
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 
 <Layout title="Invites — Radar" user={user}>
@@ -90,7 +90,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
         {(invites ?? []).map((i) => (
           <ItemCard title={i.email}>
             <Fragment slot="meta">
-              Invited {dateFmt.format(new Date(i.created_at))}
+              Invited {formatDate(i.created_at, Astro.locals.timeZone)}
               {i.note ? ` · ${i.note}` : ''}
             </Fragment>
             <form method="post">

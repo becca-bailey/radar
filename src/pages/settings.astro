@@ -9,6 +9,7 @@ import TokenReveal from '../components/TokenReveal.astro';
 import { generateApiToken } from '../lib/apiTokens';
 import { groupsEnabled } from '../lib/flags';
 import { createServiceClient } from '../lib/supabase';
+import { formatDate } from '../lib/dates';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -60,7 +61,7 @@ const { data: tokens } = await supabase
   .select('id, label, created_at, last_used_at')
   .order('created_at', { ascending: false });
 
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const timeZone = Astro.locals.timeZone;
 ---
 
 <Layout title="Settings — Radar" user={user}>
@@ -103,8 +104,8 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
         {(tokens ?? []).map((t) => (
           <ItemCard title={t.label || 'Token'}>
             <Fragment slot="meta">
-              Created {dateFmt.format(new Date(t.created_at))}
-              {t.last_used_at ? ` · last used ${dateFmt.format(new Date(t.last_used_at))}` : ' · never used'}
+              Created {formatDate(t.created_at, timeZone)}
+              {t.last_used_at ? ` · last used ${formatDate(t.last_used_at, timeZone)}` : ' · never used'}
             </Fragment>
             <form class="mt-2" method="post">
               <input type="hidden" name="_action" value="revoke_token" />

@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { dayKey } from '@/lib/dates';
 import { toCsv, toHtmlList, toJson, toMarkdownList, type ExportItem } from '@/lib/exportFormats';
 
 export interface PickerRow extends ExportItem {
@@ -155,7 +156,8 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${filePrefix}-${new Date().toISOString().slice(0, 10)}.${format.ext}`;
+    // The browser's own zone: the day it is where the person is.
+    a.download = `${filePrefix}-${dayKey(new Date())}.${format.ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();

@@ -2,6 +2,7 @@
 import ItemCard from '@/components/ItemCard.astro';
 import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
+import { formatRecentDate } from '../lib/dates';
 
 /** One save in the archive list. */
 export interface SaveRow {
@@ -53,7 +54,6 @@ const sharedTo = new Set(shares.map((s) => s.group_id));
 const shareable = groups.filter((g) => !sharedTo.has(g.id));
 const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.group_id)!);
 
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 
 <ItemCard
@@ -66,7 +66,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
   <Fragment slot="meta">
     {link?.source ?? ''}
     {link?.source ? ' · ' : ''}
-    {dateFmt.format(new Date(row.created_at))}
+    {formatRecentDate(row.created_at, Astro.locals.timeZone)}
     {link?.status === 'pending' ? ' · archiving…' : ''}
     {link?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
   </Fragment>

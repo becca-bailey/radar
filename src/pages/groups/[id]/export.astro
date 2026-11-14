@@ -9,6 +9,7 @@ import SavePicker, { type PickerRow } from '@/components/SavePicker.tsx';
 import { groupsEnabled } from '../../../lib/flags';
 import { joinNotes, saveDisplayTitle } from '../../../lib/exportFormats';
 import { fetchGroupPool } from '../../../lib/groupPool';
+import { formatDate, localDayRange } from '../../../lib/dates';
 
 /**
  * Export a group's shared links: pick by the dates they were shared, sort by
@@ -41,14 +42,10 @@ type Sort = keyof typeof SORTS;
 const rawSort = params.get('sort') ?? '';
 const sort: Sort = rawSort in SORTS ? (rawSort as Sort) : 'shared';
 
-// Dates are whole UTC days, and "to" includes that day. Counts and notes
-// cover shares inside the range only.
-let sharedBefore: string | null = null;
-if (to) {
-  const end = new Date(`${to}T00:00:00Z`);
-  end.setUTCDate(end.getUTCDate() + 1);
-  sharedBefore = end.toISOString();
-}
+// Dates are whole days in the person's time zone, and "to" includes that
+// day. Counts and notes cover shares inside the range only.
+const timeZone = Astro.locals.timeZone;
+const sharedBefore = to ? localDayRange(to, timeZone).end : null;
 
 // Default range: since your last export of this group (?all=1 for everything).
 const { data: membership } = await supabase
@@ -64,11 +61,10 @@ const isOwner = group.owner_id === user.id;
 const LIMIT = 500;
 const { links, error } = await fetchGroupPool(supabase, group.id, {
   limit: LIMIT,
-  sharedFrom: from ? `${from}T00:00:00Z` : since,
+  sharedFrom: from ? localDayRange(from, timeZone).start : since,
   sharedBefore,
 });
 
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const rows: PickerRow[] = links.map((l) => ({
   id: l.link_id,
   title: saveDisplayTitle(l.title, l.canonical_url),
@@ -78,7 +74,7 @@ const rows: PickerRow[] = links.map((l) => ({
   savedAt: l.last_shared_at,
   readers: l.readers,
   image: l.image,
-  savedOn: dateFmt.format(new Date(l.last_shared_at)),
+  savedOn: formatDate(l.last_shared_at, timeZone),
 }));
 
 // The pool arrives newest first.
@@ -86,7 +82,7 @@ if (sort === 'oldest') rows.reverse();
 if (sort === 'shared') rows.sort((a, b) => (b.readers ?? 1) - (a.readers ?? 1));
 
 const filtered = !!(from || to || since);
-const sinceLabel = since ? dateFmt.format(new Date(since)) : '';
+const sinceLabel = since ? formatDate(since, timeZone) : '';
 const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'group';
 ---
 

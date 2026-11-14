@@ -36,6 +36,18 @@ if (groups && user) {
     />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    <script is:inline>
+      // Tell the server this browser's time zone so dates render in it
+      // (src/lib/dates.ts). Written only when it changes.
+      try {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz && document.cookie.split('; ').indexOf('tz=' + encodeURIComponent(tz)) === -1) {
+          document.cookie =
+            'tz=' + encodeURIComponent(tz) + '; path=/; max-age=31536000; samesite=lax' +
+            (location.protocol === 'https:' ? '; secure' : '');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <svg

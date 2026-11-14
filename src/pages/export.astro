@@ -6,6 +6,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import Empty from '@/components/Empty.astro';
 import SavePicker, { type PickerRow } from '@/components/SavePicker.tsx';
 import { saveDisplayTitle } from '../lib/exportFormats';
+import { formatDate, localDayRange } from '../lib/dates';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -36,21 +37,19 @@ const lastExportAt = (profileRow?.last_export_at as string | null) ?? null;
 const since = !from && !to && !params.has('all') && !params.has('sort') ? lastExportAt : null;
 
 const LIMIT = 500;
-// RLS scopes to the signed-in user's saves. Dates are whole UTC days, and
-// "to" includes that day.
+// RLS scopes to the signed-in user's saves. Dates are whole days in the
+// person's time zone, and "to" includes that day.
+const timeZone = Astro.locals.timeZone;
 let query = supabase
   .from('saves')
   .select('id, original_url, note, created_at, links(title, source, canonical_url, image:metadata->>image)');
-if (from) query = query.gte('created_at', `${from}T00:00:00Z`);
+if (from) query = query.gte('created_at', localDayRange(from, timeZone).start);
 else if (since) query = query.gt('created_at', since);
 if (to) {
-  const end = new Date(`${to}T00:00:00Z`);
-  end.setUTCDate(end.getUTCDate() + 1);
-  query = query.lt('created_at', end.toISOString());
+  query = query.lt('created_at', localDayRange(to, timeZone).end);
 }
 const { data } = await query.order('created_at', { ascending: sort === 'oldest' }).limit(LIMIT);
 
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const rows: PickerRow[] = ((data ?? []) as unknown as Row[]).map((r) => {
   const url = r.links?.canonical_url ?? r.original_url;
   return {
@@ -61,7 +60,7 @@ const rows: PickerRow[] = ((data ?? []) as unknown as Row[]).map((r) => {
     note: r.note,
     savedAt: r.created_at,
     image: r.links?.image ?? null,
-    savedOn: dateFmt.format(new Date(r.created_at)),
+    savedOn: formatDate(r.created_at, timeZone),
   };
 });
 if (sort === 'title') {
@@ -69,7 +68,7 @@ if (sort === 'title') {
 }
 
 const filtered = !!(from || to || since);
-const sinceLabel = since ? dateFmt.format(new Date(since)) : '';
+const sinceLabel = since ? formatDate(since, timeZone) : '';
 ---
 
 <Layout title="Export — Radar" user={user}>
