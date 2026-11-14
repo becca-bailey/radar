@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Sharing from capture tools (the iOS Shortcut today). The Shortcut can't
- * hold ids, so it shows a menu of labels and sends the picked label back;
+ * hold ids, so it shows a menu of labels and sends the picked labels back;
  * both sides derive labels with shareChoices, so they always agree.
  */
 
@@ -50,6 +50,55 @@ export function resolveShareChoice(
 ): ShareChoice | null {
   const wanted = label.trim().toLowerCase();
   return shareChoices(groups, lastUsedId).find((c) => c.label.toLowerCase() === wanted) ?? null;
+}
+
+/**
+ * The labels in a `share_to` value, in order: a JSON array of labels, or
+ * one string with a label per line (what the Shortcut sends when its
+ * multi-select list lands in a text field). Blank lines, "Just save" and
+ * repeats are dropped. Labels never contain newlines: shareChoices
+ * collapses whitespace in group names.
+ */
+export function parseShareTo(value: unknown): string[] {
+  const raw = Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === 'string')
+    : typeof value === 'string'
+      ? value.split(/\r?\n/)
+      : [];
+  const seen = new Set([JUST_SAVE.toLowerCase()]);
+  const labels: string[] = [];
+  for (const item of raw) {
+    const label = item.trim();
+    const key = label.toLowerCase();
+    if (!label || seen.has(key)) continue;
+    seen.add(key);
+    labels.push(label);
+  }
+  return labels;
+}
+
+/** "A", "A and B", "A, B and C". */
+function listOf(items: string[]): string {
+  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/**
+ * What to append to "Saved to Radar" after sharing to one or more groups,
+ * e.g. " and shared to Readers and Bakers — couldn't find the group “Knitters”".
+ * `outcomes` holds each found group's label and how sharing went;
+ * `missing` holds labels that matched no group.
+ */
+export function shareSummary(outcomes: { label: string; outcome: ShareOutcome }[], missing: string[]): string {
+  const by = (o: ShareOutcome) => outcomes.filter((x) => x.outcome === o).map((x) => x.label);
+  const shared = by('shared');
+  const already = by('already');
+  const failed = by('failed');
+  const problems: string[] = [];
+  if (already.length) problems.push(`already shared to ${listOf(already)}`);
+  for (const label of by('removed')) problems.push(`not shared: ${label}'s owner removed this link`);
+  if (failed.length) problems.push(`couldn't share to ${listOf(failed)}, try from the archive`);
+  if (missing.length) problems.push(`couldn't find ${listOf(missing.map((m) => `the group “${m}”`))}`);
+  return (shared.length ? ` and shared to ${listOf(shared)}` : '') + (problems.length ? ` — ${problems.join('; ')}` : '');
 }
 
 /** A user's groups and last-used group, read with the service client. */

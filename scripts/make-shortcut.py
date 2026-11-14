@@ -9,14 +9,15 @@ Signing uses the macOS `shortcuts` CLI, so this must run on a Mac:
 The shortcut accepts a page from the share sheet, extracts the URL, fetches
 its options (GET /api/shortcut-options), asks for an optional note unless
 the person turned that off in Settings, and, if they're in any groups, asks
-whether to share it to one ("Just save" first). Then
+which to share it to (pick any number; none just saves). Then
 it POSTs url + note + share_to to /api/saves with a Bearer token and shows
 the reply's message. The token is an import question: the Shortcuts app
 asks the person to paste theirs when they first set up the shortcut, and
 our placeholder value is stripped from the shared file.
 
 Nothing here can be checked without a device: after signing, import it on
-an iPhone and try a save with no groups, with groups, and with a blank note.
+an iPhone and try a save with no groups, with groups (picking none, one and
+several), and with a blank note.
 """
 
 import plistlib
@@ -171,7 +172,7 @@ workflow = {
             },
         },
         {
-            # Options: {"ask_note": "yes"|"no", "choices": ["Just save", …]}.
+            # Options: {"ask_note": "yes"|"no", "groups": [label, …], …}.
             "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
             "WFWorkflowActionParameters": {
                 "UUID": UUID_GROUPS,
@@ -246,7 +247,7 @@ workflow = {
             "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
             "WFWorkflowActionParameters": {
                 "UUID": UUID_CHOICES,
-                "WFDictionaryKey": "choices",
+                "WFDictionaryKey": "groups",
                 "WFInput": output_attachment(UUID_GROUPS, "Contents of URL"),
             },
         },
@@ -259,23 +260,29 @@ workflow = {
             },
         },
         {
-            # Only ask when there's more than "Just save" to pick from.
+            # Only ask when the person is in a group.
             # WFCondition 2 is "is greater than".
             "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
             "WFWorkflowActionParameters": {
                 "GroupingIdentifier": GROUP_IF,
                 "WFControlFlowMode": 0,
                 "WFCondition": 2,
-                "WFNumberValue": "1",
+                "WFNumberValue": "0",
                 "WFInput": {"Type": "Variable", "Variable": output_attachment(UUID_COUNT, "Count")},
             },
         },
         {
+            # Pick any number of groups. The picked list goes into the
+            # share_to text field below, where Shortcuts joins it one label
+            # per line. Tapping Done with nothing picked should give an
+            # empty list (just save); Apple doesn't document it, so check
+            # on a device.
             "WFWorkflowActionIdentifier": "is.workflow.actions.choosefromlist",
             "WFWorkflowActionParameters": {
                 "UUID": UUID_CHOSEN,
                 "WFInput": output_attachment(UUID_CHOICES, "Dictionary Value"),
-                "WFChooseFromListActionPrompt": "Share to a group?",
+                "WFChooseFromListActionPrompt": "Share to groups? Pick none to just save.",
+                "WFChooseFromListActionSelectMultiple": True,
             },
         },
         {
@@ -284,7 +291,8 @@ workflow = {
         },
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
-            "WFWorkflowActionParameters": {"UUID": UUID_JUST_SAVE, "WFTextActionText": "Just save"},
+            # No groups: share to none.
+            "WFWorkflowActionParameters": {"UUID": UUID_JUST_SAVE, "WFTextActionText": ""},
         },
         {
             # The If block's output is whichever branch ran last.
