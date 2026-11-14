@@ -14,6 +14,7 @@ import TopicSuggestions from '@/components/TopicSuggestions.tsx';
 import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
+import { formatDate } from '../../../lib/dates';
 
 if (!groupsEnabled()) {
   return Astro.redirect('/');
@@ -214,7 +215,6 @@ const recentEarlier = recent.links.filter((l) => !isNew(l));
 
 const returnPath = single ? `${home}?lens=${single.id}` : home;
 const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? 'link' : 'links'}`;
-const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 ---
 
 <Layout title={single ? `${single.name} — ${group.name} — Radar` : `${group.name} — Radar`} user={user}>
@@ -463,7 +463,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
             <CardList>
               {removedLinks.map((r) => (
                 <ItemCard href={r.canonical_url} title={r.title ?? r.canonical_url}>
-                  <Fragment slot="meta">Removed {dateFmt.format(new Date(r.removed_at))}</Fragment>
+                  <Fragment slot="meta">Removed {formatDate(r.removed_at, Astro.locals.timeZone, { year: false })}</Fragment>
                   <form slot="action" method="post">
                     <input type="hidden" name="_action" value="restore_link" />
                     <input type="hidden" name="link_id" value={r.link_id} />

@@ -16,6 +16,7 @@
   "dependencies": {
     "@astrojs/netlify": "^8.2.12",
     "@astrojs/react": "^7.1.4",
+    "@date-fns/tz": "^1.5.0",
     "@mozilla/readability": "^0.6.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
@@ -25,6 +26,7 @@
     "astro": "^7.4.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "linkedom": "^0.18.15",
     "lucide-react": "^1.72.0",
     "radix-ui": "^1.8.1",

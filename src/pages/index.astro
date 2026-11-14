@@ -10,6 +10,7 @@ import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
 import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
 import { groupsEnabled } from '../lib/flags';
 import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
+import { dayKey } from '../lib/dates';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -65,7 +66,8 @@ const [{ data: saves }, { data: oldSaves }] = await Promise.all([
         .limit(365),
 ]);
 const now = new Date();
-const resurfaced = pickForDay((oldSaves ?? []) as unknown as SaveRow[], now.toISOString().slice(0, 10));
+// Today's pick changes at the person's midnight, not UTC's.
+const resurfaced = pickForDay((oldSaves ?? []) as unknown as SaveRow[], dayKey(now, Astro.locals.timeZone));
 
 // Chip counts from the whole archive.
 const countByCategory = new Map<number | null, number>();

@@ -17,5 +17,7 @@ declare namespace App {
   interface Locals {
     supabase: import('@supabase/supabase-js').SupabaseClient;
     user: import('@supabase/supabase-js').User | null;
+    /** IANA zone for showing dates, always valid (see middleware.ts). */
+    timeZone: string;
   }
 }
