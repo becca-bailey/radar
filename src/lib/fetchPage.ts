@@ -2,7 +2,7 @@ import { assertPublicUrl, BlockedUrlError, defaultLookup, type LookupFn } from '
 
 const MAX_BYTES = 3_000_000;
 const TIMEOUT_MS = 15_000;
-const MAX_REDIRECTS = 5;
+const MAX_REDIRECTS = 10;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const USER_AGENT = 'RadarBot/0.1 (link archiver; saves pages its users asked it to save)';
 
@@ -34,9 +34,11 @@ export interface FetchPageOptions {
  */
 export async function fetchPage(url: string, options: FetchPageOptions = {}): Promise<FetchedPage> {
   const fetchImpl = options.fetchImpl ?? fetch;
-  const lookup = options.lookup ?? defaultLookup;
+  const rawLookup = options.lookup ?? defaultLookup;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  // DNS checks count against the same deadline as the requests.
+  const lookup: LookupFn = (host) => abortable(rawLookup(host), controller.signal);
   try {
     let current = await assertPublicUrl(url, lookup);
     let res: Response;
@@ -88,6 +90,24 @@ export async function fetchPage(url: string, options: FetchPageOptions = {}): Pr
   } finally {
     clearTimeout(timer);
   }
+}
+
+function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (err) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      }
+    );
+  });
 }
 
 function concat(chunks: Uint8Array[], total: number): Uint8Array {

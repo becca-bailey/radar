@@ -44,7 +44,7 @@ const BLOCKED_V4: Array<[string, number]> = [
 ];
 
 const BLOCKED_V4_RANGES = BLOCKED_V4.map(([net, bits]) => {
-  const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+  const mask = (~0 << (32 - bits)) >>> 0;
   return { base: (parseV4(net)! & mask) >>> 0, mask };
 });
 
@@ -72,7 +72,10 @@ function isBlockedV6(h: number[] | null): boolean {
   if (zeros(0, 5) && h[5] === 0xffff) return isBlockedV4(v4At(6));
   if (zeros(0, 6)) return isBlockedV4(v4At(6));
   // NAT64 64:ff9b::/96 and local-use 64:ff9b:1::/48
-  if (h[0] === 0x64 && h[1] === 0xff9b) return h[2] === 1 || isBlockedV4(v4At(6));
+  if (h[0] === 0x64 && h[1] === 0xff9b) {
+    if (h[2] === 1) return true;
+    if (zeros(2, 6)) return isBlockedV4(v4At(6));
+  }
   if (h[0] === 0x2002) return isBlockedV4(v4At(1)); // 6to4 embeds a v4 address
   if (h[0] === 0x2001 && h[1] === 0) return true; // Teredo
   if (h[0] === 0x2001 && h[1] === 0x0db8) return true; // documentation
@@ -144,8 +147,10 @@ export async function assertPublicUrl(raw: string | URL, lookup: LookupFn = defa
     throw new BlockedUrlError(url.href, `${host} is a local name`);
   }
 
-  // A lookup failure propagates as-is: it is usually transient, not a block.
-  const addresses = await lookup(name);
+  // Look up exactly the host fetch will connect to: "foo." and "foo" can
+  // resolve differently once resolver search domains apply. A lookup failure
+  // propagates as-is, since it is usually transient rather than a block.
+  const addresses = await lookup(host);
   if (addresses.length === 0) throw new BlockedUrlError(url.href, `${host} has no addresses`);
   const bad = addresses.find((a) => isBlockedAddress(a.address));
   if (bad) throw new BlockedUrlError(url.href, `${host} resolves to ${bad.address}, which is not public`);

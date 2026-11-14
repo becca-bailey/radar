@@ -62,6 +62,7 @@ describe('isBlockedAddress', () => {
     '2a00:1450:4001::200e',
     '::ffff:8.8.8.8',
     '64:ff9b::808:808',
+    '64:ff9b:2::a00:1', // outside the NAT64 /96, so not read as 10.0.0.1
   ])('allows %s', (ip) => {
     expect(isBlockedAddress(ip)).toBe(false);
   });
@@ -95,6 +96,16 @@ describe('assertPublicUrl', () => {
       await expect(assertPublicUrl(url, noDns)).rejects.toBeInstanceOf(BlockedUrlError);
     }
   );
+
+  it('looks up the host exactly as fetch will, trailing dot included', async () => {
+    const seen: string[] = [];
+    const recording: LookupFn = async (host) => {
+      seen.push(host);
+      return [{ address: '93.184.216.34', family: 4 }];
+    };
+    await assertPublicUrl('https://Example.COM./', recording);
+    expect(seen).toEqual(['example.com.']);
+  });
 
   it('blocks a hostname that resolves to a private address', async () => {
     await expect(assertPublicUrl('https://internal.example/', resolvesTo('10.0.0.7'))).rejects.toThrow(

@@ -96,7 +96,40 @@ describe('fetchPage', () => {
     await expect(fetchPage('https://example.com/loop', { fetchImpl, lookup })).rejects.toThrow(
       /Too many redirects/
     );
-    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect(fetchImpl).toHaveBeenCalledTimes(11);
+  });
+
+  it('cancels redirect bodies before following them', async () => {
+    const cancel = vi.fn();
+    const fetchImpl = fakeFetch({
+      'https://example.com/a': () => {
+        const body = new ReadableStream({ cancel });
+        return new Response(body, { status: 302, headers: { Location: '/b' } });
+      },
+      'https://example.com/b': () => html('ok'),
+    });
+    await fetchPage('https://example.com/a', { fetchImpl, lookup });
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it('counts a hung DNS lookup on a later hop against the overall timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const hangsOnOther: LookupFn = (host) =>
+        host === 'other.example' ? new Promise(() => {}) : lookup(host);
+      const fetchImpl = fakeFetch({
+        'https://example.com/a': () => redirect('https://other.example/b'),
+      });
+      const result = fetchPage('https://example.com/a', { fetchImpl, lookup: hangsOnOther }).catch(
+        (e) => e
+      );
+      await vi.advanceTimersByTimeAsync(15_000);
+      const err = await result;
+      expect(err).toBeInstanceOf(Error);
+      expect(err.name).toBe('AbortError');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('returns a 3xx without a Location as an ordinary response', async () => {
