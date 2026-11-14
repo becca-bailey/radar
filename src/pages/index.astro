@@ -44,7 +44,7 @@ const cats = (categories ?? []) as { id: number; slug: string; name: string }[];
 const bySlug = new Map(cats.map((c) => [c.slug, c]));
 const activeCat = topic && topic !== 'uncategorized' ? (bySlug.get(topic) ?? null) : null;
 
-const linkCols = 'title, source, canonical_url, status, kind, image:metadata->>image';
+const linkCols = 'title, source, canonical_url, status, image:metadata->>image';
 const shareCols = groupsEnabled() ? ', shares(group_id, removed_at, picked_at)' : '';
 let query = supabase
   .from('saves')
