@@ -20,11 +20,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (isValidTimeZone(cookieZone)) {
     context.locals.timeZone = cookieZone;
     // Copy it to the profile when it changes, so a new device without the
-    // cookie yet still gets the right zone on its first page.
-    if (user && context.cookies.get(TZ_SAVED_COOKIE)?.value !== cookieZone) {
+    // cookie yet still gets the right zone on its first page. The marker
+    // names the user too, so a different sign-in on this browser saves again.
+    const saved = `${user?.id}:${cookieZone}`;
+    if (user && context.cookies.get(TZ_SAVED_COOKIE)?.value !== saved) {
       const { error } = await supabase.from('profiles').update({ time_zone: cookieZone }).eq('id', user.id);
       if (!error) {
-        context.cookies.set(TZ_SAVED_COOKIE, cookieZone, {
+        context.cookies.set(TZ_SAVED_COOKIE, saved, {
           path: '/',
           maxAge: 60 * 60 * 24 * 365,
           sameSite: 'lax',

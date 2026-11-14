@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayKey, formatDate, formatRecentDate, isValidTimeZone, localDayRange, resolveTimeZone } from './dates';
+import { dayKey, formatDate, isDayKey, formatRecentDate, isValidTimeZone, localDayRange, resolveTimeZone } from './dates';
 
 const LA = 'America/Los_Angeles';
 
@@ -54,6 +54,18 @@ describe('dayKey', () => {
   it('is the local calendar day', () => {
     expect(dayKey('2026-11-14T03:00:00Z', LA)).toBe('2026-11-13');
     expect(dayKey('2026-11-14T03:00:00Z', 'UTC')).toBe('2026-11-14');
+  });
+});
+
+describe('isDayKey', () => {
+  it('accepts real calendar days only', () => {
+    expect(isDayKey('2026-11-13')).toBe(true);
+    expect(isDayKey('2028-02-29')).toBe(true);
+    expect(isDayKey('2026-02-29')).toBe(false);
+    expect(isDayKey('2026-13-01')).toBe(false);
+    expect(isDayKey('0050-01-01')).toBe(false);
+    expect(isDayKey('2026-11-13T00:00')).toBe(false);
+    expect(isDayKey(null)).toBe(false);
   });
 });
 

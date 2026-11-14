@@ -9,7 +9,7 @@ import SavePicker, { type PickerRow } from '@/components/SavePicker.tsx';
 import { groupsEnabled } from '../../../lib/flags';
 import { joinNotes, saveDisplayTitle } from '../../../lib/exportFormats';
 import { fetchGroupPool } from '../../../lib/groupPool';
-import { formatDate, localDayRange } from '../../../lib/dates';
+import { formatDate, isDayKey, localDayRange } from '../../../lib/dates';
 
 /**
  * Export a group's shared links: pick by the dates they were shared, sort by
@@ -34,9 +34,8 @@ if (!group) {
 }
 
 const params = Astro.url.searchParams;
-const isDate = (s: string | null): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
-const from = isDate(params.get('from')) ? params.get('from')! : '';
-const to = isDate(params.get('to')) ? params.get('to')! : '';
+const from = isDayKey(params.get('from')) ? params.get('from')! : '';
+const to = isDayKey(params.get('to')) ? params.get('to')! : '';
 const SORTS = { shared: 'Most shared', newest: 'Newest first', oldest: 'Oldest first' } as const;
 type Sort = keyof typeof SORTS;
 const rawSort = params.get('sort') ?? '';

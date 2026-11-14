@@ -65,8 +65,16 @@ export function dayKey(date: DateInput, zone?: string): string {
   return format(toDate(date), 'yyyy-MM-dd', zone ? { in: tz(zone) } : undefined);
 }
 
+/** A real YYYY-MM-DD calendar day (from a date input), years 1000–9999. */
+export function isDayKey(s: unknown): s is string {
+  if (typeof s !== 'string' || !/^[1-9]\d{3}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
 /**
- * A local YYYY-MM-DD day as the UTC instants it spans: [start, end), each an
+ * A local YYYY-MM-DD day (checked with isDayKey) as the UTC instants it spans: [start, end), each an
  * ISO string for a timestamptz query. "end" is the next local midnight, so a
  * DST day is 23 or 25 hours long, and "to" includes the whole day.
  */
