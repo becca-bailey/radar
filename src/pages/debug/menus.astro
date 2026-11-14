@@ -1,0 +1,59 @@
+---
+// TEMPORARY (RAD-41): a page that needs no sign-in, with the real header
+// (account menu) and real save cards (save menu), so the iOS tap bug can be
+// tested on a deploy preview. The ?debugtaps log is switched on here
+// automatically. Never merge this.
+import Layout from '../../layouts/Layout.astro';
+import CardList from '@/components/CardList.astro';
+import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
+
+// Just enough of a Supabase user for the header to render the account menu.
+const fakeUser = { id: 'debug', email: 'tester@example.com' } as import('@supabase/supabase-js').User;
+
+const now = Date.now();
+const rows: SaveRow[] = [
+  {
+    id: '00000000-0000-0000-0000-000000000001',
+    original_url: 'https://example.com/articles/one',
+    note: 'A note so the card has a body, like a real save.',
+    created_at: new Date(now - 60 * 60 * 1000).toISOString(),
+    links: {
+      title: 'A saved article with a fairly long title that wraps on a phone',
+      source: 'example.com',
+      canonical_url: 'https://example.com/articles/one',
+      status: 'ready',
+    },
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000002',
+    original_url: 'https://example.org/post',
+    note: null,
+    created_at: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    links: {
+      title: 'Another save',
+      source: 'example.org',
+      canonical_url: 'https://example.org/post',
+      status: 'ready',
+    },
+  },
+];
+const groups = [{ id: '00000000-0000-0000-0000-0000000000aa', name: 'Test group' }];
+
+Astro.response.headers.set('X-Robots-Tag', 'noindex');
+---
+
+<Layout title="Menu tap test · Radar" user={fakeUser}>
+  <script is:inline>
+    // Turn the debug log on before the menu scripts load (see src/lib/debug-taps.ts).
+    try {
+      if (!/[?&]debugtaps=off\b/.test(location.search)) sessionStorage.setItem('radar-debugtaps', '1');
+    } catch (e) {}
+  </script>
+  <p class="text-sm text-muted-foreground">
+    Test page for RAD-41. Tap the account circle above, then a card's <strong>…</strong> button. The menus are real; their
+    actions won't work here because you're not signed in.
+  </p>
+  <CardList>
+    {rows.map((row) => <SaveCard row={row} groups={groups} defaultGroupId={groups[0].id} />)}
+  </CardList>
+</Layout>
