@@ -158,7 +158,7 @@ Merged to `main` (2026-11-14).
 - [x] **12.1 (S)** Landing page for signed-out visitors: `/` rewrites to `/about` (also reachable directly), covering what Radar is for, how it works (save / share / find), who it's for, and what it won't do. Copy describes only what exists today. "About" in the signed-out nav.
 - [x] **12.2 (S)** AGPL-3.0-or-later `LICENSE`, `license` in `package.json`, "Source" link in the footer (AGPL §13 asks hosted apps to offer their source).
 - [x] **12.3 (S)** `CONTRIBUTING.md` (non-negotiables, setup, checks, conventions, conduct), `SECURITY.md` (private reporting through GitHub), and a pull request template.
-- [ ] **12.4 (S)** On GitHub: make the repository public if it isn't, turn on private vulnerability reporting (Settings → Security), and add a description and topics.
+- [ ] **12.4 (S)** On GitHub: turn on private vulnerability reporting (Settings → Security; `SECURITY.md` points there), and add a description and topics. The repository is public.
 
 ## Stage 13 — Meet members where they are (PLAN.md §0a)
 
@@ -166,7 +166,7 @@ In priority order. Run 13.1 alongside, not after.
 
 - [ ] **13.1 (S)** Phase 0 with real members: invite about ten paid subscribers. Track the share who share a second link in their second week; interview a few (PLAN §11).
 - [x] **13.2 (M)** *(On `main`, 2026-11-14.)* Group invite links grant sign-up: signed out, `/join/<token>` shows the group's name and an email box. The login endpoint lets a new email create an account when `next` is an open (active, under its weekly cap) invite link; the join page counts the use on arrival. Beta invites and `ADMIN_EMAILS` work as before; an address with neither still gets no email. Logic in `src/lib/inviteLinks.ts` (tested).
-- [ ] **13.2b (S)** Accounts are created when the email is requested, before the link in it is clicked, so anyone holding an invite link could script the form to create many unused accounts. Add a per-IP rate limit on `/api/auth/login`, or create the account on the callback instead. Low risk while invite links stay with subscribers.
+- [ ] **13.2b (S)** Accounts are created when the email is requested, before the link in it is clicked, so anyone holding an invite link could script the form to create many unused accounts. Add a per-IP rate limit on `/api/auth/login`, or create the account on the callback instead. No invite links have been generated or sent yet, so this is best done before the first one goes into a welcome email.
 - [ ] **13.3 (M)** Save by email (was 9.3, moved up): private per-user address via the email provider's inbound webhook; every link in the message is saved; subject or body becomes the note. A `to a group` variant (e.g. `save+<token>+<group>@…`) shares too.
 - [ ] **13.4 (M)** Weekly group email: one per group per week, what was shared that week (same content as the group page's week), with lens headings. Members can turn it off. Replying with a link shares it to that group (needs 13.3's inbound handling).
 - [ ] **13.5 (S)** Picked email: when the owner marks a link picked, email each sharer once ("Your link made this week's roundup"). Off with the weekly email setting.
