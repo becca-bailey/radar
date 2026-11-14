@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { parseHTML } from 'linkedom';
 import { canonicalUrlFor } from './canonicalize';
 import { embedAndCategorize } from './categorize';
-import { fetchPage } from './fetchPage';
+import { BlockedUrlError, fetchPage } from './fetchPage';
 import { extractOpenGraph } from './openGraph';
 import { sourceForUrl } from './sources';
 
@@ -57,7 +57,8 @@ export async function processIngestQueue(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const attempts = job.attempts + 1;
-      if (attempts >= MAX_ATTEMPTS) {
+      // A blocked address won't become public on retry, so fail it now.
+      if (attempts >= MAX_ATTEMPTS || err instanceof BlockedUrlError) {
         summary.failed++;
         await service
           .from('ingest_jobs')
