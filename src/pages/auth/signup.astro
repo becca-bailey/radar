@@ -1,0 +1,80 @@
+---
+// Lands here from the sign-up email sent for a group invite link. The
+// account is created only on the button press (POST): mail scanners open
+// links with GET, and shouldn't create accounts by doing so.
+import Layout from '../../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { ensureInvitedUser } from '../../lib/invites';
+import { findInviteLink, inviteState } from '../../lib/inviteLinks';
+import { signupSecret, verifySignup } from '../../lib/signupLinks';
+import { createServiceClient } from '../../lib/supabase';
+
+const raw = Astro.request.method === 'POST' ? String((await Astro.request.formData()).get('t') ?? '') : (Astro.url.searchParams.get('t') ?? '');
+const payload = raw ? verifySignup(raw, signupSecret()) : null;
+
+const service = createServiceClient();
+const invite = payload ? await findInviteLink(service, payload.invite) : null;
+const open = inviteState(invite).status === 'open';
+const joinPath = payload ? `/join/${payload.invite}` : '/';
+let error: string | null = null;
+
+if (Astro.request.method === 'POST' && payload && open) {
+  // Already has an account (an earlier click, or they signed up another way):
+  // send them to the normal sign-in rather than signing in from this link.
+  const { data: existing } = await service.rpc('auth_user_exists', { p_email: payload.email });
+  if (existing) {
+    return Astro.redirect(
+      `${joinPath}?error=${encodeURIComponent('Your account is already set up. Enter your email to get a sign-in link.')}`
+    );
+  }
+  try {
+    await ensureInvitedUser(service, payload.email);
+    const { data: link, error: linkError } = await service.auth.admin.generateLink({
+      type: 'magiclink',
+      email: payload.email,
+    });
+    if (linkError || !link.properties?.hashed_token) throw linkError ?? new Error('no token');
+    const { error: verifyError } = await Astro.locals.supabase.auth.verifyOtp({
+      type: 'magiclink',
+      token_hash: link.properties.hashed_token,
+    });
+    if (verifyError) throw verifyError;
+    // Signed in: the join page adds the membership and counts the use.
+    return Astro.redirect(joinPath);
+  } catch {
+    error = 'Something went wrong setting up your account. Try the button again.';
+  }
+}
+
+const groupName = invite?.groups?.name ?? 'the group';
+---
+
+<Layout title="Finish joining — Radar">
+  {
+    !payload ? (
+      <>
+        <h1>This sign-up link has expired</h1>
+        <p>Sign-up links work for an hour. Open the group's invite link again to get a new one.</p>
+      </>
+    ) : !open ? (
+      <>
+        <h1>This invite link isn't open right now</h1>
+        <p>It may have been rotated or hit its weekly limit. Ask whoever sent it for the current one.</p>
+      </>
+    ) : (
+      <>
+        <h1>Join {groupName} on Radar</h1>
+        <p>
+          Create an account for <strong>{payload.email}</strong> and join {groupName}. No password: you'll
+          sign in with an email link like this one.
+        </p>
+        {error && <Alert variant="error">{error}</Alert>}
+        <form class="mt-4" method="post">
+          <input type="hidden" name="t" value={raw} />
+          <Button type="submit">Create my account</Button>
+        </form>
+      </>
+    )
+  }
+</Layout>
