@@ -3,12 +3,74 @@ import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 
 import { cn } from '@/lib/utils';
 
-function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+// Radix opens the menu on pointerdown for every pointer type. On an iPhone
+// with iOS 27.0.1 a tap didn't open it at all, and on any touch screen a
+// scroll that starts on the trigger pops it open. So for touch and pen the
+// trigger cancels Radix's pointerdown toggle and opens on the tap's click
+// instead. Mouse and keyboard keep Radix's behaviour. Upstream fix pending:
+// https://github.com/radix-ui/primitives/pull/4232
+interface TapToggle {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  pointerType: React.RefObject<string>;
 }
 
-function DropdownMenuTrigger(props: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
-  return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
+const TapToggleContext = React.createContext<TapToggle | null>(null);
+
+function DropdownMenu({
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const open = openProp ?? uncontrolledOpen;
+  const pointerType = React.useRef('');
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      if (openProp === undefined) setUncontrolledOpen(next);
+      onOpenChange?.(next);
+    },
+    [openProp, onOpenChange]
+  );
+  const tapToggle = React.useMemo(() => ({ open, setOpen, pointerType }), [open, setOpen]);
+
+  return (
+    <TapToggleContext.Provider value={tapToggle}>
+      <DropdownMenuPrimitive.Root data-slot="dropdown-menu" open={open} onOpenChange={setOpen} {...props} />
+    </TapToggleContext.Provider>
+  );
+}
+
+function DropdownMenuTrigger({
+  onPointerDown,
+  onClick,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+  const tap = React.useContext(TapToggleContext);
+
+  return (
+    <DropdownMenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        if (!tap) return;
+        tap.pointerType.current = event.pointerType;
+        // Radix skips its own toggle when the event is already prevented.
+        if (event.pointerType !== 'mouse') event.preventDefault();
+      }}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!tap) return;
+        const fromTap = tap.pointerType.current !== '' && tap.pointerType.current !== 'mouse';
+        tap.pointerType.current = '';
+        // detail is 0 for clicks synthesized from Enter/Space, which Radix
+        // already handled on keydown.
+        if (fromTap && event.detail > 0 && !event.defaultPrevented) tap.setOpen(!tap.open);
+      }}
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuContent({
