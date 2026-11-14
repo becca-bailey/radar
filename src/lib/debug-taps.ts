@@ -56,6 +56,8 @@ function render() {
     document.body.appendChild(panel);
   }
   panel.textContent = lines.join('\n');
+  // Keep the newest lines in view.
+  panel.scrollTop = panel.scrollHeight;
 }
 
 export function debugTap(message: string) {
