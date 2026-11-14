@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JUST_SAVE, parseShareTo, resolveShareChoice, shareChoices, shareSummary } from './shares';
+import { JUST_SAVE, MAX_SHARE_TO, parseShareTo, resolveShareChoice, shareChoices, shareSummary } from './shares';
 
 const groups = [
   { id: 'g-b', name: 'Bakers' },
@@ -50,6 +50,11 @@ describe('parseShareTo', () => {
   it('drops blanks, "Just save" and repeats', () => {
     expect(parseShareTo('\n just save \nReaders\nreaders\n\n')).toEqual(['Readers']);
     expect(parseShareTo(JUST_SAVE)).toEqual([]);
+  });
+
+  it('keeps at most MAX_SHARE_TO labels', () => {
+    const many = Array.from({ length: MAX_SHARE_TO + 10 }, (_, i) => `G${i}`).join('\n');
+    expect(parseShareTo(many)).toHaveLength(MAX_SHARE_TO);
   });
 
   it('is empty for nothing picked or a missing field', () => {

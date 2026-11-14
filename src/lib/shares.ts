@@ -42,23 +42,36 @@ export function shareChoices(groups: GroupOption[], lastUsedId: string | null = 
   return choices;
 }
 
+/**
+ * Builds the menu once and returns a label → choice lookup (case and
+ * surrounding spaces ignored); null for an unknown label.
+ */
+export function shareChoiceLookup(
+  groups: GroupOption[],
+  lastUsedId: string | null = null
+): (label: string) => ShareChoice | null {
+  const byLabel = new Map(shareChoices(groups, lastUsedId).map((c) => [c.label.toLowerCase(), c]));
+  return (label) => byLabel.get(label.trim().toLowerCase()) ?? null;
+}
+
 /** The group for a picked label; null for "Just save" or an unknown label. */
 export function resolveShareChoice(
   label: string,
   groups: GroupOption[],
   lastUsedId: string | null = null
 ): ShareChoice | null {
-  const wanted = label.trim().toLowerCase();
-  return shareChoices(groups, lastUsedId).find((c) => c.label.toLowerCase() === wanted) ?? null;
+  return shareChoiceLookup(groups, lastUsedId)(label);
 }
 
 /**
  * The labels in a `share_to` value, in order: a JSON array of labels, or
  * one string with a label per line (what the Shortcut sends when its
  * multi-select list lands in a text field). Blank lines, "Just save" and
- * repeats are dropped. Labels never contain newlines: shareChoices
- * collapses whitespace in group names.
+ * repeats are dropped, and at most MAX_SHARE_TO labels are kept. Labels
+ * never contain newlines: shareChoices collapses whitespace in group names.
  */
+export const MAX_SHARE_TO = 50;
+
 export function parseShareTo(value: unknown): string[] {
   const raw = Array.isArray(value)
     ? value.filter((v): v is string => typeof v === 'string')
@@ -73,6 +86,7 @@ export function parseShareTo(value: unknown): string[] {
     if (!label || seen.has(key)) continue;
     seen.add(key);
     labels.push(label);
+    if (labels.length === MAX_SHARE_TO) break;
   }
   return labels;
 }

@@ -6,7 +6,7 @@ import {
   type ShareOutcome,
   groupsForUser,
   parseShareTo,
-  resolveShareChoice,
+  shareChoiceLookup,
   shareSaveAsService,
   shareSummary,
 } from '../../lib/shares';
@@ -117,27 +117,28 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     let message = result.alreadySaved ? 'Already on Radar' : 'Saved to Radar';
     const shared: string[] = [];
     if (shareTo.length && groupsEnabled()) {
-      // Resolve every label against one snapshot: sharing updates the
-      // last-used group, which reorders (but never relabels) the menu.
+      // Resolve every label against one snapshot of the menu: sharing
+      // updates the last-used group, which reorders (never relabels) it.
+      // Shares run in order so the last one picked becomes last-used.
       const { groups, lastUsedId } = await groupsForUser(service, userId);
+      const byLabel = shareChoiceLookup(groups, lastUsedId);
       const outcomes: { label: string; outcome: ShareOutcome }[] = [];
       const missing: string[] = [];
-      const done = new Set<string>();
       for (const label of shareTo) {
-        const choice = resolveShareChoice(label, groups, lastUsedId);
+        const choice = byLabel(label);
         if (!choice?.groupId) {
           missing.push(label);
           continue;
         }
-        if (done.has(choice.groupId)) continue;
-        done.add(choice.groupId);
         const outcome = await shareSaveAsService(service, userId, result.saveId, choice.groupId);
         if (outcome === 'shared' || outcome === 'already') shared.push(choice.label);
         outcomes.push({ label: choice.label, outcome });
       }
       message += shareSummary(outcomes, missing);
     }
-    return Response.json({ ...result, shared_to: shared, message }, { status: 201 });
+    // shared_to: the labels shared to, or null when none (as before
+    // multi-select, so `if (shared_to)` still means "shared").
+    return Response.json({ ...result, shared_to: shared.length ? shared : null, message }, { status: 201 });
   } catch (err) {
     if (err instanceof TypeError) {
       const msg = 'That does not look like a web link.';
