@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 
-import { debugTap, debugTapsEnabled, installDebugTaps } from '@/lib/debug-taps';
+import { debugTap, debugTapsEnabled, installDebugTaps, tapFixUp } from '@/lib/debug-taps';
 import { cn } from '@/lib/utils';
 
 // TEMPORARY (RAD-41): ?debugtaps on-screen log. Never merge.
@@ -51,10 +51,16 @@ function DropdownMenu({
 
 function DropdownMenuTrigger({
   onPointerDown,
+  onPointerUp,
+  onPointerCancel,
   onClick,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
   const tap = React.useContext(TapToggleContext);
+  // TEMPORARY (RAD-41) candidate fix, ?tapfix=up: where the tap started, and
+  // whether pointerup already toggled so the click (if any) is skipped.
+  const downAt = React.useRef<{ x: number; y: number } | null>(null);
+  const toggledOnUp = React.useRef(false);
 
   return (
     <DropdownMenuPrimitive.Trigger
@@ -65,11 +71,35 @@ function DropdownMenuTrigger({
         tap.pointerType.current = event.pointerType;
         // Radix skips its own toggle when the event is already prevented.
         if (event.pointerType !== 'mouse') event.preventDefault();
+        downAt.current = event.pointerType !== 'mouse' ? { x: event.clientX, y: event.clientY } : null;
+        toggledOnUp.current = false;
         debugTap(`trigger pointerdown ${event.pointerType} btn=${event.button} ctrl=${event.ctrlKey} open=${tap.open}`);
+      }}
+      onPointerUp={(event) => {
+        onPointerUp?.(event);
+        debugTap(`trigger pointerup ${event.pointerType} open=${tap?.open}`);
+        const start = downAt.current;
+        downAt.current = null;
+        if (!tap || !start || !tapFixUp()) return;
+        // A tap, not the end of a scroll that began on the trigger.
+        if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return;
+        toggledOnUp.current = true;
+        tap.setOpen(!tap.open);
+      }}
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event);
+        debugTap(`trigger pointercancel ${event.pointerType}`);
+        downAt.current = null;
       }}
       onClick={(event) => {
         onClick?.(event);
         if (!tap) return;
+        if (toggledOnUp.current) {
+          toggledOnUp.current = false;
+          tap.pointerType.current = '';
+          debugTap('trigger click skipped (already toggled on pointerup)');
+          return;
+        }
         const fromTap = tap.pointerType.current !== '' && tap.pointerType.current !== 'mouse';
         debugTap(
           `trigger click fromTap=${fromTap} detail=${event.detail} prevented=${event.defaultPrevented} open=${tap.open}`

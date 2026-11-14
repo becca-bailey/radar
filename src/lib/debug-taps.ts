@@ -6,22 +6,40 @@
 const KEY = 'radar-debugtaps';
 const MAX_LINES = 40;
 
-let enabled: boolean | null = null;
+// 'full' also listens to every touch/pointer/click/focus event on the
+// document. 'lite' only logs the menu wrapper's own handlers, because the
+// document listeners turned out to change how iOS handles the tap.
+let mode: '' | 'full' | 'lite' | null = null;
 let panel: HTMLPreElement | null = null;
 const lines: string[] = [];
 const start = typeof performance !== 'undefined' ? performance.now() : 0;
 
-export function debugTapsEnabled(): boolean {
-  if (enabled !== null) return enabled;
-  if (typeof window === 'undefined') return false;
+function fromParam(value: string | null): '' | 'full' | 'lite' {
+  return value === 'off' ? '' : value === 'lite' ? 'lite' : 'full';
+}
+
+function debugMode(): '' | 'full' | 'lite' {
+  if (mode !== null) return mode;
+  if (typeof window === 'undefined') return '';
+  const params = new URLSearchParams(window.location.search);
   try {
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('debugtaps')) sessionStorage.setItem(KEY, params.get('debugtaps') === 'off' ? '' : '1');
-    enabled = sessionStorage.getItem(KEY) === '1';
+    if (params.has('debugtaps')) sessionStorage.setItem(KEY, fromParam(params.get('debugtaps')));
+    const stored = sessionStorage.getItem(KEY);
+    mode = stored === 'full' || stored === 'lite' ? stored : '';
   } catch {
-    enabled = new URLSearchParams(window.location.search).has('debugtaps');
+    mode = params.has('debugtaps') ? fromParam(params.get('debugtaps')) : '';
   }
-  return enabled;
+  return mode;
+}
+
+export function debugTapsEnabled(): boolean {
+  return debugMode() !== '';
+}
+
+// TEMPORARY (RAD-41): candidate fix, on with ?tapfix=up. Opens the menu when
+// the finger lifts (pointerup) instead of waiting for the tap's click.
+export function tapFixUp(): boolean {
+  return typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tapfix') === 'up';
 }
 
 function describe(node: EventTarget | null): string {
@@ -78,7 +96,11 @@ export function installDebugTaps() {
   installed = true;
 
   const ua = navigator.userAgent.match(/OS [\d_]+|Version\/[\d.]+|CriOS\/[\d.]+|FxiOS\/[\d.]+/g)?.join(' ') ?? '';
-  debugTap(`debugtaps on · ${ua} · touch=${navigator.maxTouchPoints}`);
+  debugTap(`debugtaps ${debugMode()} · tapfix=${tapFixUp() ? 'up' : 'none'} · ${ua} · touch=${navigator.maxTouchPoints}`);
+
+  window.addEventListener('error', (e) => debugTap(`ERROR ${e.message} @ ${e.filename}:${e.lineno}`));
+  window.addEventListener('unhandledrejection', (e) => debugTap(`REJECTION ${String(e.reason)}`));
+  if (debugMode() !== 'full') return;
 
   const opts = { capture: true, passive: true } as const;
 
@@ -112,7 +134,4 @@ export function installDebugTaps() {
   );
   document.addEventListener('focusin', (e) => debugTap(`focusin ${describe(e.target)}`), opts);
   document.addEventListener('focusout', (e) => debugTap(`focusout ${describe(e.target)}`), opts);
-
-  window.addEventListener('error', (e) => debugTap(`ERROR ${e.message} @ ${e.filename}:${e.lineno}`));
-  window.addEventListener('unhandledrejection', (e) => debugTap(`REJECTION ${String(e.reason)}`));
 }

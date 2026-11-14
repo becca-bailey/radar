@@ -46,7 +46,7 @@ Astro.response.headers.set('X-Robots-Tag', 'noindex');
   <script is:inline>
     // Turn the debug log on before the menu scripts load (see src/lib/debug-taps.ts).
     try {
-      if (!/[?&]debugtaps=off\b/.test(location.search)) sessionStorage.setItem('radar-debugtaps', '1');
+      if (!/[?&]debugtaps=/.test(location.search)) sessionStorage.setItem('radar-debugtaps', 'full');
     } catch (e) {}
   </script>
   <p class="text-sm text-muted-foreground">
