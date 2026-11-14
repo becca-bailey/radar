@@ -1,6 +1,10 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { groupsEnabled } from '../../lib/flags';
+import { findInviteLink, inviteState } from '../../lib/inviteLinks';
 import { createServiceClient } from '../../lib/supabase';
 
 if (!groupsEnabled()) {
@@ -10,59 +14,54 @@ if (!groupsEnabled()) {
 const token = Astro.params.token!;
 const { user } = Astro.locals;
 
-if (!user) {
-  return Astro.redirect(`/login?next=${encodeURIComponent(`/join/${token}`)}`);
-}
-
 const service = createServiceClient();
+const invite = await findInviteLink(service, token);
+const state = inviteState(invite);
 
-const { data: invite } = await service
-  .from('invite_links')
-  .select('id, group_id, active, weekly_cap, uses_this_week, week_started_at, paused_at, groups(name)')
-  .eq('token', token)
-  .maybeSingle();
+let outcome: 'signup' | 'joined' | 'already' | 'dead' | 'paused' = state.status === 'dead' ? 'dead' : 'paused';
+const groupName = invite?.groups?.name ?? '';
+const groupId = invite?.group_id ?? '';
 
-let outcome: 'joined' | 'already' | 'dead' | 'paused' = 'dead';
-let groupName = '';
-let groupId = '';
+// Signed out, sign-in form state (the login endpoint sends people back here).
+const sent = Astro.url.searchParams.get('sent') === '1';
+const error = Astro.url.searchParams.get('error');
 
-if (invite && invite.active) {
-  groupName = (invite.groups as unknown as { name: string })?.name ?? '';
-  groupId = invite.group_id;
-
+if (invite && state.status !== 'dead') {
   // Weekly window rollover.
-  const weekAge = Date.now() - new Date(invite.week_started_at).getTime();
-  let uses = invite.uses_this_week;
-  if (weekAge > 7 * 24 * 60 * 60 * 1000) {
-    uses = 0;
+  if (state.rolledOver) {
     await service
       .from('invite_links')
       .update({ uses_this_week: 0, week_started_at: new Date().toISOString(), paused_at: null })
       .eq('id', invite.id);
   }
 
-  const { data: existing } = await service
-    .from('memberships')
-    .select('group_id')
-    .eq('group_id', invite.group_id)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const { data: existing } = user
+    ? await service
+        .from('memberships')
+        .select('group_id')
+        .eq('group_id', invite.group_id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+    : { data: null };
 
   if (existing) {
     outcome = 'already';
-  } else if (uses >= invite.weekly_cap) {
+  } else if (state.status === 'paused') {
     outcome = 'paused';
     if (!invite.paused_at) {
       await service.from('invite_links').update({ paused_at: new Date().toISOString() }).eq('id', invite.id);
     }
+  } else if (!user) {
+    // Anyone with an open link can sign up (or sign in) and land back here.
+    outcome = 'signup';
   } else {
-    const { error } = await service
+    const { error: joinError } = await service
       .from('memberships')
       .insert({ group_id: invite.group_id, user_id: user.id, role: 'member' });
-    if (!error) {
+    if (!joinError) {
       await service
         .from('invite_links')
-        .update({ uses_this_week: uses + 1 })
+        .update({ uses_this_week: state.uses + 1 })
         .eq('id', invite.id);
       outcome = 'joined';
     } else {
@@ -72,7 +71,42 @@ if (invite && invite.active) {
 }
 ---
 
-<Layout title="Join — Radar" user={user}>
+<Layout title={groupName ? `Join ${groupName} — Radar` : 'Join — Radar'} user={user}>
+  {
+    outcome === 'signup' && (
+      <>
+        <h1>Join {groupName} on Radar</h1>
+        <p>
+          Radar keeps the good things you read, and lets you pass the best of them to {groupName}{' '}
+          with a sentence about why. The group sees the link and your note, never your name, your
+          email or your other saves.
+        </p>
+        {sent ? (
+          <Alert>
+            Check your email for the sign-in link. It brings you back here to join.
+            {import.meta.env.DEV && (
+              <>
+                {' '}In local dev, mail lands at <a href="http://localhost:55324">localhost:55324</a>.
+              </>
+            )}
+          </Alert>
+        ) : (
+          <>
+            {error && <Alert variant="error">{error}</Alert>}
+            <form class="mt-4 mb-2 grid gap-2.5" method="post" action="/api/auth/login">
+              <input type="hidden" name="next" value={`/join/${token}`} />
+              <Input type="email" name="email" placeholder="you@example.com" required autoFocus />
+              <Button type="submit">Email me a sign-in link</Button>
+            </form>
+            <p class="m-0 text-sm text-muted-foreground">
+              New here? This creates your account. Already have one? Same link. No password either
+              way. <a href="/about">What is Radar?</a>
+            </p>
+          </>
+        )}
+      </>
+    )
+  }
   {
     outcome === 'joined' && (
       <>
