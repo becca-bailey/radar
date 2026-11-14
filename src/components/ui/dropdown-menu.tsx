@@ -1,7 +1,11 @@
 import * as React from 'react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 
+import { debugTap, debugTapsEnabled, installDebugTaps } from '@/lib/debug-taps';
 import { cn } from '@/lib/utils';
+
+// TEMPORARY (RAD-41): ?debugtaps on-screen log. Never merge.
+if (typeof window !== 'undefined') installDebugTaps();
 
 // Radix opens the menu on pointerdown for every pointer type. On an iPhone
 // with iOS 27.0.1 a tap didn't open it at all, and on any touch screen a
@@ -28,12 +32,15 @@ function DropdownMenu({
   const pointerType = React.useRef('');
   const setOpen = React.useCallback(
     (next: boolean) => {
+      debugTap(`menu setOpen(${next})`);
       if (openProp === undefined) setUncontrolledOpen(next);
       onOpenChange?.(next);
     },
     [openProp, onOpenChange]
   );
   const tapToggle = React.useMemo(() => ({ open, setOpen, pointerType }), [open, setOpen]);
+  React.useEffect(() => debugTap('menu hydrated'), []);
+  React.useEffect(() => debugTap(`menu open=${open}`), [open]);
 
   return (
     <TapToggleContext.Provider value={tapToggle}>
@@ -58,11 +65,15 @@ function DropdownMenuTrigger({
         tap.pointerType.current = event.pointerType;
         // Radix skips its own toggle when the event is already prevented.
         if (event.pointerType !== 'mouse') event.preventDefault();
+        debugTap(`trigger pointerdown ${event.pointerType} btn=${event.button} ctrl=${event.ctrlKey} open=${tap.open}`);
       }}
       onClick={(event) => {
         onClick?.(event);
         if (!tap) return;
         const fromTap = tap.pointerType.current !== '' && tap.pointerType.current !== 'mouse';
+        debugTap(
+          `trigger click fromTap=${fromTap} detail=${event.detail} prevented=${event.defaultPrevented} open=${tap.open}`
+        );
         tap.pointerType.current = '';
         // detail is 0 for clicks synthesized from Enter/Space, which Radix
         // already handled on keydown.
@@ -78,6 +89,23 @@ function DropdownMenuContent({
   sideOffset = 6,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  // TEMPORARY (RAD-41): log why Radix dismisses the menu.
+  const debugProps: Partial<React.ComponentProps<typeof DropdownMenuPrimitive.Content>> = debugTapsEnabled()
+    ? {
+        onPointerDownOutside: (e) => {
+          debugTap(`content pointerDownOutside target=${(e.target as Element)?.tagName}`);
+          props.onPointerDownOutside?.(e);
+        },
+        onFocusOutside: (e) => {
+          debugTap(`content focusOutside target=${(e.target as Element)?.tagName}`);
+          props.onFocusOutside?.(e);
+        },
+        onEscapeKeyDown: (e) => {
+          debugTap('content escapeKeyDown');
+          props.onEscapeKeyDown?.(e);
+        },
+      }
+    : {};
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -88,6 +116,7 @@ function DropdownMenuContent({
           className
         )}
         {...props}
+        {...debugProps}
       />
     </DropdownMenuPrimitive.Portal>
   );
