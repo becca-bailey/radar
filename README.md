@@ -9,7 +9,8 @@ with one sentence of why, groups publish finite editions, and editions aggregate
 public categories through a ranking designed to surface new and small sources.
 
 - Product plan: [docs/PLAN.md](docs/PLAN.md)
-- Task breakdown and build order: [docs/TASKS.md](docs/TASKS.md)
+- Original build plan and history: [docs/TASKS.md](docs/TASKS.md)
+- How work moves from ticket to release: [docs/WORKFLOW.md](docs/WORKFLOW.md)
 
 ## Stack
 

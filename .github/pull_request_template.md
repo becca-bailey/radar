@@ -1,6 +1,14 @@
+Fixes RAD-
+
+<!-- Title: "RAD-123: what changed". The line above links the Linear issue. -->
+
 ## What and why
 
-<!-- What does this change, and why? Link the issue or task if there is one. -->
+<!-- What does this change, and why? -->
+
+## How to test
+
+<!-- Steps to see it working, and which env flags or migrations it needs. -->
 
 ## Heads-up
 

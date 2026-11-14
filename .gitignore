@@ -20,3 +20,6 @@ coverage/
 
 # Python bytecode
 __pycache__/
+
+# Claude Code session worktrees
+.claude/worktrees/
