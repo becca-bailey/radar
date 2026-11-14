@@ -82,7 +82,7 @@ export const POST: APIRoute = async ({ request, locals, url, redirect, clientAdd
   const ipHash = hashKey('ip', ip, secret);
   const emailHash = hashKey('email', email, secret);
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const [{ count: byIp }, { count: byEmail }] = await Promise.all([
+  const [{ count: byIp, error: ipError }, { count: byEmail, error: emailError }] = await Promise.all([
     service.from('signup_emails').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('sent_at', hourAgo),
     service
       .from('signup_emails')
@@ -90,6 +90,11 @@ export const POST: APIRoute = async ({ request, locals, url, redirect, clientAdd
       .eq('email_hash', emailHash)
       .gte('sent_at', hourAgo),
   ]);
+  if (ipError || emailError) {
+    // Fail closed: no rate limit, no sending.
+    console.error('signup_emails unavailable (is migration 20261119000000 applied?):', (ipError ?? emailError)!.message);
+    return fail("Sign-up isn't working right now. Try again later.");
+  }
   if (overSignupLimit({ byIp: byIp ?? 0, byEmail: byEmail ?? 0 })) {
     return fail('Too many sign-up emails in the last hour. Try again later, or check your inbox for the last one.');
   }

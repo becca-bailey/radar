@@ -22,7 +22,12 @@ let error: string | null = null;
 if (Astro.request.method === 'POST' && payload && open) {
   // Already has an account (an earlier click, or they signed up another way):
   // send them to the normal sign-in rather than signing in from this link.
-  const { data: existing } = await service.rpc('auth_user_exists', { p_email: payload.email });
+  const { data: existing, error: existsError } = await service.rpc('auth_user_exists', { p_email: payload.email });
+  if (existsError) {
+    // Fail closed: without this check a link could sign into an existing account.
+    console.error('auth_user_exists failed (is migration 20261119000000 applied?):', existsError.message);
+    return Astro.redirect(`${joinPath}?error=${encodeURIComponent("Sign-up isn't working right now. Try again later.")}`);
+  }
   if (existing) {
     return Astro.redirect(
       `${joinPath}?error=${encodeURIComponent('Your account is already set up. Enter your email to get a sign-in link.')}`
