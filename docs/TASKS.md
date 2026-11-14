@@ -79,7 +79,7 @@ Before inviting anyone (Becca, outside the code):
 - [x] **7.7 (S)** Custom SMTP for sign-in emails via Resend, sending as `On Your Radar <hello@mail.onyourradar.app>`: `mail.onyourradar.app` verified in Resend (us-east-1, records + DMARC in Netlify DNS), sending-only key "Supabase SMTP (sign-in emails)" set as Supabase's SMTP password. Magic links deliver. Check the email limit under Authentication → Rate Limits before inviting many testers.
 - [x] **7.8 (S)** Push migrations to prod: `npx supabase db push --remote` (lenses + beta hardening).
 - [ ] **7.9 (S)** Netlify env: set `ADMIN_EMAILS` (your email) and `SAFE_BROWSING_API_KEY` (the malware check at ingest is skipped without it).
-- [ ] **7.10 (S)** Supabase dashboard: turn off "Allow new users to sign up". Invites keep working (accounts are created through the admin API); this closes the direct sign-up endpoint.
+- [ ] **7.10 (S)** Supabase dashboard: turn off "Allow new users to sign up". Invites and group invite links keep working (accounts are created through the admin API); this closes the direct sign-up endpoint.
 - [ ] **7.11 (S)** Check the Supabase plan: free tier caps the database at 500 MB and pauses after a week idle. Full text + snapshots per link will grow fast.
 - [ ] **7.12 (S)** Deploy (pushing to `main` auto-deploys now), then invite testers at `/admin/invites`.
 
@@ -153,6 +153,8 @@ An experiment from a UX review: help people come back to read, and give group me
 
 ## Stage 12 — Landing page and open source
 
+Merged to `main` (2026-11-14).
+
 - [x] **12.1 (S)** Landing page for signed-out visitors: `/` rewrites to `/about` (also reachable directly), covering what Radar is for, how it works (save / share / find), who it's for, and what it won't do. Copy describes only what exists today. "About" in the signed-out nav.
 - [x] **12.2 (S)** AGPL-3.0-or-later `LICENSE`, `license` in `package.json`, "Source" link in the footer (AGPL §13 asks hosted apps to offer their source).
 - [x] **12.3 (S)** `CONTRIBUTING.md` (non-negotiables, setup, checks, conventions, conduct), `SECURITY.md` (private reporting through GitHub), and a pull request template.
@@ -163,7 +165,7 @@ An experiment from a UX review: help people come back to read, and give group me
 In priority order. Run 13.1 alongside, not after.
 
 - [ ] **13.1 (S)** Phase 0 with real members: invite about ten paid subscribers. Track the share who share a second link in their second week; interview a few (PLAN §11).
-- [x] **13.2 (M)** Group invite links grant sign-up: signed out, `/join/<token>` shows the group's name and an email box. The login endpoint lets a new email create an account when `next` is an open (active, under its weekly cap) invite link; the join page counts the use on arrival. Beta invites and `ADMIN_EMAILS` work as before; an address with neither still gets no email. Logic in `src/lib/inviteLinks.ts` (tested).
+- [x] **13.2 (M)** *(On `main`, 2026-11-14.)* Group invite links grant sign-up: signed out, `/join/<token>` shows the group's name and an email box. The login endpoint lets a new email create an account when `next` is an open (active, under its weekly cap) invite link; the join page counts the use on arrival. Beta invites and `ADMIN_EMAILS` work as before; an address with neither still gets no email. Logic in `src/lib/inviteLinks.ts` (tested).
 - [ ] **13.2b (S)** Accounts are created when the email is requested, before the link in it is clicked, so anyone holding an invite link could script the form to create many unused accounts. Add a per-IP rate limit on `/api/auth/login`, or create the account on the callback instead. Low risk while invite links stay with subscribers.
 - [ ] **13.3 (M)** Save by email (was 9.3, moved up): private per-user address via the email provider's inbound webhook; every link in the message is saved; subject or body becomes the note. A `to a group` variant (e.g. `save+<token>+<group>@…`) shares too.
 - [ ] **13.4 (M)** Weekly group email: one per group per week, what was shared that week (same content as the group page's week), with lens headings. Members can turn it off. Replying with a link shares it to that group (needs 13.3's inbound handling).
