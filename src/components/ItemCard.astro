@@ -10,34 +10,19 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 interface Props {
   title?: string | null;
   href?: string | null;
-  /** Media kind for the corner dot. Articles (the default) stay quiet. */
-  kind?: string | null;
   /** Thumbnail URL, shown as a small image on the card's right edge. */
   thumb?: string | null;
   [attr: `data-${string}`]: string | undefined;
 }
 
-const { title, href, kind, thumb, ...attrs } = Astro.props;
+const { title, href, thumb, ...attrs } = Astro.props;
 
 // Conditional children often render nothing; skip the body wrapper then.
 const body = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
-
-// Corner dot: media kind. The kind is also written in the meta line, so
-// color is never the only signal.
-const DOT_SHAPES: Record<string, string> = {
-  video: 'rotate-[8deg] rounded-[50%_50%_50%_4px] bg-candy-sky',
-  audio: 'rotate-[8deg] rounded-[50%_4px_50%_50%] bg-candy-plum',
-  product: '-rotate-6 rounded-[4px_50%_50%_50%] bg-candy-lime',
-  other: 'rotate-[14deg] rounded-[50%_50%_50%_4px] bg-candy-pink',
-};
-const dot = (kind && DOT_SHAPES[kind]) || 'rotate-[8deg] rounded-[50%_50%_50%_4px] bg-card';
 ---
 
 <li {...attrs}>
   <Card>
-    <span
-      aria-hidden="true"
-      class:list={['absolute -top-[7px] right-3.5 size-[15px] border-2', dot]}></span>
     <div class="flex items-start gap-3">
       {
         thumb && (

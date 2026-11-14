@@ -14,7 +14,6 @@ export interface SaveRow {
     source: string | null;
     canonical_url: string;
     status: string;
-    kind: string;
     /** Thumbnail from ingest (links.metadata->>image), when the page had one. */
     image?: string | null;
   } | null;
@@ -33,7 +32,6 @@ interface Props {
 
 const { row, groups = [], defaultGroupId = '', topic = null } = Astro.props;
 const link = row.links;
-const kind = link?.kind && link.kind !== 'article' ? link.kind : null;
 
 function displayTitle(): string {
   if (link?.title) return link.title;
@@ -61,13 +59,11 @@ const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric
 <ItemCard
   href={link?.canonical_url ?? row.original_url}
   title={title}
-  kind={kind}
   thumb={link?.image ?? null}
   data-save-id={row.id}
   data-pending={link?.status === 'pending' ? '' : undefined}
 >
   <Fragment slot="meta">
-    {kind ? `${kind} · ` : ''}
     {link?.source ?? ''}
     {link?.source ? ' · ' : ''}
     {dateFmt.format(new Date(row.created_at))}
