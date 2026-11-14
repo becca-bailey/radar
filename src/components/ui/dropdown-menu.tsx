@@ -1,18 +1,21 @@
 import * as React from 'react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 
-import { debugTap, debugTapsEnabled, installDebugTaps, tapFixUp } from '@/lib/debug-taps';
+import { debugTap, debugTapsEnabled, installDebugTaps } from '@/lib/debug-taps';
 import { cn } from '@/lib/utils';
 
 // TEMPORARY (RAD-41): ?debugtaps on-screen log. Never merge.
 if (typeof window !== 'undefined') installDebugTaps();
 
-// Radix opens the menu on pointerdown for every pointer type. On an iPhone
-// with iOS 27.0.1 a tap didn't open it at all, and on any touch screen a
-// scroll that starts on the trigger pops it open. So for touch and pen the
-// trigger cancels Radix's pointerdown toggle and opens on the tap's click
-// instead. Mouse and keyboard keep Radix's behaviour. Upstream fix pending:
-// https://github.com/radix-ui/primitives/pull/4232
+// Radix opens the menu on pointerdown for every pointer type. That fails on
+// touch in two ways:
+// - On iOS 27.0.1 Safari a tap on the trigger often sends a click with no
+//   pointer events at all, so Radix never opens the menu (RAD-41).
+// - On any touch screen, a scroll that starts on the trigger pops it open.
+// So the trigger opens on the click for everything except a mouse press:
+// touch and pen cancel Radix's pointerdown toggle, and a click without a
+// pointerdown opens the menu too. Mouse and keyboard keep Radix's behaviour.
+// Related upstream: https://github.com/radix-ui/primitives/pull/4232
 interface TapToggle {
   open: boolean;
   setOpen: (open: boolean) => void;
@@ -51,16 +54,10 @@ function DropdownMenu({
 
 function DropdownMenuTrigger({
   onPointerDown,
-  onPointerUp,
-  onPointerCancel,
   onClick,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
   const tap = React.useContext(TapToggleContext);
-  // TEMPORARY (RAD-41) candidate fix, ?tapfix=up: where the tap started, and
-  // whether pointerup already toggled so the click (if any) is skipped.
-  const downAt = React.useRef<{ x: number; y: number } | null>(null);
-  const toggledOnUp = React.useRef(false);
 
   return (
     <DropdownMenuPrimitive.Trigger
@@ -71,43 +68,20 @@ function DropdownMenuTrigger({
         tap.pointerType.current = event.pointerType;
         // Radix skips its own toggle when the event is already prevented.
         if (event.pointerType !== 'mouse') event.preventDefault();
-        downAt.current = event.pointerType !== 'mouse' ? { x: event.clientX, y: event.clientY } : null;
-        toggledOnUp.current = false;
-        debugTap(`trigger pointerdown ${event.pointerType} btn=${event.button} ctrl=${event.ctrlKey} open=${tap.open}`);
-      }}
-      onPointerUp={(event) => {
-        onPointerUp?.(event);
-        debugTap(`trigger pointerup ${event.pointerType} open=${tap?.open}`);
-        const start = downAt.current;
-        downAt.current = null;
-        if (!tap || !start || !tapFixUp()) return;
-        // A tap, not the end of a scroll that began on the trigger.
-        if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return;
-        toggledOnUp.current = true;
-        tap.setOpen(!tap.open);
-      }}
-      onPointerCancel={(event) => {
-        onPointerCancel?.(event);
-        debugTap(`trigger pointercancel ${event.pointerType}`);
-        downAt.current = null;
+        debugTap(`trigger pointerdown ${event.pointerType} open=${tap.open}`);
       }}
       onClick={(event) => {
         onClick?.(event);
         if (!tap) return;
-        if (toggledOnUp.current) {
-          toggledOnUp.current = false;
-          tap.pointerType.current = '';
-          debugTap('trigger click skipped (already toggled on pointerup)');
-          return;
-        }
-        const fromTap = tap.pointerType.current !== '' && tap.pointerType.current !== 'mouse';
-        debugTap(
-          `trigger click fromTap=${fromTap} detail=${event.detail} prevented=${event.defaultPrevented} open=${tap.open}`
-        );
+        // Only a mouse press already toggled the menu (in Radix's pointerdown).
+        // Anything else opens here: a touch or pen tap, and a click that
+        // arrives with no pointerdown at all, which is what iOS 27 sends.
+        const toggledOnPress = tap.pointerType.current === 'mouse';
         tap.pointerType.current = '';
+        debugTap(`trigger click detail=${event.detail} toggledOnPress=${toggledOnPress} open=${tap.open}`);
         // detail is 0 for clicks synthesized from Enter/Space, which Radix
         // already handled on keydown.
-        if (fromTap && event.detail > 0 && !event.defaultPrevented) tap.setOpen(!tap.open);
+        if (!toggledOnPress && event.detail > 0 && !event.defaultPrevented) tap.setOpen(!tap.open);
       }}
       {...props}
     />

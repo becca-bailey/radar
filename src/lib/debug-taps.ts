@@ -36,12 +36,6 @@ export function debugTapsEnabled(): boolean {
   return debugMode() !== '';
 }
 
-// TEMPORARY (RAD-41): candidate fix, on with ?tapfix=up. Opens the menu when
-// the finger lifts (pointerup) instead of waiting for the tap's click.
-export function tapFixUp(): boolean {
-  return typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tapfix') === 'up';
-}
-
 function describe(node: EventTarget | null): string {
   if (!(node instanceof Element)) return node === document ? 'document' : node === window ? 'window' : String(node);
   const label = node.getAttribute('aria-label') ?? node.getAttribute('data-slot') ?? '';
@@ -96,7 +90,7 @@ export function installDebugTaps() {
   installed = true;
 
   const ua = navigator.userAgent.match(/OS [\d_]+|Version\/[\d.]+|CriOS\/[\d.]+|FxiOS\/[\d.]+/g)?.join(' ') ?? '';
-  debugTap(`debugtaps ${debugMode()} · tapfix=${tapFixUp() ? 'up' : 'none'} · ${ua} · touch=${navigator.maxTouchPoints}`);
+  debugTap(`debugtaps ${debugMode()} · ${ua} · touch=${navigator.maxTouchPoints}`);
 
   window.addEventListener('error', (e) => debugTap(`ERROR ${e.message} @ ${e.filename}:${e.lineno}`));
   window.addEventListener('unhandledrejection', (e) => debugTap(`REJECTION ${String(e.reason)}`));
