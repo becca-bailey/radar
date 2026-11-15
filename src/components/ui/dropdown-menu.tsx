@@ -15,8 +15,14 @@ import { cn } from '@/lib/utils';
 interface TapToggle {
   open: boolean;
   setOpen: (open: boolean) => void;
-  pointerType: React.RefObject<string>;
+  /** The last mouse press on the trigger (event timeStamp), which Radix toggled on. */
+  mousePressAt: React.RefObject<number | null>;
 }
+
+// A mouse press counts as the one a click completes only for this long, so a
+// press whose click never reached the trigger (a drag off it, or a click that
+// landed outside once the menu opened) can't swallow a later tap.
+const PRESS_TO_CLICK_MS = 5000;
 
 const TapToggleContext = React.createContext<TapToggle | null>(null);
 
@@ -28,7 +34,7 @@ function DropdownMenu({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
   const open = openProp ?? uncontrolledOpen;
-  const pointerType = React.useRef('');
+  const mousePressAt = React.useRef<number | null>(null);
   const setOpen = React.useCallback(
     (next: boolean) => {
       if (openProp === undefined) setUncontrolledOpen(next);
@@ -36,7 +42,7 @@ function DropdownMenu({
     },
     [openProp, onOpenChange]
   );
-  const tapToggle = React.useMemo(() => ({ open, setOpen, pointerType }), [open, setOpen]);
+  const tapToggle = React.useMemo(() => ({ open, setOpen, mousePressAt }), [open, setOpen]);
 
   return (
     <TapToggleContext.Provider value={tapToggle}>
@@ -58,7 +64,7 @@ function DropdownMenuTrigger({
       onPointerDown={(event) => {
         onPointerDown?.(event);
         if (!tap) return;
-        tap.pointerType.current = event.pointerType;
+        tap.mousePressAt.current = event.pointerType === 'mouse' ? event.timeStamp : null;
         // Radix skips its own toggle when the event is already prevented.
         if (event.pointerType !== 'mouse') event.preventDefault();
       }}
@@ -68,8 +74,16 @@ function DropdownMenuTrigger({
         // Only a mouse press already toggled the menu (in Radix's pointerdown).
         // Anything else opens here: a touch or pen tap, and a click that
         // arrives with no pointerdown at all, which is what iOS 27 sends.
-        const toggledOnPress = tap.pointerType.current === 'mouse';
-        tap.pointerType.current = '';
+        // A click that says it came from touch or pen is never the end of a
+        // mouse press, whatever was recorded before.
+        const clickType = (event.nativeEvent as Partial<PointerEvent>).pointerType;
+        const pressAt = tap.mousePressAt.current;
+        tap.mousePressAt.current = null;
+        const toggledOnPress =
+          clickType !== 'touch' &&
+          clickType !== 'pen' &&
+          pressAt !== null &&
+          event.timeStamp - pressAt < PRESS_TO_CLICK_MS;
         // detail is 0 for clicks synthesized from Enter/Space, which Radix
         // already handled on keydown.
         if (!toggledOnPress && event.detail > 0 && !event.defaultPrevented) tap.setOpen(!tap.open);
