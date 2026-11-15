@@ -26,7 +26,7 @@ export type BearerLookup =
  * Resolve a Bearer token to a user id. Uses the service client (token
  * lookup happens before any user is known). The two failure modes are
  * distinguished so callers can say whether a token never arrived (e.g.
- * the Shortcut still holds its placeholder) or arrived but matched
+ * the Shortcut's token field is empty) or arrived but matched
  * nothing (wrong environment, revoked, mistyped).
  */
 export async function userIdForBearerToken(
