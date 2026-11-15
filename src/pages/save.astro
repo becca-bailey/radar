@@ -13,13 +13,15 @@ if (!user) {
 const url = Astro.url.searchParams.get('url') ?? '';
 const title = Astro.url.searchParams.get('title') ?? '';
 const done = Astro.url.searchParams.get('done') === '1';
+const already = Astro.url.searchParams.get('already') === '1';
+const error = Astro.url.searchParams.get('error');
 ---
 
 <Layout title="Save — Radar" user={user}>
   {
     done ? (
       <>
-        <Alert>Saved. You can close this window.</Alert>
+        <Alert>{already ? 'Already on Radar.' : 'Saved to Radar.'} You can close this window.</Alert>
         <script is:inline>
           setTimeout(() => window.close(), 1200);
         </script>
@@ -27,14 +29,12 @@ const done = Astro.url.searchParams.get('done') === '1';
     ) : (
       <>
         <h1>Save{title ? `: ${title}` : ''}</h1>
+        {error && <Alert variant="error">{error}</Alert>}
         <form class="mt-4 mb-6 grid gap-2.5" method="post" action="/api/saves">
           <input type="hidden" name="return_to" value="save" />
           <input type="hidden" name="title" value={title} />
           <Input type="url" name="url" defaultValue={url} placeholder="https://…" required />
-          <Input type="text" name="note" placeholder="Why you saved it (optional)" autoFocus={!!url} />
-          <label class="flex items-center gap-2 text-sm font-semibold">
-            <input class="size-4 accent-primary" type="checkbox" name="wayback" /> Also save to the Wayback Machine
-          </label>
+          <Input type="text" name="note" placeholder="Why you're saving it (optional)" autoFocus={!!url} />
           <Button type="submit">Save</Button>
         </form>
       </>
