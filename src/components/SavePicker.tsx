@@ -52,6 +52,7 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
   // Ids of the last export, offered for "Mark as picked".
   const [justExported, setJustExported] = React.useState<string[]>([]);
   const [pickStatus, setPickStatus] = React.useState('');
+  const [picking, setPicking] = React.useState(false);
 
   const afterExport = (items: PickerRow[]) => {
     if (recordExport) {
@@ -68,6 +69,7 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
   };
 
   const markPicked = async () => {
+    setPicking(true);
     try {
       const res = await fetch(pickUrl!, {
         method: 'POST',
@@ -79,6 +81,8 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
       setJustExported([]);
     } catch {
       setPickStatus("Couldn't mark them. Try again.");
+    } finally {
+      setPicking(false);
     }
   };
   const allRef = React.useRef<HTMLInputElement>(null);
@@ -234,7 +238,13 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
           ) : (
             <>
               <span className="mr-auto">Using these? Mark them picked so the people who shared them know.</span>
-              <Button size="sm" variant="outline" onClick={() => void markPicked()}>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-disabled={picking || undefined}
+                aria-busy={picking || undefined}
+                onClick={() => void markPicked()}
+              >
                 Mark {justExported.length} as picked
               </Button>
             </>

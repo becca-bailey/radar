@@ -50,6 +50,11 @@ if (groups && user) {
     </script>
   </head>
   <body>
+    {/* Shown while a form submit waits on the server (src/scripts/submitting.ts). */}
+    <div
+      class="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-1 animate-pulse bg-candy-orange [html:has(form[data-submitting])_&]:block"
+      aria-hidden="true"
+    ></div>
     <svg
       class="pointer-events-none fixed -top-[60px] -right-20 -z-10 w-[260px] text-candy-pink opacity-30 min-[721px]:opacity-55"
       viewBox="0 0 200 200"
@@ -121,5 +126,8 @@ if (groups && user) {
         {' '}· Your archive is yours: export it any time.
       </footer>
     </main>
+    <script>
+      import '../scripts/submitting';
+    </script>
   </body>
 </html>

@@ -11,6 +11,7 @@ import ItemCard from '@/components/ItemCard.astro';
 import LensMenu from '@/components/LensMenu.tsx';
 import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
+import SkeletonCards from '@/components/SkeletonCards.astro';
 import { saveDisplayTitle } from '../lib/exportFormats';
 import { sanitizeSnippet } from '../lib/snippet';
 
@@ -166,6 +167,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
       </form>
     )
   }
+  {formOpen && <SkeletonCards heading class="mt-8" />}
 
   {single && (
     <p class="mt-4 mb-0 text-sm">

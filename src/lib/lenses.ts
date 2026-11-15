@@ -42,3 +42,11 @@ export function lensHomePath(groupId: string | null, lensId?: string): string {
   const base = groupId ? `/groups/${groupId}` : '/explore';
   return lensId ? `${base}?lens=${lensId}` : base;
 }
+
+/**
+ * Where to land after creating a lens: the list of lenses, scrolled to the
+ * new one, which is where the skeleton shown while saving said it would be.
+ */
+export function createdLensPath(groupId: string | null, lensId: string): string {
+  return `${lensHomePath(groupId)}?created=1#lens-${lensId}`;
+}

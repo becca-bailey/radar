@@ -8,6 +8,7 @@ import CardList from '@/components/CardList.astro';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
 import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
+import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../lib/flags';
 import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
 import { dayKey } from '../lib/dates';
@@ -146,6 +147,7 @@ const lensTopic = activeCat?.name ?? null;
       <Input type="text" name="note" placeholder="Why you're saving it (optional)" />
       <Button type="submit">Save</Button>
     </form>
+    <SkeletonCards count={1} class="px-4 pb-4" />
   </details>
 
   {

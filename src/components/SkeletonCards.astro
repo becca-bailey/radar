@@ -1,0 +1,39 @@
+---
+// Placeholder cards for content a form is about to create. Place it after
+// the form, as a sibling: it shows while that form is submitting
+// (src/scripts/submitting.ts sets data-submitting).
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface Props {
+  count?: number;
+  /** Also show a heading line, as above a lens section. */
+  heading?: boolean;
+  class?: string;
+}
+
+const { count = 2, heading = false, class: className } = Astro.props;
+---
+
+<div class:list={['hidden [form[data-submitting]~&]:block', className]} aria-hidden="true">
+  {
+    heading && (
+      <div class="mb-4 grid gap-2">
+        <Skeleton className="h-7 w-1/2" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+    )
+  }
+  <div class="grid gap-3.5">
+    {
+      Array.from({ length: count }, () => (
+        <Card>
+          <div class="grid gap-2">
+            <Skeleton className="h-5 w-4/5" />
+            <Skeleton className="h-4 w-2/5" />
+          </div>
+        </Card>
+      ))
+    }
+  </div>
+</div>

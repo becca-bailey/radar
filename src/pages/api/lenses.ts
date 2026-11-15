@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { embedLensQuery, lensHomePath, parseLensForm } from '../../lib/lenses';
+import { createdLensPath, embedLensQuery, lensHomePath, parseLensForm } from '../../lib/lenses';
 import { groupsEnabled } from '../../lib/flags';
 import { retireSuggestion } from '../../lib/topicSuggestions';
 
@@ -46,5 +46,5 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   // changed the search before saving.
   const suggestion = String(form.get('suggestion') ?? '');
   if (groupId && suggestion) await retireSuggestion(supabase, groupId, suggestion);
-  return redirect(`${lensHomePath(groupId, data.id)}&created=1`);
+  return redirect(createdLensPath(groupId, data.id));
 };
