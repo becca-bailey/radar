@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lensHomePath, parseLensForm } from './lenses';
+import { createdLensPath, lensHomePath, parseLensForm } from './lenses';
 
 function form(fields: Record<string, string>): FormData {
   const f = new FormData();
@@ -32,5 +32,12 @@ describe('lensHomePath', () => {
     expect(lensHomePath(null, 'l1')).toBe('/explore?lens=l1');
     expect(lensHomePath('g1')).toBe('/groups/g1');
     expect(lensHomePath('g1', 'l1')).toBe('/groups/g1?lens=l1');
+  });
+});
+
+describe('createdLensPath', () => {
+  it('lands on the list of lenses, scrolled to the new one', () => {
+    expect(createdLensPath(null, 'l1')).toBe('/explore?created=1#lens-l1');
+    expect(createdLensPath('g1', 'l1')).toBe('/groups/g1?created=1#lens-l1');
   });
 });
