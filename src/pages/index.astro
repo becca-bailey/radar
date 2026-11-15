@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { Alert } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
@@ -12,6 +12,7 @@ import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../lib/flags';
 import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
 import { dayKey } from '../lib/dates';
+import { afterCursorFilter, nextPageHref, parseCursor } from '../lib/archiveCursor';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -31,6 +32,9 @@ const undoSaveId = undoSave && UUID_RE.test(undoSave) ? undoSave : null;
 const removed = Astro.url.searchParams.get('removed') === '1';
 const error = Astro.url.searchParams.get('error');
 const topic = Astro.url.searchParams.get('topic');
+// Set when paging back through older saves ("Load more").
+const cursor = parseCursor(Astro.url.searchParams);
+const PAGE_SIZE = 200;
 
 // RLS scopes everything to the signed-in user.
 const [{ data: categories }, { data: catRows }, { data: myGroups }, { data: profile }] =
@@ -53,11 +57,16 @@ let query = supabase
   .select(`id, original_url, note, created_at, ${topic ? 'links!inner' : 'links'}(${linkCols})${shareCols}`);
 if (topic === 'uncategorized') query = query.is('links.category_id', null);
 else if (activeCat) query = query.eq('links.category_id', activeCat.id);
+if (cursor) query = query.or(afterCursorFilter(cursor));
 const resurfaceCutoff = new Date(Date.now() - RESURFACE_MIN_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 const [{ data: saves }, { data: oldSaves }] = await Promise.all([
-  query.order('created_at', { ascending: false }).limit(200),
-  // Candidates for "from a while ago": only on the unfiltered view.
-  topic
+  // One extra row tells us whether there's another page.
+  query
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(PAGE_SIZE + 1),
+  // Candidates for "from a while ago": only on the unfiltered first page.
+  topic || cursor
     ? Promise.resolve({ data: [] })
     : supabase
         .from('saves')
@@ -90,7 +99,11 @@ const foldedChips = topicChips.slice(CHIP_LIMIT);
 const groups = (myGroups ?? []) as { id: string; name: string }[];
 const defaultGroupId = profile?.last_shared_group_id ?? groups[0]?.id ?? '';
 
-const rows = (saves ?? []) as unknown as SaveRow[];
+const fetched = (saves ?? []) as unknown as SaveRow[];
+const rows = fetched.slice(0, PAGE_SIZE);
+const lastRow = rows.at(-1);
+const moreHref =
+  fetched.length > PAGE_SIZE && lastRow ? nextPageHref({ createdAt: lastRow.created_at, id: lastRow.id }, topic) : null;
 const shareGroups = groupsEnabled() ? groups : [];
 const chip = badgeVariants({ variant: 'chip' });
 
@@ -227,22 +240,75 @@ const lensTopic = activeCat?.name ?? null;
   }
 
   {
+    cursor && (
+      <p class="m-0 mt-2 text-sm">
+        <a href={topic ? `/?topic=${encodeURIComponent(topic)}` : '/'}>← Back to the newest</a>
+      </p>
+    )
+  }
+
+  {
     rows.length === 0 ? (
       <Empty>
-        {topic ? (
+        {cursor ? (
+          'No older saves.'
+        ) : topic ? (
           `Nothing saved under ${activeCat?.name ?? 'that topic'} yet.`
         ) : (
           <>Your archive is empty. Save the first thing you don't want to lose, here or <a href="/setup">from your phone and browser</a>.</>
         )}
       </Empty>
     ) : (
-      <CardList>
+      <CardList data-archive-list>
         {rows.map((row) => (
           <SaveCard row={row} groups={shareGroups} defaultGroupId={defaultGroupId} topic={topic} />
         ))}
       </CardList>
     )
   }
+
+  {
+    moreHref && (
+      // A plain link to the next page; the script below appends it in place instead.
+      <p class="m-0 mb-8 text-center" data-archive-more>
+        <a class={buttonVariants({ variant: 'outline' })} href={moreHref}>
+          Load more
+        </a>
+      </p>
+    )
+  }
+
+  <script>
+    // "Load more": fetch the next page and append its cards here instead of
+    // navigating. Without JS (or if the fetch fails) the link just opens it.
+    document.addEventListener('click', async (event) => {
+      const link = (event.target as Element | null)?.closest<HTMLAnchorElement>('[data-archive-more] a');
+      if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) {
+        return;
+      }
+      event.preventDefault();
+      if (link.getAttribute('aria-disabled') === 'true') return;
+      link.setAttribute('aria-disabled', 'true');
+      try {
+        const res = await fetch(link.href);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const next = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const list = document.querySelector('[data-archive-list]');
+        const nextList = next.querySelector('[data-archive-list]');
+        if (!list || !nextList) throw new Error('No list on the next page');
+        const firstNew = nextList.firstElementChild;
+        list.append(...nextList.children);
+        const control = link.closest('[data-archive-more]')!;
+        const nextControl = next.querySelector('[data-archive-more]');
+        if (nextControl) control.replaceWith(nextControl);
+        else control.remove();
+        // Keep keyboard focus in the list rather than losing it with the button.
+        firstNew?.querySelector<HTMLElement>('a[href]')?.focus({ preventScroll: true });
+      } catch {
+        location.href = link.href;
+      }
+    });
+  </script>
 
   <script>
     // While any save is still archiving, poll its status and re-render the

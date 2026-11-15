@@ -1,5 +1,6 @@
 ---
-// A vertical list of ItemCards.
+// A vertical list of ItemCards. Extra attributes (like data-*) pass through to the <ul>.
+const attrs = Astro.props;
 ---
 
-<ul class="my-4 grid list-none gap-3.5 p-0"><slot /></ul>
+<ul class="my-4 grid list-none gap-3.5 p-0" {...attrs}><slot /></ul>
