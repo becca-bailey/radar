@@ -10,12 +10,14 @@ import ItemCard from '@/components/ItemCard.astro';
 import LensMenu from '@/components/LensMenu.tsx';
 import PoolCard from '@/components/PoolCard.astro';
 import OwnerPanel from '@/components/OwnerPanel.tsx';
+import InviteLink from '@/components/InviteLink.tsx';
 import TopicSuggestions from '@/components/TopicSuggestions.tsx';
 import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
 import { formatDate } from '../../../lib/dates';
+import { ensureInviteLink, membershipStatus } from '../../../lib/inviteLinks';
 
 if (!groupsEnabled()) {
   return Astro.redirect('/');
@@ -67,7 +69,10 @@ if (Astro.request.method === 'POST') {
     const service = createServiceClient();
     await service.from('invite_links').update({ active: false }).eq('group_id', group.id).eq('active', true);
     const { error } = await service.from('invite_links').insert({ group_id: group.id });
-    return back(error ? 'error=' + encodeURIComponent('Could not make a new invite link.') : 'rotated=1');
+    // 23505: a page load made a fresh link between the two steps. The old
+    // link is still off, which is what the owner asked for.
+    const failed = error && error.code !== '23505';
+    return back(failed ? 'error=' + encodeURIComponent('Could not reset the invite link.') : 'rotated=1');
   }
 
   if (action === 'remove_link' && isOwner) {
@@ -113,7 +118,7 @@ const NOTICES: Record<string, string> = {
   lens_updated: 'Lens updated.',
   deleted: 'Lens deleted.',
   renamed: 'Group renamed.',
-  rotated: 'New invite link active; the old one stopped working.',
+  rotated: 'Link reset. The old one no longer works.',
   removed: 'Removed from the group.',
   restored: 'Restored to the group.',
   named: 'Saved. Your name shows on what you share here.',
@@ -171,7 +176,7 @@ interface Section {
 
 const recentFrom = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-const [sections, recent, ownerData] = await Promise.all([
+const [sections, recent, ownerData, invite] = await Promise.all([
   Promise.all(
     shown.map(async (lens): Promise<Section> => {
       const { links, error: poolError } = await fetchGroupPool(supabase, group.id, {
@@ -188,20 +193,19 @@ const [sections, recent, ownerData] = await Promise.all([
   isOwner && !single
     ? Promise.all([
         supabase.from('memberships').select('user_id', { count: 'exact', head: true }).eq('group_id', group.id),
-        supabase
-          .from('invite_links')
-          .select('token, paused_at')
-          .eq('group_id', group.id)
-          .eq('active', true)
-          .maybeSingle(),
         supabase.rpc('group_removed_links', { gid: group.id }),
       ])
     : Promise.resolve(null),
+  // The owner always has a link to hand out: make one if the group has none.
+  // Not in the member preview, which shows none of this.
+  ownerView && !single ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
 ]);
 
 const memberCount = ownerData?.[0].count ?? null;
-const invite = (ownerData?.[1].data ?? null) as { token: string; paused_at: string | null } | null;
-const removedLinks = (ownerData?.[2].data ?? []) as {
+const inviteStatus = invite
+  ? membershipStatus(memberCount, invite, (d) => formatDate(d, Astro.locals.timeZone, { year: false }))
+  : null;
+const removedLinks = (ownerData?.[1].data ?? []) as {
   link_id: string;
   title: string | null;
   canonical_url: string;
@@ -435,25 +439,16 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
           Members never see this section, or the Remove buttons and lens menus above.{' '}
           <a href={`${home}?view=member`}>Preview as a member</a>
         </p>
-        <h3 class="mt-6 text-[1.1rem]">Invite link</h3>
+        <h3 class="mt-6 text-[1.1rem]">Membership</h3>
         {invite ? (
           <>
-            <code class="block rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all">{`${Astro.url.origin}/join/${invite.token}`}</code>
-            {invite.paused_at && (
-              <p class="text-[0.82rem] text-muted-foreground">
-                Paused: it reached its weekly limit and starts working again within a week.
-              </p>
-            )}
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Anyone with this link can join.</p>
+            <InviteLink client:visible url={`${Astro.url.origin}/join/${invite.token}`} action={home} />
+            <p class="m-0 mt-3 text-[0.85rem]">{inviteStatus}</p>
           </>
         ) : (
-          <p>No active invite link.</p>
+          <p class="text-sm">Couldn't load the invite link. Reload the page to try again.</p>
         )}
-        <form class="mt-2" method="post">
-          <input type="hidden" name="_action" value="rotate_invite" />
-          <Button variant="outline" type="submit">
-            {invite ? 'New link (the old one stops working)' : 'Create invite link'}
-          </Button>
-        </form>
 
         {removedLinks.length > 0 && (
           <>

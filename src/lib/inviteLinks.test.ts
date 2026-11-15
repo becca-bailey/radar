@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inviteState, joinToken, type InviteLinkRow } from './inviteLinks';
+import { inviteState, joinToken, membershipStatus, type InviteLinkRow } from './inviteLinks';
 
 const now = new Date('2026-11-14T12:00:00Z');
 const link = (over: Partial<InviteLinkRow> = {}): InviteLinkRow => ({
@@ -47,5 +47,32 @@ describe('joinToken', () => {
     expect(joinToken('/join/abc123def456?x=1')).toBeNull();
     expect(joinToken('/groups/abc123def456')).toBeNull();
     expect(joinToken('/join/abc123def456/../admin')).toBeNull();
+  });
+});
+
+describe('membershipStatus', () => {
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  it('shows members and this week’s joins when open', () => {
+    expect(membershipStatus(4, link({ uses_this_week: 2 }), fmt, now)).toBe('4 members · Open · 2 joined this week');
+  });
+
+  it('uses the singular for one member', () => {
+    expect(membershipStatus(1, link(), fmt, now)).toBe('1 member · Open · 0 joined this week');
+  });
+
+  it('says when a paused link reopens and what the limit is', () => {
+    expect(membershipStatus(5, link({ uses_this_week: 3 }), fmt, now)).toBe(
+      "5 members · Paused until 2026-11-19: reached this week's limit of 3"
+    );
+  });
+
+  it('counts from zero once the week has rolled over', () => {
+    const old = link({ uses_this_week: 3, week_started_at: '2026-11-01T00:00:00Z' });
+    expect(membershipStatus(5, old, fmt, now)).toBe('5 members · Open · 0 joined this week');
+  });
+
+  it('leaves out the member count when it is unknown', () => {
+    expect(membershipStatus(null, link(), fmt, now)).toBe('Open · 0 joined this week');
   });
 });
