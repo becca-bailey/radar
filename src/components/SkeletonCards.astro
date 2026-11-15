@@ -1,22 +1,21 @@
 ---
-// Placeholder cards for content a form is about to create. Hidden until the
-// form with id `for` is submitted (src/scripts/submitting.ts reveals it).
+// Placeholder cards for content a form is about to create. Place it after
+// the form, as a sibling: it shows while that form is submitting
+// (src/scripts/submitting.ts sets data-submitting).
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Props {
-  /** The id of the form whose submit reveals this. */
-  for: string;
   count?: number;
   /** Also show a heading line, as above a lens section. */
   heading?: boolean;
   class?: string;
 }
 
-const { for: formId, count = 2, heading = false, class: className } = Astro.props;
+const { count = 2, heading = false, class: className } = Astro.props;
 ---
 
-<div data-skeleton-for={formId} class={className} aria-hidden="true" hidden>
+<div class:list={['hidden [form[data-submitting]~&]:block', className]} aria-hidden="true">
   {
     heading && (
       <div class="mb-4 grid gap-2">

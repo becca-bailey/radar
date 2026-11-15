@@ -142,12 +142,12 @@ const lensTopic = activeCat?.name ?? null;
       </h2>
       <a class="pointer-events-auto text-sm text-muted-foreground" href="/setup">Other ways to save →</a>
     </summary>
-    <form id="save-link" class="grid gap-2.5 px-4 pt-2.5 pb-4" method="post" action="/api/saves">
+    <form class="grid gap-2.5 px-4 pt-2.5 pb-4" method="post" action="/api/saves">
       <Input type="url" name="url" placeholder="Paste a link to save it" required />
       <Input type="text" name="note" placeholder="Why you're saving it (optional)" />
       <Button type="submit">Save</Button>
     </form>
-    <SkeletonCards for="save-link" count={1} class="px-4 pb-4" />
+    <SkeletonCards count={1} class="px-4 pb-4" />
   </details>
 
   {

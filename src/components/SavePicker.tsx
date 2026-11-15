@@ -241,9 +241,8 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
               <Button
                 size="sm"
                 variant="outline"
-                disabled={picking}
+                aria-disabled={picking || undefined}
                 aria-busy={picking || undefined}
-                data-submitting={picking ? '' : undefined}
                 onClick={() => void markPicked()}
               >
                 Mark {justExported.length} as picked

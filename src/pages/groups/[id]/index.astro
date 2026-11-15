@@ -325,7 +325,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
       </form>
     )
   }
-  {formOpen && <SkeletonCards for="new-lens" heading class="mt-6" />}
+  {formOpen && <SkeletonCards heading class="mt-6" />}
 
   {
     sections.map(({ lens, links, total, error: sectionError }) => (
