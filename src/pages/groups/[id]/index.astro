@@ -11,6 +11,7 @@ import LensMenu from '@/components/LensMenu.tsx';
 import PoolCard from '@/components/PoolCard.astro';
 import OwnerPanel from '@/components/OwnerPanel.tsx';
 import TopicSuggestions from '@/components/TopicSuggestions.tsx';
+import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
@@ -324,6 +325,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
       </form>
     )
   }
+  {formOpen && <SkeletonCards for="new-lens" heading class="mt-6" />}
 
   {
     sections.map(({ lens, links, total, error: sectionError }) => (

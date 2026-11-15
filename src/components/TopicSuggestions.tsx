@@ -3,6 +3,7 @@ import { XIcon } from 'lucide-react';
 
 import { buttonVariants } from '@/components/ui/button';
 import OwnerPanel from '@/components/OwnerPanel';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { Suggestion, SuggestionsResult } from '@/lib/topicSuggestions';
 
 interface Props {
@@ -57,7 +58,15 @@ export default function TopicSuggestions({ groupId, home }: Props) {
         Found in what's been shared here. Make one a lens and every member sees it as a topic.
       </p>
       {result === 'loading' && (
-        <p className="m-0 mt-3 text-sm text-muted-foreground italic">Looking through the shared links…</p>
+        <div className="mt-3 grid gap-2" aria-busy="true">
+          <span className="sr-only">Looking through the shared links…</span>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="grid gap-1.5 rounded-md border-2 bg-card p-3" aria-hidden="true">
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-3.5 w-3/4" />
+            </div>
+          ))}
+        </div>
       )}
       {typeof result === 'object' && result.status === 'too_few' && (
         <p className="m-0 mt-3 text-sm">

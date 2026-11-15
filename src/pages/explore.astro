@@ -11,6 +11,7 @@ import ItemCard from '@/components/ItemCard.astro';
 import LensMenu from '@/components/LensMenu.tsx';
 import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
+import SkeletonCards from '@/components/SkeletonCards.astro';
 import { saveDisplayTitle } from '../lib/exportFormats';
 import { sanitizeSnippet } from '../lib/snippet';
 
@@ -132,6 +133,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
         class="mt-5 mb-8 grid gap-2.5 rounded-lg border-2 bg-[color-mix(in_srgb,var(--candy-sky)_22%,var(--card))] p-4 shadow-hard"
         method="post"
         action="/api/lenses"
+        id="new-lens"
       >
         <h2 class="m-0 mb-0.5 text-[1.15rem]">New lens</h2>
         <div class="grid gap-1.5">
@@ -166,6 +168,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
       </form>
     )
   }
+  {formOpen && <SkeletonCards for="new-lens" heading class="mt-8" />}
 
   {single && (
     <p class="mt-4 mb-0 text-sm">
