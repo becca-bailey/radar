@@ -12,7 +12,7 @@ import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../lib/flags';
 import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
 import { dayKey } from '../lib/dates';
-import { afterCursorFilter, nextPageHref, parseCursor } from '../lib/archiveCursor';
+import { UUID_RE, afterCursorFilter, nextPageHref, parseCursor } from '../lib/archiveCursor';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -25,7 +25,6 @@ const shared = Astro.url.searchParams.get('shared') === '1';
 const unshared = Astro.url.searchParams.get('unshared') === '1';
 const updated = Astro.url.searchParams.get('updated') === '1';
 const retrying = Astro.url.searchParams.get('retrying') === '1';
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Undo targets: a save just made (delete it) or a save just deleted (restore it).
 const undoSave = Astro.url.searchParams.get('undo_save');
 const undoSaveId = undoSave && UUID_RE.test(undoSave) ? undoSave : null;
@@ -281,6 +280,7 @@ const lensTopic = activeCat?.name ?? null;
   <script>
     // "Load more": fetch the next page and append its cards here instead of
     // navigating. Without JS (or if the fetch fails) the link just opens it.
+    let loads = 0;
     document.addEventListener('click', async (event) => {
       const link = (event.target as Element | null)?.closest<HTMLAnchorElement>('[data-archive-more] a');
       if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) {
@@ -295,10 +295,21 @@ const lensTopic = activeCat?.name ?? null;
         const next = new DOMParser().parseFromString(await res.text(), 'text/html');
         const list = document.querySelector('[data-archive-list]');
         const nextList = next.querySelector('[data-archive-list]');
-        if (!list || !nextList) throw new Error('No list on the next page');
+        const control = link.closest('[data-archive-more]')!;
+        if (!list) throw new Error('No list on this page');
+        // Saves deleted since this page loaded can leave nothing older.
+        if (!nextList) {
+          control.remove();
+          return;
+        }
+        // Every render numbers React useId prefixes from r0; make the new
+        // islands' prefixes unique so their generated ids don't collide.
+        loads++;
+        for (const island of nextList.querySelectorAll('astro-island[prefix]')) {
+          island.setAttribute('prefix', `p${loads}${island.getAttribute('prefix')}`);
+        }
         const firstNew = nextList.firstElementChild;
         list.append(...nextList.children);
-        const control = link.closest('[data-archive-more]')!;
         const nextControl = next.querySelector('[data-archive-more]');
         if (nextControl) control.replaceWith(nextControl);
         else control.remove();
