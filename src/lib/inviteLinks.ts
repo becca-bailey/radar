@@ -47,3 +47,42 @@ export async function findInviteLink(service: SupabaseClient, token: string): Pr
     .maybeSingle();
   return (data as unknown as InviteLinkRow | null) ?? null;
 }
+
+const INVITE_COLUMNS = 'id, group_id, token, active, weekly_cap, uses_this_week, week_started_at, paused_at';
+
+export type OwnerInviteLink = InviteLinkRow & { token: string };
+
+/**
+ * The group's active invite link, created if there isn't one, so an owner
+ * always has a link to hand out. Service role, like rotation. Two page loads
+ * racing to create one trip `invite_links_one_active_idx`; the loser re-reads
+ * the winner's row.
+ */
+export async function ensureInviteLink(service: SupabaseClient, groupId: string): Promise<OwnerInviteLink | null> {
+  const readActive = async () => {
+    const { data } = await service
+      .from('invite_links')
+      .select(INVITE_COLUMNS)
+      .eq('group_id', groupId)
+      .eq('active', true)
+      .maybeSingle();
+    return (data as OwnerInviteLink | null) ?? null;
+  };
+  const existing = await readActive();
+  if (existing) return existing;
+  const { data, error } = await service.from('invite_links').insert({ group_id: groupId }).select(INVITE_COLUMNS).single();
+  if (!error) return data as OwnerInviteLink;
+  return error.code === '23505' ? readActive() : null;
+}
+
+/**
+ * The owner's one-line summary of the group: "3 members · 2 joined this week".
+ * The weekly count restarts when the link's seven-day window rolls over.
+ */
+export function membershipStatus(memberCount: number | null, invite: InviteLinkRow, now: Date = new Date()): string {
+  const state = inviteState(invite, now);
+  const parts: string[] = [];
+  if (memberCount !== null) parts.push(`${memberCount} ${memberCount === 1 ? 'member' : 'members'}`);
+  if (state.status !== 'dead') parts.push(`${state.uses} joined this week`);
+  return parts.join(' · ');
+}
