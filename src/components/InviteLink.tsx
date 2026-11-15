@@ -32,7 +32,7 @@ const COPIED_MS = 2000;
  * which asks first because it breaks the link everyone already has.
  */
 export default function InviteLink({ url, action }: Props) {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = React.useState<'no' | 'yes' | 'manual'>('no');
   const [resetting, setResetting] = React.useState(false);
   const urlRef = React.useRef<HTMLElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -57,11 +57,12 @@ export default function InviteLink({ url, action }: Props) {
       // No clipboard access (old browser, insecure origin): select the URL
       // so a long-press or Cmd+C finishes the job.
       selectUrl();
+      setCopied('manual');
       return;
     }
-    setCopied(true);
+    setCopied('yes');
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(false), COPIED_MS);
+    timer.current = setTimeout(() => setCopied('no'), COPIED_MS);
   };
 
   const refocusTrigger = (event: Event) => {
@@ -94,11 +95,12 @@ export default function InviteLink({ url, action }: Props) {
       </div>
       <div className="mt-2.5 flex items-center gap-3">
         <Button type="button" variant="outline" size="sm" onClick={copy}>
-          {copied ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
-          {copied ? 'Copied' : 'Copy link'}
+          {copied === 'yes' ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
+          {copied === 'yes' ? 'Copied' : 'Copy link'}
         </Button>
-        <span className="sr-only" aria-live="polite">
-          {copied ? 'Invite link copied' : ''}
+        <span className={copied === 'manual' ? 'text-sm text-muted-foreground' : 'sr-only'} aria-live="polite">
+          {copied === 'yes' && 'Invite link copied'}
+          {copied === 'manual' && 'Couldn’t copy. The link is selected, so copy it from there.'}
         </span>
       </div>
 

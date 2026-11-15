@@ -442,8 +442,8 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
         <h3 class="mt-6 text-[1.1rem]">Membership</h3>
         {invite ? (
           <>
-            <p class="m-0 mt-1 text-sm text-muted-foreground">Anyone with this link can join.</p>
-            <InviteLink client:visible url={`${Astro.url.origin}/join/${invite.token}`} action={home} />
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Share this link to invite people.</p>
+            <InviteLink client:load url={`${Astro.url.origin}/join/${invite.token}`} action={home} />
             <p class="m-0 mt-3 text-[0.85rem]">{inviteStatus}</p>
           </>
         ) : (

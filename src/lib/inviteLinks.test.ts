@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { inviteState, joinToken, membershipStatus, type InviteLinkRow } from './inviteLinks';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { ensureInviteLink, inviteState, joinToken, membershipStatus, type InviteLinkRow } from './inviteLinks';
 
 const now = new Date('2026-11-14T12:00:00Z');
 const link = (over: Partial<InviteLinkRow> = {}): InviteLinkRow => ({
@@ -74,5 +75,46 @@ describe('membershipStatus', () => {
 
   it('leaves out the member count when it is unknown', () => {
     expect(membershipStatus(null, link(), fmt, now)).toBe('Open · 0 joined this week');
+  });
+});
+
+describe('ensureInviteLink', () => {
+  const row = { ...link(), token: 'tok' };
+
+  /** A stand-in for the service client: queued results for reads and inserts. */
+  const fakeClient = (reads: unknown[], insert: { data: unknown; error: { code: string } | null }) => {
+    const inserted: unknown[] = [];
+    const query = {
+      select: () => query,
+      eq: () => query,
+      maybeSingle: async () => ({ data: reads.shift() ?? null }),
+      insert: (values: unknown) => {
+        inserted.push(values);
+        return { select: () => ({ single: async () => insert }) };
+      },
+    };
+    return { client: { from: () => query } as unknown as SupabaseClient, inserted };
+  };
+
+  it('returns the active link without inserting', async () => {
+    const { client, inserted } = fakeClient([row], { data: null, error: null });
+    expect(await ensureInviteLink(client, 'g1')).toBe(row);
+    expect(inserted).toEqual([]);
+  });
+
+  it('creates a link when the group has none', async () => {
+    const { client, inserted } = fakeClient([null], { data: row, error: null });
+    expect(await ensureInviteLink(client, 'g1')).toBe(row);
+    expect(inserted).toEqual([{ group_id: 'g1' }]);
+  });
+
+  it('re-reads the winner when another load created one first', async () => {
+    const { client } = fakeClient([null, row], { data: null, error: { code: '23505' } });
+    expect(await ensureInviteLink(client, 'g1')).toBe(row);
+  });
+
+  it('gives up on any other insert error', async () => {
+    const { client } = fakeClient([null, row], { data: null, error: { code: '42501' } });
+    expect(await ensureInviteLink(client, 'g1')).toBeNull();
   });
 });
