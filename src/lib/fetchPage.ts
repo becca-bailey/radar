@@ -14,6 +14,12 @@ export interface FetchedPage {
   contentType: string;
   /** null when the response was not HTML or could not be read. */
   html: string | null;
+  /**
+   * True when a bot-protection service (Cloudflare's managed challenge)
+   * answered instead of the site. Retrying from the same server won't help,
+   * and we don't try to get past it.
+   */
+  challenged: boolean;
 }
 
 export interface FetchPageOptions {
@@ -67,6 +73,7 @@ export async function fetchPage(url: string, options: FetchPageOptions = {}): Pr
     }
 
     const contentType = res.headers.get('Content-Type') ?? '';
+    const challenged = res.headers.get('cf-mitigated')?.toLowerCase() === 'challenge';
     const isHtml = /text\/html|application\/xhtml/i.test(contentType);
     let html: string | null = null;
 
@@ -86,7 +93,7 @@ export async function fetchPage(url: string, options: FetchPageOptions = {}): Pr
       await res.body?.cancel().catch(() => {});
     }
 
-    return { finalUrl: current.href, status: res.status, contentType, html };
+    return { finalUrl: current.href, status: res.status, contentType, html, challenged };
   } finally {
     clearTimeout(timer);
   }
