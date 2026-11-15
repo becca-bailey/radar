@@ -76,24 +76,13 @@ export async function ensureInviteLink(service: SupabaseClient, groupId: string)
 }
 
 /**
- * The owner's one-line summary of who can join: "3 members · Open · 2 joined
- * this week", or "… · Paused until Nov 21: reached this week's limit of 50".
- * `formatReopen` turns the reopen time into a date in the owner's zone.
+ * The owner's one-line summary of the group: "3 members · 2 joined this week".
+ * The weekly count restarts when the link's seven-day window rolls over.
  */
-export function membershipStatus(
-  memberCount: number | null,
-  invite: InviteLinkRow,
-  formatReopen: (reopensAt: Date) => string,
-  now: Date = new Date()
-): string {
+export function membershipStatus(memberCount: number | null, invite: InviteLinkRow, now: Date = new Date()): string {
   const state = inviteState(invite, now);
   const parts: string[] = [];
   if (memberCount !== null) parts.push(`${memberCount} ${memberCount === 1 ? 'member' : 'members'}`);
-  if (state.status === 'open') {
-    parts.push(`Open · ${state.uses} joined this week`);
-  } else if (state.status === 'paused') {
-    const reopensAt = new Date(new Date(invite.week_started_at).getTime() + WEEK_MS);
-    parts.push(`Paused until ${formatReopen(reopensAt)}: reached this week's limit of ${invite.weekly_cap}`);
-  }
+  if (state.status !== 'dead') parts.push(`${state.uses} joined this week`);
   return parts.join(' · ');
 }

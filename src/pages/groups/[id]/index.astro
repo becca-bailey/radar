@@ -202,9 +202,7 @@ const [sections, recent, ownerData, invite] = await Promise.all([
 ]);
 
 const memberCount = ownerData?.[0].count ?? null;
-const inviteStatus = invite
-  ? membershipStatus(memberCount, invite, (d) => formatDate(d, Astro.locals.timeZone, { year: false }))
-  : null;
+const inviteStatus = invite ? membershipStatus(memberCount, invite) : null;
 const removedLinks = (ownerData?.[1].data ?? []) as {
   link_id: string;
   title: string | null;
@@ -439,15 +437,16 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
           Members never see this section, or the Remove buttons and lens menus above.{' '}
           <a href={`${home}?view=member`}>Preview as a member</a>
         </p>
-        <h3 class="mt-6 text-[1.1rem]">Membership</h3>
         {invite ? (
           <>
-            <p class="m-0 mt-1 text-sm text-muted-foreground">Share this link to invite people.</p>
             <InviteLink client:load url={`${Astro.url.origin}/join/${invite.token}`} action={home} />
             <p class="m-0 mt-3 text-[0.85rem]">{inviteStatus}</p>
           </>
         ) : (
-          <p class="text-sm">Couldn't load the invite link. Reload the page to try again.</p>
+          <>
+            <h3 class="mt-6 text-[1.1rem]">Membership</h3>
+            <p class="text-sm">Couldn't load the invite link. Reload the page to try again.</p>
+          </>
         )}
 
         {removedLinks.length > 0 && (

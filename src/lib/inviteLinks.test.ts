@@ -52,29 +52,21 @@ describe('joinToken', () => {
 });
 
 describe('membershipStatus', () => {
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
-  it('shows members and this week’s joins when open', () => {
-    expect(membershipStatus(4, link({ uses_this_week: 2 }), fmt, now)).toBe('4 members · Open · 2 joined this week');
+  it('shows members and this week’s joins', () => {
+    expect(membershipStatus(4, link({ uses_this_week: 2 }), now)).toBe('4 members · 2 joined this week');
   });
 
   it('uses the singular for one member', () => {
-    expect(membershipStatus(1, link(), fmt, now)).toBe('1 member · Open · 0 joined this week');
-  });
-
-  it('says when a paused link reopens and what the limit is', () => {
-    expect(membershipStatus(5, link({ uses_this_week: 3 }), fmt, now)).toBe(
-      "5 members · Paused until 2026-11-19: reached this week's limit of 3"
-    );
+    expect(membershipStatus(1, link(), now)).toBe('1 member · 0 joined this week');
   });
 
   it('counts from zero once the week has rolled over', () => {
     const old = link({ uses_this_week: 3, week_started_at: '2026-11-01T00:00:00Z' });
-    expect(membershipStatus(5, old, fmt, now)).toBe('5 members · Open · 0 joined this week');
+    expect(membershipStatus(5, old, now)).toBe('5 members · 0 joined this week');
   });
 
   it('leaves out the member count when it is unknown', () => {
-    expect(membershipStatus(null, link(), fmt, now)).toBe('Open · 0 joined this week');
+    expect(membershipStatus(null, link(), now)).toBe('0 joined this week');
   });
 });
 

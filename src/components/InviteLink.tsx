@@ -28,8 +28,9 @@ interface Props {
 const COPIED_MS = 2000;
 
 /**
- * The owner's invite link: the URL, a Copy button, and a menu holding Reset,
- * which asks first because it breaks the link everyone already has.
+ * The Membership heading and the owner's invite link: the URL, a Copy button,
+ * and a menu beside the heading holding Reset, which asks first because it
+ * breaks the link everyone already has.
  */
 export default function InviteLink({ url, action }: Props) {
   const [copied, setCopied] = React.useState<'no' | 'yes' | 'manual'>('no');
@@ -72,16 +73,11 @@ export default function InviteLink({ url, action }: Props) {
 
   return (
     <>
-      <div className="mt-3 flex items-start gap-2">
-        <code
-          ref={urlRef}
-          className="block min-w-0 flex-1 rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all"
-        >
-          {url}
-        </code>
+      <div className="mt-6 flex items-center justify-between gap-2">
+        <h3 className="m-0 text-[1.1rem]">Membership</h3>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button ref={triggerRef} variant="ghost" size="icon" className="mt-1.5" aria-label="Invite link actions">
+            <Button ref={triggerRef} variant="ghost" size="icon" aria-label="Invite link actions">
               <MoreHorizontalIcon className="size-5" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
@@ -93,6 +89,13 @@ export default function InviteLink({ url, action }: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <p className="m-0 mt-1 text-sm text-muted-foreground">Share this link to invite people.</p>
+      <code
+        ref={urlRef}
+        className="mt-3 block rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all"
+      >
+        {url}
+      </code>
       <div className="mt-2.5 flex items-center gap-3">
         <Button type="button" variant="outline" size="sm" onClick={copy}>
           {copied === 'yes' ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
