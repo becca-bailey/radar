@@ -17,6 +17,8 @@ export interface SaveRow {
     status: string;
     /** Thumbnail from ingest (links.metadata->>image), when the page had one. */
     image?: string | null;
+    /** Set by ingest when bot protection blocked the fetch (links.metadata->>fetchBlocked). */
+    fetch_blocked?: string | null;
   } | null;
   /** Groups this save is shared to (loaded only when groups are on). */
   shares?: { group_id: string; removed_at: string | null; picked_at?: string | null }[];
@@ -45,6 +47,9 @@ function displayTitle(): string {
 }
 
 const title = displayTitle();
+const failed = link?.status === 'failed';
+// A site that challenges bots will challenge the retry too, so don't offer one.
+const blocked = failed && !!link?.fetch_blocked;
 
 // A save can be shared to many groups. Shares to groups you've left are
 // hidden; the form offers only groups it isn't in yet.
@@ -68,10 +73,11 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
     {link?.source ? ' · ' : ''}
     {formatRecentDate(row.created_at, Astro.locals.timeZone)}
     {link?.status === 'pending' ? ' · archiving…' : ''}
-    {link?.status === 'failed' ? " · couldn't archive, saved the link" : ''}
+    {failed && !blocked ? " · couldn't archive, saved the link" : ''}
+    {blocked ? ' · this site blocks archiving, saved the link' : ''}
   </Fragment>
   {
-    link?.status === 'failed' && (
+    failed && !blocked && (
       <form method="post" action={`/api/saves/${row.id}`}>
         <input type="hidden" name="action" value="retry" />
         <input type="hidden" name="topic" value={topic ?? ''} />
@@ -88,7 +94,7 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
     title={title}
     url={link?.canonical_url ?? row.original_url}
     note={row.note}
-    canRetry={link?.status === 'failed'}
+    canRetry={failed && !blocked}
     topic={topic}
     sharedIn={sharedIn}
     shareTo={shareable}

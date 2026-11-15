@@ -39,6 +39,7 @@ describe('fetchPage', () => {
       status: 200,
       contentType: 'text/html; charset=utf-8',
       html: '<title>A</title>',
+      challenged: false,
     });
   });
 
@@ -145,5 +146,19 @@ describe('fetchPage', () => {
     const fetchImpl = fakeFetch({ 'https://example.com/missing': () => html('nope', 404) });
     const page = await fetchPage('https://example.com/missing', { fetchImpl, lookup });
     expect(page.status).toBe(404);
+    expect(page.challenged).toBe(false);
+  });
+
+  it('flags a Cloudflare bot challenge', async () => {
+    const fetchImpl = fakeFetch({
+      'https://example.com/post': () =>
+        new Response('<title>Just a moment...</title>', {
+          status: 403,
+          headers: { 'Content-Type': 'text/html', 'cf-mitigated': 'challenge' },
+        }),
+    });
+    const page = await fetchPage('https://example.com/post', { fetchImpl, lookup });
+    expect(page.status).toBe(403);
+    expect(page.challenged).toBe(true);
   });
 });

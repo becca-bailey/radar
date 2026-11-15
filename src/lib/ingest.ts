@@ -11,6 +11,12 @@ const MAX_ATTEMPTS = 3;
 const MAX_TEXT_CHARS = 400_000;
 const MAX_SNAPSHOT_CHARS = 800_000;
 
+/**
+ * The site sits behind bot protection that challenged our fetch. Permanent
+ * for our purposes: we don't try to get past it, so retrying won't help.
+ */
+class FetchChallengedError extends Error {}
+
 export interface IngestSummary {
   processed: number;
   succeeded: number;
@@ -57,8 +63,10 @@ export async function processIngestQueue(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const attempts = job.attempts + 1;
-      // A blocked address won't become public on retry, so fail it now.
-      if (attempts >= MAX_ATTEMPTS || err instanceof BlockedUrlError) {
+      // A blocked address won't become public on retry, and a bot challenge
+      // won't go away for the same server, so fail those now.
+      const permanent = err instanceof BlockedUrlError || err instanceof FetchChallengedError;
+      if (attempts >= MAX_ATTEMPTS || permanent) {
         summary.failed++;
         await service
           .from('ingest_jobs')
@@ -106,6 +114,23 @@ async function processOneLink(
   }
 
   const page = await fetchPage(link.canonical_url);
+  if (page.challenged) {
+    // Keep what we can tell from the URL so the save still reads well, and
+    // note why, so the card can say so instead of offering a retry. The link
+    // stays 'failed', never 'ready': it may be members-only, and 'ready'
+    // links are eligible for Wayback saves.
+    const { error: noteErr } = await service
+      .from('links')
+      .update({
+        source: sourceForUrl(link.canonical_url),
+        title: titleFromUrl(link.canonical_url),
+        metadata: { fetchBlocked: 'challenge', fetchedFrom: page.finalUrl },
+        status: 'failed',
+      })
+      .eq('id', link.id);
+    if (noteErr) throw new Error(noteErr.message);
+    throw new FetchChallengedError(`Fetch was challenged by bot protection (${page.status})`);
+  }
   if (page.status >= 400) {
     throw new Error(`Fetch returned ${page.status}`);
   }
