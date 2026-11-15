@@ -58,7 +58,7 @@ export default function TopicSuggestions({ groupId, home }: Props) {
         Found in what's been shared here. Make one a lens and every member sees it as a topic.
       </p>
       {result === 'loading' && (
-        <div className="mt-3 grid gap-2" aria-busy="true">
+        <div className="mt-3 grid gap-2">
           <span className="sr-only">Looking through the shared links…</span>
           {[0, 1, 2].map((i) => (
             <div key={i} className="grid gap-1.5 rounded-md border-2 bg-card p-3" aria-hidden="true">

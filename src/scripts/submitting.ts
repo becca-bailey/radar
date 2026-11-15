@@ -2,8 +2,8 @@
  * Loading state for every form submit (RAD-44). Loaded once by Layout.astro.
  *
  * While the server works: the form gets aria-busy and data-submitting, its
- * submit button is disabled and pulses, the bar at the top of the page
- * shows (CSS in global.css), and any `[data-skeleton-for="<form id>"]`
+ * submit button is marked aria-disabled and pulses, the bar at the top of the page
+ * in Layout.astro shows, and any `[data-skeleton-for="<form id>"]`
  * placeholder is revealed where the new content will appear.
  *
  * Listens in the bubble phase on document so inline `onsubmit` handlers
@@ -22,13 +22,13 @@ function start(form: HTMLFormElement, submitter: HTMLElement | null) {
     submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement
       ? submitter
       : form.querySelector<HTMLButtonElement>('button[type="submit"], button:not([type])');
+  // aria-disabled rather than the disabled property: a disabled submitter
+  // would drop out of the form data (built after this event), and Firefox
+  // restores the disabled property on reload, leaving a dead button. Extra
+  // clicks are stopped by the double-submit guard below.
   if (button && !button.disabled) {
     button.dataset.submitting = '';
-    // Not synchronously: the browser builds the form data after this event,
-    // and a disabled submitter would drop out of it.
-    setTimeout(() => {
-      if (button.dataset.submitting !== undefined) button.disabled = true;
-    }, 0);
+    button.setAttribute('aria-disabled', 'true');
   }
 
   if (form.id) {
@@ -50,7 +50,7 @@ function resetAll() {
   });
   document.querySelectorAll<HTMLButtonElement>('button[data-submitting], input[data-submitting]').forEach((b) => {
     delete b.dataset.submitting;
-    b.disabled = false;
+    b.removeAttribute('aria-disabled');
   });
   document.querySelectorAll<HTMLElement>('[data-skeleton-for]').forEach((el) => (el.hidden = true));
   const live = status();
