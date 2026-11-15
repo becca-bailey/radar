@@ -44,6 +44,19 @@ export function sourceForUrl(canonicalUrl: string, hints?: { authorName?: string
     return `x.com/${segments[0].toLowerCase()}`;
   }
 
+  // patreon.com/<creator>/posts/... and patreon.com/<creator>; patreon.com/posts/<slug>
+  // has no creator in the path. Pages can't be fetched, so the URL is all we have.
+  if (host === 'patreon.com') {
+    const reserved = [
+      'posts', 'c', 'home', 'messages', 'user', 'login', 'signup', 'search',
+      'explore', 'settings', 'notifications', 'checkout', 'join', 'library',
+    ];
+    if (segments[0] && !reserved.includes(segments[0].toLowerCase())) {
+      return `patreon.com/${segments[0].toLowerCase()}`;
+    }
+    return 'patreon.com';
+  }
+
   if (host === 'github.com' && segments[0]) {
     return `github.com/${segments[0].toLowerCase()}`;
   }

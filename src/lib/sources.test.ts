@@ -46,6 +46,22 @@ describe('sourceForUrl', () => {
     expect(sourceForUrl('https://someone.tumblr.com/post/1')).toBe('someone.tumblr.com');
   });
 
+  it('uses the patreon creator from the path', () => {
+    expect(sourceForUrl('https://www.patreon.com/CultureStudy/posts/some-post-123')).toBe(
+      'patreon.com/culturestudy'
+    );
+    expect(sourceForUrl('https://patreon.com/culturestudy')).toBe('patreon.com/culturestudy');
+  });
+
+  it('keeps patreon.com for patreon paths without a creator', () => {
+    expect(sourceForUrl('https://www.patreon.com/posts/some-post-123')).toBe('patreon.com');
+    expect(sourceForUrl('https://www.patreon.com/c/CultureStudy')).toBe('patreon.com');
+    expect(sourceForUrl('https://www.patreon.com/home')).toBe('patreon.com');
+    expect(sourceForUrl('https://www.patreon.com/messages/abc')).toBe('patreon.com');
+    expect(sourceForUrl('https://www.patreon.com/user?u=123')).toBe('patreon.com');
+    expect(sourceForUrl('https://www.patreon.com/')).toBe('patreon.com');
+  });
+
   it('strips www but keeps platform roots sane', () => {
     expect(sourceForUrl('https://www.substack.com/home')).toBe('substack.com');
     expect(sourceForUrl('https://medium.com')).toBe('medium.com');
