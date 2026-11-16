@@ -6,6 +6,7 @@ import { Alert } from '@/components/ui/alert';
 import { generateApiToken } from '../lib/apiTokens';
 import { createServiceClient } from '../lib/supabase';
 import { groupsEnabled } from '../lib/flags';
+import { detectPlatform, methodOrder, type SaveMethod } from '../lib/platform';
 
 // Guided capture setup: get Radar into the iOS share sheet and the
 // desktop bookmarks bar without asking anyone to build anything.
@@ -35,6 +36,14 @@ if (Astro.request.method === 'POST') {
 
 const shortcutHref = '/Put%20it%20on%20Radar.shortcut';
 const groups = groupsEnabled();
+
+// Each method gets its own section; the one for the visitor's platform goes
+// first. Both are always rendered, only the order changes.
+const order = methodOrder(detectPlatform(Astro.request.headers.get('user-agent')));
+const methodLabels: Record<SaveMethod, string> = {
+  shortcut: 'iPhone & iPad',
+  bookmarklet: 'Desktop browsers',
+};
 ---
 
 <Layout title="Save from anywhere — Radar" user={user}>
@@ -46,56 +55,100 @@ const groups = groupsEnabled();
 
   {message && <Alert>{message}</Alert>}
 
-  <h2>iPhone &amp; iPad</h2>
-  <p>
-    The Radar Shortcut puts <strong>Put it on Radar</strong> in the share sheet of every
-    app — Safari, YouTube, anywhere you can tap Share.
-  </p>
-  <ol class="grid gap-2.5">
-    <li>
-      Create a token for your phone. It can save links to your archive{groups ? ' and share them to your groups' : ''}.
-      It can't read your archive.
+  <nav class="text-sm text-muted-foreground" aria-label="Save methods">
+    Jump to:{' '}
+    <ul class="inline-flex list-none flex-wrap gap-x-4 p-0" data-method-list>
       {
-        newToken ? (
-          <TokenReveal token={newToken} />
-        ) : (
-          <form class="mt-2" method="post">
-            <input type="hidden" name="_action" value="create_token" />
-            <Button type="submit">Create token</Button>
-          </form>
-        )
+        order.map((method) => (
+          <li data-method={method}>
+            <a href={`#${method}`}>{methodLabels[method]}</a>
+          </li>
+        ))
       }
-    </li>
-    <li>
-      With the token copied, <a href={shortcutHref}>get the Radar Shortcut</a>. Safari
-      downloads it: tap the <strong>↓</strong> button by the address bar, then tap{' '}
-      <strong>Put it on Radar</strong>, then <strong>Add Shortcut</strong>.
-    </li>
-    <li>
-      When Shortcuts asks for your Radar API token — as you add it, or on your first
-      save — paste the token from step 1.
-    </li>
-  </ol>
-  <p>
-    That's it. To save a page, tap <strong>Share → Put it on Radar</strong>. It asks why
-    you're saving it (skip it if you like){groups
-      ? ", and if you're in any groups, whether to share it to one. Just save is always the first choice"
-      : ''}. Try one now and it will appear on your <a href="/">home page</a> within a minute.
-  </p>
-  <p class="text-sm text-muted-foreground">
-    On a Mac, the same file works: double-click it and the shortcut appears in the
-    share menu there too.
-  </p>
+    </ul>
+  </nav>
 
-  <h2>Desktop browsers</h2>
-  <p>
-    Drag this to your bookmarks bar, then click it on any page to save it:{' '}
-    <a
-      href={`javascript:window.open('${Astro.url.origin}/save?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'radar','width=480,height=560')`}
-    >Put it on Radar</a>
-  </p>
+  <div data-method-list>
+    {
+      order.map((method) =>
+        method === 'shortcut' ? (
+          <section id="shortcut" data-method="shortcut">
+            <h2>{methodLabels.shortcut}</h2>
+            <p>
+              The Radar Shortcut puts <strong>Put it on Radar</strong> in the share sheet of every
+              app — Safari, YouTube, anywhere you can tap Share.
+            </p>
+            <ol class="grid gap-2.5">
+              <li>
+                Create a token for your phone. It can save links to your archive{groups ? ' and share them to your groups' : ''}.
+                It can't read your archive.
+                {
+                  newToken ? (
+                    <TokenReveal token={newToken} />
+                  ) : (
+                    <form class="mt-2" method="post" action="/setup#shortcut">
+                      <input type="hidden" name="_action" value="create_token" />
+                      <Button type="submit">Create token</Button>
+                    </form>
+                  )
+                }
+              </li>
+              <li>
+                With the token copied, <a href={shortcutHref}>get the Radar Shortcut</a>. Safari
+                downloads it: tap the <strong>↓</strong> button by the address bar, then tap{' '}
+                <strong>Put it on Radar</strong>, then <strong>Add Shortcut</strong>.
+              </li>
+              <li>
+                When Shortcuts asks for your Radar API token — as you add it, or on your first
+                save — paste the token from step 1.
+              </li>
+            </ol>
+            <p>
+              That's it. To save a page, tap <strong>Share → Put it on Radar</strong>. It asks why
+              you're saving it (skip it if you like){groups
+                ? ", and if you're in any groups, whether to share it to one. Just save is always the first choice"
+                : ''}. Try one now and it will appear on your <a href="/">home page</a> within a minute.
+            </p>
+            <p class="text-sm text-muted-foreground">
+              On a Mac, the same file works: double-click it and the shortcut appears in the
+              share menu there too.
+            </p>
+          </section>
+        ) : (
+          <section id="bookmarklet" data-method="bookmarklet">
+            <h2>{methodLabels.bookmarklet}</h2>
+            <p>
+              Drag this to your bookmarks bar, then click it on any page to save it:{' '}
+              <a
+                href={`javascript:window.open('${Astro.url.origin}/save?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'radar','width=480,height=560')`}
+              >Put it on Radar</a>
+            </p>
+            <p class="text-sm text-muted-foreground">
+              On a Mac, the Radar Shortcut also works from the share menu.{' '}
+              <a href="#shortcut">Set it up with the iPhone steps</a>.
+            </p>
+          </section>
+        ),
+      )
+    }
+  </div>
 
   <p class="text-sm text-muted-foreground">
     Tokens can be reviewed and revoked any time in <a href="/settings">Settings</a>.
   </p>
 </Layout>
+
+<script>
+  // iPadOS Safari sends a Mac user agent, so the server puts the bookmarklet
+  // first. A touch-capable "Mac" is an iPad: move the Shortcut back to the top.
+  const isIpad = /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
+  if (isIpad) {
+    for (const list of document.querySelectorAll('[data-method-list]')) {
+      const shortcut = list.querySelector(':scope > [data-method="shortcut"]');
+      if (shortcut && list.firstElementChild !== shortcut) list.prepend(shortcut);
+    }
+    // The browser already scrolled to any #anchor (e.g. #shortcut after
+    // creating a token) before this ran; scroll again now the section moved.
+    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+  }
+</script>
