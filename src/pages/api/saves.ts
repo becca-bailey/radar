@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { userIdForBearerToken } from '../../lib/apiTokens';
 import { groupsEnabled } from '../../lib/flags';
+import { saveErrorPath, saveFormOrigin, saveSuccessPath, type SaveFormOrigin } from '../../lib/saveRedirects';
 import { createSave } from '../../lib/saves';
 import {
   type ShareOutcome,
@@ -53,7 +54,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   let title: string | null = null;
   let wayback = false;
   let shareTo: string[] = [];
-  let returnTo = '/';
+  let origin: SaveFormOrigin = 'home';
   // Echoed in the no-link error so the Shortcut's notification shows
   // what actually arrived; tokens never appear in the body.
   let bodyDebug = '';
@@ -63,8 +64,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     url = String(form.get('url') ?? '');
     note = (form.get('note') as string) || null;
     title = (form.get('title') as string) || null;
-    wayback = form.get('wayback') === 'on';
-    if (form.get('return_to') === 'save') returnTo = '/save';
+    origin = saveFormOrigin(form.get('return_to'));
   } else {
     let body: unknown;
     try {
@@ -90,7 +90,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   if (!url.trim()) {
     return isForm
-      ? redirect(returnTo + '?error=' + encodeURIComponent('Paste a link to save.'))
+      ? redirect(saveErrorPath(origin, 'Paste a link to save.', { url, title }))
       : Response.json(
           { error: 'url is required.', message: `Not saved — no link found (${bodyDebug})` },
           { status: 400 }
@@ -109,11 +109,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       // queue itself; fire-and-forget keeps the save response fast.
       void fetch(new URL('/api/jobs/ingest?limit=5', request.url), { method: 'POST' }).catch(() => {});
     }
-    if (isForm) {
-      // A brand-new save can be undone from the home page's "Saved." notice.
-      const undo = result.alreadySaved ? '' : `&undo_save=${result.saveId}`;
-      return redirect(returnTo === '/save' ? '/save?done=1' : `/?saved=1${undo}`);
-    }
+    if (isForm) return redirect(saveSuccessPath(origin, result));
     let message = result.alreadySaved ? 'Already on Radar' : 'Saved to Radar';
     const shared: string[] = [];
     if (shareTo.length && groupsEnabled()) {
@@ -143,7 +139,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     if (err instanceof TypeError) {
       const msg = 'That does not look like a web link.';
       return isForm
-        ? redirect(returnTo + '?error=' + encodeURIComponent(msg))
+        ? redirect(saveErrorPath(origin, msg, { url, title }))
         : Response.json(
             { error: msg, message: 'Not saved — that is not a web link' },
             { status: 400 }
@@ -152,7 +148,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     console.error('save failed:', err);
     const msg = 'Saving failed. Try again.';
     return isForm
-      ? redirect(returnTo + '?error=' + encodeURIComponent(msg))
+      ? redirect(saveErrorPath(origin, msg, { url, title }))
       : Response.json({ error: msg, message: 'Not saved — Radar error, try again' }, { status: 500 });
   }
 };
