@@ -41,7 +41,7 @@ pgvector + Auth + RLS). Embeddings via API with no-training terms.
 - [x] **3.1 (M)** Export: markdown + JSON incl. full text, one button.
 - [x] **3.2 (S)** Privacy page: what leaves the server, which providers, what's stored.
 - [x] **3.3 (S)** Bookmarklet + iOS Shortcut posting to `/api/saves`.
-- [x] **3.4 (S)** Wayback Save Page Now, opt-in per save, never for login-gated pages.
+- [x] **3.4 (S)** Wayback Save Page Now, opt-in per save, never for login-gated pages. *(Removed 2026-11-17, RAD-49.)*
 
 ## Stage 4 — Groups
 
