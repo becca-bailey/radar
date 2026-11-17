@@ -16,6 +16,7 @@ import SkeletonCards from '@/components/SkeletonCards.astro';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
 import { ensureInviteLink, membershipStatus } from '../../../lib/inviteLinks';
+import { cleanMemberName } from '../../../lib/memberNames';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -76,10 +77,9 @@ if (Astro.request.method === 'POST') {
   }
 
   if (action === 'nickname') {
-    const { error } = await supabase.rpc('set_group_display_name', {
-      gid: group.id,
-      name: String(form.get('display_name') ?? ''),
-    });
+    const name = cleanMemberName(form.get('display_name'));
+    if (!name) return back('error=' + encodeURIComponent('Your name here can’t be blank.'));
+    const { error } = await supabase.rpc('set_group_display_name', { gid: group.id, name });
     return back(error ? 'error=' + encodeURIComponent('Could not save your name.') : 'named=1');
   }
 
@@ -214,7 +214,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
     />
   </div>
   <p class="text-[0.82rem] text-muted-foreground">
-    Shares are anonymous unless the sharer picks a name for this group. Emails are never shown.
+    Each share shows the name its sharer picked for this group. Emails are never shown.
   </p>
 
   {notice && <Alert>{notice}</Alert>}

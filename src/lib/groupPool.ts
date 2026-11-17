@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * A group's shared links, one row per link (the group_pool function). Shares
- * are anonymous: a row says how many members shared the link and what they
- * wrote, never who.
+ * A group's shared links, one row per link (the group_pool function). A row
+ * says how many members shared the link, what they wrote, and the names they
+ * picked for the group.
  */
 export interface PoolLink {
   link_id: string;
@@ -14,7 +14,7 @@ export interface PoolLink {
   snippet: string;
   notes: string[];
   readers: number;
-  /** Nicknames of sharers who set one for this group; others are anonymous. */
+  /** Sharers' names in this group, earliest share first. */
   names: string[];
   /** The owner marked it picked (say, for a newsletter). */
   picked: boolean;
@@ -49,8 +49,9 @@ export async function fetchGroupPool(
 }
 
 /**
- * "", "shared by 3", "shared by Ana", "shared by Ana and 2 others". Members
- * without a nickname are counted, never named.
+ * "", "shared by Ana", "shared by Ana and Sam", "shared by Ana, Sam and 2 others".
+ * Names a couple of sharers and counts the rest. (A nameless count like
+ * "shared by 3" only appears for shares from before names were required.)
  */
 export function sharedByLabel(readers: number, names: string[]): string {
   const shown = names.slice(0, 2);

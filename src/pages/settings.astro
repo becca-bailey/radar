@@ -9,6 +9,8 @@ import TokenReveal from '../components/TokenReveal.astro';
 import { generateApiToken } from '../lib/apiTokens';
 import { createServiceClient } from '../lib/supabase';
 import { formatDate } from '../lib/dates';
+import { cleanDefaultName, MEMBER_NAME_MAX } from '../lib/memberNames';
+import { Label } from '@/components/ui/label';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -32,6 +34,16 @@ if (Astro.request.method === 'POST') {
     message = error ? 'Could not save that setting.' : 'Shortcut setting saved.';
   }
 
+  if (action === 'default_name') {
+    // Only pre-fills the name field for new groups: names in groups you're
+    // already in stay as they are.
+    const { error } = await supabase
+      .from('profiles')
+      .update({ display_name: cleanDefaultName(form.get('display_name')) })
+      .eq('id', user.id);
+    message = error ? 'Could not save your default name.' : 'Default name saved.';
+  }
+
   if (action === 'create_token') {
     const { raw, hash } = generateApiToken();
     const label = String(form.get('label') ?? '').trim() || 'Shortcut';
@@ -53,8 +65,13 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const { data: prefs } = await supabase.from('profiles').select('shortcut_ask_note').eq('id', user.id).maybeSingle();
+const { data: prefs } = await supabase
+  .from('profiles')
+  .select('shortcut_ask_note, display_name')
+  .eq('id', user.id)
+  .maybeSingle();
 const askNote = prefs?.shortcut_ask_note !== false;
+const defaultName = (prefs?.display_name as string | undefined) ?? '';
 const { data: tokens } = await supabase
   .from('api_tokens')
   .select('id, label, created_at, last_used_at')
@@ -67,6 +84,26 @@ const timeZone = Astro.locals.timeZone;
   <h1>Settings</h1>
 
   {message && <Alert>{message}</Alert>}
+
+  <h2 id="default-name">Default name for groups</h2>
+  <form class="mt-3 mb-6 grid gap-2.5" method="post">
+    <input type="hidden" name="_action" value="default_name" />
+    <Label htmlFor="default-name-input">Name</Label>
+    <Input
+      id="default-name-input"
+      type="text"
+      name="display_name"
+      defaultValue={defaultName}
+      maxLength={MEMBER_NAME_MAX}
+      autoComplete="nickname"
+      aria-describedby="default-name-hint"
+    />
+    <p id="default-name-hint" class="m-0 text-sm text-muted-foreground">
+      Filled in for you when you join or start a group, and you can change it there. Changing it
+      here doesn't rename you in groups you're already in. Only you see this setting.
+    </p>
+    <Button className="w-fit" variant="outline" type="submit">Save</Button>
+  </form>
 
   <h2>iPhone Shortcut</h2>
   <form class="mt-3 mb-6 grid gap-2.5" method="post">
