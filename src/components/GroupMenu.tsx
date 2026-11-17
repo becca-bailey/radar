@@ -55,6 +55,7 @@ type Open = 'invite' | 'name' | 'rename' | null;
  */
 export default function GroupMenu({ name, home, myName, returnPath, isOwner, invite, removedCount = 0 }: Props) {
   const [open, setOpen] = React.useState<Open>(null);
+  const [align, setAlign] = React.useState<'start' | 'end'>('end');
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const nameId = React.useId();
   const renameId = React.useId();
@@ -62,6 +63,16 @@ export default function GroupMenu({ name, home, myName, returnPath, isOwner, inv
   const onOpenChange = (next: boolean) => {
     if (!next) setOpen(null);
   };
+  // The header wraps: beside a short name the button sits at the right of the
+  // page column, under a long one it drops to the left. Line the menu up with
+  // whichever side the button is on, measured as the menu opens (RAD-59).
+  const onMenuOpenChange = React.useCallback((next: boolean) => {
+    const trigger = triggerRef.current;
+    if (!next || !trigger) return;
+    const button = trigger.getBoundingClientRect();
+    const column = (trigger.offsetParent ?? document.documentElement).getBoundingClientRect();
+    setAlign(button.left + button.width / 2 < column.left + column.width / 2 ? 'start' : 'end');
+  }, []);
   const refocusTrigger = (event: Event) => {
     event.preventDefault();
     triggerRef.current?.focus();
@@ -69,13 +80,13 @@ export default function GroupMenu({ name, home, myName, returnPath, isOwner, inv
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={onMenuOpenChange}>
         <DropdownMenuTrigger asChild>
           <Button ref={triggerRef} variant="ghost" size="icon" aria-label={`Actions for group ${name}`}>
             <MoreHorizontalIcon className="size-5" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align={align}>
           {isOwner && (
             <DropdownMenuItem onSelect={() => setOpen('invite')}>
               <UserPlusIcon aria-hidden="true" />
