@@ -50,7 +50,7 @@ if (user) {
   <body class="relative min-h-svh">
     {/* Shown while a form submit waits on the server (src/scripts/submitting.ts). */}
     <div
-      class="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-1 animate-pulse bg-candy-orange [html:has(form[data-submitting])_&]:block"
+      class="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-1 animate-pulse bg-gold [html:has(form[data-submitting])_&]:block"
       aria-hidden="true"
     ></div>
     {/*
@@ -64,7 +64,7 @@ if (user) {
     <div class="pointer-events-none absolute inset-0 -z-10 overflow-clip" aria-hidden="true">
       <div class="sticky top-0 h-lvh">
         <svg
-          class="absolute -top-[60px] -right-20 w-[260px] text-candy-pink opacity-30 min-[721px]:opacity-55"
+          class="absolute -top-[60px] -right-20 w-[260px] text-pink opacity-30 min-[721px]:opacity-55"
           viewBox="0 0 200 200"
         >
           <path
@@ -72,7 +72,7 @@ if (user) {
             d="M48 15c25-14 62-18 84-2s24 48 17 76-23 54-49 62-61-4-77-27S5 66 17 44 32 24 48 15Z"></path>
         </svg>
         <svg
-          class="absolute -bottom-[90px] -left-[100px] w-80 text-candy-sky opacity-30 min-[721px]:opacity-55"
+          class="absolute -bottom-[90px] -left-[100px] w-80 text-blue opacity-30 min-[721px]:opacity-55"
           viewBox="0 0 200 200"
         >
           <path
@@ -90,12 +90,12 @@ if (user) {
           href="/"
           aria-label="Radar"
           >radar<span
-            class="ml-[0.22em] size-[0.34em] -translate-y-[0.3em] self-center rounded-full border-2 border-foreground bg-candy-orange shadow-[0_0_0_3px_var(--background),0_0_0_5px_var(--foreground)]"
+            class="ml-[0.22em] size-[0.34em] -translate-y-[0.3em] self-center rounded-full border-2 border-foreground bg-gold shadow-[0_0_0_3px_var(--background),0_0_0_5px_var(--foreground)]"
             aria-hidden="true"></span></a
         >
         <nav
           aria-label="Main"
-          class="flex items-center gap-3.5 text-[0.92rem] font-semibold [&_a]:border-b-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-candy-orange"
+          class="flex items-center gap-3.5 text-[0.92rem] font-semibold [&_a]:border-b-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-gold"
         >
           {
             user ? (
@@ -106,7 +106,7 @@ if (user) {
                   Groups
                   {groupNews > 0 && (
                     <span
-                      class="ml-1 inline-block min-w-5 rounded-full border-2 border-foreground bg-candy-butter px-1 text-center text-[0.72rem] leading-4 text-ink"
+                      class="ml-1 inline-block min-w-5 rounded-full border-2 border-foreground bg-peach px-1 text-center text-[0.72rem] leading-4 text-ink"
                       aria-hidden="true"
                     >
                       {groupNews > 99 ? '99+' : groupNews}
