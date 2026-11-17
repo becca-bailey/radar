@@ -8,8 +8,8 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-candy-lime',
-        error: 'bg-candy-pink',
+        default: 'bg-sage',
+        error: 'bg-pink',
       },
     },
     defaultVariants: {

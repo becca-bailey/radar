@@ -4,8 +4,8 @@
  * stone-brown borders with hard offset shadows, organic blob details.
  *
  * The palette is borrowed from becca.is: stone brown ink on cream, a gold
- * primary, peach highlights, cornflower blue and candy pink. The candy-* names
- * are kept so components don't change; each one notes the colour it now holds.
+ * primary, peach highlights, cornflower blue and pink. Each accent is
+ * named for its colour (bg-gold, var(--peach)); the comment says what it's for.
  *
  * Styling is Tailwind utilities in the markup plus shadcn/ui components in
  * src/components/ui. This file only holds the theme: the palette as shadcn
@@ -19,16 +19,17 @@
   --radius: 14px;
 
   --ink: #4e473f; /* stone brown */
-  --hairline: #e8d3c7; /* peach, deepened enough to read as a rule on cream */
-  --on-fill: #3d3832; /* text on gold, peach, sky and sage fills */
-  --link: #2969c2; /* blue, 5.1:1 on cream */
+  --hairline: #e8d3c7; /* a deeper peach, enough to read as a rule on cream */
+  --on-fill: #3d3832; /* text on gold, peach, blue and sage fills */
+  --link: #2969c2; /* links and blue text, 5.1:1 on cream (--blue is a fill) */
 
-  --candy-orange: #cfaf36; /* gold: the brand dot, primary actions */
-  --candy-butter: #ffd9c9; /* peach: badges, highlights */
-  --candy-sky: #a6c8f6; /* cornflower blue */
-  --candy-pink: #fdc1e1; /* candy pink */
-  --candy-plum: #f4a6cb; /* rose: owner tools */
-  --candy-lime: #c9dca6; /* sage: success, "picked" */
+  --gold: #cfaf36; /* the brand dot, primary actions, link hover underlines */
+  --peach: #ffd9c9; /* secondary: badges, the avatar, <mark>, save panel, selected cards */
+  --blue: #a6c8f6; /* accent (hover fills), background blob, explore and group panels */
+  --pink: #fdc1e1; /* error alerts, background blob */
+  --rose: #f4a6cb; /* owner tools */
+  --sage: #c9dca6; /* success alerts, "picked" badges */
+  /* Peach, pink and blue also tint the three steps on the landing page. */
 
   /* shadcn tokens, mapped onto the palette above */
   --background: #fbf9f8;
@@ -37,13 +38,13 @@
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: var(--candy-orange);
+  --primary: var(--gold);
   --primary-foreground: var(--on-fill); /* 5.4:1 on gold */
-  --secondary: var(--candy-butter);
+  --secondary: var(--peach);
   --secondary-foreground: var(--on-fill);
   --muted: #f7eee9; /* muted text, links and errors all keep 4.5:1 on it */
   --muted-foreground: #736b62;
-  --accent: var(--candy-sky);
+  --accent: var(--blue);
   --accent-foreground: var(--on-fill);
   --destructive: #b5412e;
   --border: var(--ink);
@@ -62,12 +63,12 @@
     --on-fill: #1f1b18;
     --link: #8fb9f5;
 
-    --candy-orange: #c9aa38;
-    --candy-butter: #c79a87;
-    --candy-sky: #6f93c4;
-    --candy-pink: #c98aab;
-    --candy-plum: #c46e98;
-    --candy-lime: #93a876;
+    --gold: #c9aa38;
+    --peach: #c79a87;
+    --blue: #6f93c4;
+    --pink: #c98aab;
+    --rose: #c46e98;
+    --sage: #93a876;
 
     --background: #2a2622;
     --foreground: #f3eee9;
@@ -108,12 +109,12 @@
   --color-ink: var(--ink);
   --color-hairline: var(--hairline);
   --color-link: var(--link);
-  --color-candy-lime: var(--candy-lime);
-  --color-candy-orange: var(--candy-orange);
-  --color-candy-pink: var(--candy-pink);
-  --color-candy-sky: var(--candy-sky);
-  --color-candy-plum: var(--candy-plum);
-  --color-candy-butter: var(--candy-butter);
+  --color-sage: var(--sage);
+  --color-gold: var(--gold);
+  --color-pink: var(--pink);
+  --color-blue: var(--blue);
+  --color-rose: var(--rose);
+  --color-peach: var(--peach);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -159,7 +160,7 @@
   }
 
   mark {
-    @apply bg-candy-butter rounded-[3px] px-0.5 text-ink;
+    @apply bg-peach rounded-[3px] px-0.5 text-ink;
   }
 
   /* Bare prose inside the page column (privacy, ranking, intros). Scoped to
