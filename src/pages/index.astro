@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import { Alert } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DownloadIcon } from 'lucide-react';
 import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
 import { Badge, badgeVariants } from '@/components/ui/badge';
@@ -178,13 +179,13 @@ const lensTopic = activeCat?.name ?? null;
 
   {
     totalSaves > 0 && (
-      <div class="mt-8 mb-1.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+      <div class="mt-8 mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <h2 class="m-0 whitespace-nowrap">Recent saves</h2>
         <Badge className="-rotate-2">{totalSaves}</Badge>
-        <div class="flex w-full gap-3.5 text-sm whitespace-nowrap sm:ml-auto sm:w-auto">
-          <a class="text-muted-foreground" href="/export">Export</a>
-          <a class="text-muted-foreground" href="/search">Search your archive →</a>
-        </div>
+        <a class={buttonVariants({ variant: 'outline', size: 'sm', className: 'ml-auto' })} href="/export">
+          <DownloadIcon aria-hidden="true" />
+          Export
+        </a>
       </div>
     )
   }
