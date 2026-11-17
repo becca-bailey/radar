@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import Empty from '@/components/Empty.astro';
 import SavePicker, { type PickerRow } from '@/components/SavePicker.tsx';
-import { groupsEnabled } from '../../../lib/flags';
 import { joinNotes, saveDisplayTitle } from '../../../lib/exportFormats';
 import { fetchGroupPool } from '../../../lib/groupPool';
 import { formatDate, isDayKey, localDayRange } from '../../../lib/dates';
@@ -17,10 +16,6 @@ import { formatDate, isDayKey, localDayRange } from '../../../lib/dates';
  * crowdsourcing a newsletter's links post. Any member can export what they
  * can already see; exports carry counts and notes, never names.
  */
-if (!groupsEnabled()) {
-  return Astro.redirect('/');
-}
-
 const { user, supabase } = Astro.locals;
 if (!user) {
   return Astro.redirect('/login');

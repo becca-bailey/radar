@@ -10,7 +10,6 @@ interface ImportMetaEnv {
   readonly CRON_SECRET?: string;
   readonly SAFE_BROWSING_API_KEY?: string;
   readonly ADMIN_EMAILS?: string;
-  readonly GROUPS_ENABLED?: string;
 }
 
 declare namespace App {

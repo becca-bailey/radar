@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { groupsEnabled } from '../../../../lib/flags';
 
 /**
  * POST /api/groups/:id/picked — the owner marks links as picked (say, used
@@ -7,7 +6,6 @@ import { groupsEnabled } from '../../../../lib/flags';
  * who shared what. JSON body: { link_ids: string[] }.
  */
 export const POST: APIRoute = async ({ params, request, locals }) => {
-  if (!groupsEnabled()) return Response.json({ error: 'Groups are not enabled.' }, { status: 404 });
   const { user, supabase } = locals;
   if (!user) return Response.json({ error: 'Sign in first.' }, { status: 401 });
   let ids: string[] = [];

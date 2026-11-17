@@ -13,14 +13,9 @@ import InviteLink from '@/components/InviteLink.tsx';
 import TopicSuggestions from '@/components/TopicSuggestions.tsx';
 import GroupMenu from '@/components/GroupMenu.tsx';
 import SkeletonCards from '@/components/SkeletonCards.astro';
-import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
 import { ensureInviteLink, membershipStatus } from '../../../lib/inviteLinks';
-
-if (!groupsEnabled()) {
-  return Astro.redirect('/');
-}
 
 const { user, supabase } = Astro.locals;
 if (!user) {

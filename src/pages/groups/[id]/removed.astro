@@ -5,17 +5,12 @@ import { Button } from '@/components/ui/button';
 import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
 import ItemCard from '@/components/ItemCard.astro';
-import { groupsEnabled } from '../../../lib/flags';
 import { formatDate } from '../../../lib/dates';
 
 /**
  * Owner-only: links removed from the group, with Restore. Reached from the
  * group menu, which only offers it when there's something here.
  */
-if (!groupsEnabled()) {
-  return Astro.redirect('/');
-}
-
 const { user, supabase } = Astro.locals;
 if (!user) {
   return Astro.redirect('/login');

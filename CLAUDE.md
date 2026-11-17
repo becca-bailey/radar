@@ -31,7 +31,7 @@ Merging to `main` deploys to production (Netlify). So:
 - A PR that adds a migration needs the migration pushed to the hosted database
   (`npx supabase db push --remote`) **before** it merges. Becca runs that step;
   say so in the PR and stop.
-- Half-built features ship behind an env flag (like `GROUPS_ENABLED`), off in
+- Half-built features ship behind an env flag (read from `import.meta.env`), off in
   production until they're ready.
 
 ## Migrations and parallel work

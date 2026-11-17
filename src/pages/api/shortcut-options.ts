@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { userIdForBearerToken } from '../../lib/apiTokens';
-import { groupsEnabled } from '../../lib/flags';
 import { JUST_SAVE, groupsForUser, shareChoices } from '../../lib/shares';
 import { createServiceClient } from '../../lib/supabase';
 
@@ -33,9 +32,6 @@ export const GET: APIRoute = async ({ request, locals }) => {
 
   const { data: profile } = await service.from('profiles').select('shortcut_ask_note').eq('id', userId).maybeSingle();
   const askNote = profile?.shortcut_ask_note === false ? 'no' : 'yes';
-  if (!groupsEnabled()) {
-    return Response.json({ groups: [], choices: [JUST_SAVE], ask_note: askNote });
-  }
   const { groups, lastUsedId } = await groupsForUser(service, userId);
   const choices = shareChoices(groups, lastUsedId).map((c) => c.label);
   return Response.json({ groups: choices.slice(1), choices, ask_note: askNote });
