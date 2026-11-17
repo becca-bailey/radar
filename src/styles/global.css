@@ -1,7 +1,11 @@
 /*
  * Radar — handmade, maximalist, modern.
- * Cream paper, chunky friendly display type (Fraunces soft), candy accents,
- * ink borders with hard offset shadows, organic blob details.
+ * Cream paper, chunky friendly display type (Fraunces soft), sticker accents,
+ * stone-brown borders with hard offset shadows, organic blob details.
+ *
+ * The palette is borrowed from becca.is: stone brown ink on cream, a gold
+ * primary, peach highlights, cornflower blue and candy pink. The candy-* names
+ * are kept so components don't change; each one notes the colour it now holds.
  *
  * Styling is Tailwind utilities in the markup plus shadcn/ui components in
  * src/components/ui. This file only holds the theme: the palette as shadcn
@@ -14,58 +18,67 @@
 :root {
   --radius: 14px;
 
-  --ink: #2b2118;
-  --hairline: #e7dcc8;
-  --link: #d05f1e;
+  --ink: #4e473f; /* stone brown */
+  --hairline: #e8d3c7; /* peach, deepened enough to read as a rule on cream */
+  --on-fill: #3d3832; /* text on gold, peach, sky and sage fills */
+  --link: #2969c2; /* blue, 5.1:1 on cream */
 
-  --candy-lime: #b5cf49;
-  --candy-orange: #f28a2e;
-  --candy-pink: #f5aecb;
-  --candy-sky: #a9cdf0;
-  --candy-plum: #b89ae0;
-  --candy-butter: #f7d154;
+  --candy-orange: #cfaf36; /* gold: the brand dot, primary actions */
+  --candy-butter: #ffd9c9; /* peach: badges, highlights */
+  --candy-sky: #a6c8f6; /* cornflower blue */
+  --candy-pink: #fdc1e1; /* candy pink */
+  --candy-plum: #f4a6cb; /* rose: owner tools */
+  --candy-lime: #c9dca6; /* sage: success, "picked" */
 
   /* shadcn tokens, mapped onto the palette above */
-  --background: #faf4e8;
-  --foreground: #2b2118;
-  --card: #fffdf7;
+  --background: #fbf9f8;
+  --foreground: #4e473f;
+  --card: #ffffff;
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
   --primary: var(--candy-orange);
-  --primary-foreground: var(--ink);
+  --primary-foreground: var(--on-fill); /* 5.4:1 on gold */
   --secondary: var(--candy-butter);
-  --secondary-foreground: var(--ink);
-  --muted: var(--hairline);
-  --muted-foreground: #7a6f60;
+  --secondary-foreground: var(--on-fill);
+  --muted: #f7eee9; /* muted text, links and errors all keep 4.5:1 on it */
+  --muted-foreground: #736b62;
   --accent: var(--candy-sky);
-  --accent-foreground: var(--ink);
-  --destructive: #c23a22;
+  --accent-foreground: var(--on-fill);
+  --destructive: #b5412e;
   --border: var(--ink);
   --input: var(--ink);
-  --ring: var(--candy-sky);
+  --ring: var(--link);
 
   color-scheme: light dark;
 }
 
+/* Dark: the same family at dusk. Warm stone surfaces, cream text, and the
+   accents dimmed so they sit on the dark page rather than glow. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --ink: #0f0c08;
-    --hairline: #42382c;
-    --link: #f0a35e;
+    --ink: #14110e;
+    --hairline: #4a423a;
+    --on-fill: #1f1b18;
+    --link: #8fb9f5;
 
-    --candy-lime: #93a93d;
-    --candy-orange: #d97c2b;
-    --candy-pink: #c9849f;
-    --candy-sky: #7fa3c4;
-    --candy-plum: #9479bb;
-    --candy-butter: #cfae45;
+    --candy-orange: #c9aa38;
+    --candy-butter: #c79a87;
+    --candy-sky: #6f93c4;
+    --candy-pink: #c98aab;
+    --candy-plum: #c46e98;
+    --candy-lime: #93a876;
 
-    --background: #221c15;
-    --foreground: #f1e8d8;
-    --card: #2e261d;
-    --muted-foreground: #a3988a;
-    --destructive: #e07a62;
+    --background: #2a2622;
+    --foreground: #f3eee9;
+    --card: #36302a;
+    --muted: #3f3832; /* muted text keeps 5:1 on it */
+    /* Ink is near-black here for the sticker shadows; outlines need to stay
+       visible on dark stone (3:1), so borders get their own colour. */
+    --border: #857a6f;
+    --input: #857a6f;
+    --muted-foreground: #b3aa9f;
+    --destructive: #ea957f;
   }
 }
 

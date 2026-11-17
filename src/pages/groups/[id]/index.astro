@@ -227,7 +227,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
   </div>
   {
     preview && (
-      <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border-2 bg-candy-plum px-4 py-2.5 shadow-hard-sm">
+      <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border-2 bg-candy-plum px-4 py-2.5 text-ink shadow-hard-sm">
         <p class="m-0 text-sm font-semibold">You're previewing what members see.</p>
         <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={home}>Back to owner view</a>
       </div>
