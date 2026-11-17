@@ -19,14 +19,15 @@
   --radius: 14px;
 
   --ink: #4e473f; /* stone brown */
-  --hairline: #f3e2d8; /* peach, quietened for rules on cream */
+  --hairline: #e8d3c7; /* peach, deepened enough to read as a rule on cream */
+  --on-fill: #3d3832; /* text on gold, peach, sky and sage fills */
   --link: #2969c2; /* blue, 5.1:1 on cream */
 
   --candy-orange: #cfaf36; /* gold: the brand dot, primary actions */
   --candy-butter: #ffd9c9; /* peach: badges, highlights */
   --candy-sky: #a6c8f6; /* cornflower blue */
   --candy-pink: #fdc1e1; /* candy pink */
-  --candy-plum: #ee8fbd; /* deep pink: owner tools */
+  --candy-plum: #f4a6cb; /* rose: owner tools */
   --candy-lime: #c9dca6; /* sage: success, "picked" */
 
   /* shadcn tokens, mapped onto the palette above */
@@ -37,17 +38,17 @@
   --popover: var(--card);
   --popover-foreground: var(--foreground);
   --primary: var(--candy-orange);
-  --primary-foreground: #3d3832; /* 5.4:1 on gold */
+  --primary-foreground: var(--on-fill); /* 5.4:1 on gold */
   --secondary: var(--candy-butter);
-  --secondary-foreground: #3d3832;
-  --muted: var(--hairline);
+  --secondary-foreground: var(--on-fill);
+  --muted: #f7eee9; /* muted text, links and errors all keep 4.5:1 on it */
   --muted-foreground: #736b62;
   --accent: var(--candy-sky);
-  --accent-foreground: #3d3832;
+  --accent-foreground: var(--on-fill);
   --destructive: #b5412e;
   --border: var(--ink);
   --input: var(--ink);
-  --ring: #2969c2;
+  --ring: var(--link);
 
   color-scheme: light dark;
 }
@@ -58,6 +59,7 @@
   :root {
     --ink: #14110e;
     --hairline: #4a423a;
+    --on-fill: #1f1b18;
     --link: #8fb9f5;
 
     --candy-orange: #c9aa38;
@@ -70,12 +72,13 @@
     --background: #2a2622;
     --foreground: #f3eee9;
     --card: #36302a;
-    --primary-foreground: #2a2622;
-    --secondary-foreground: #1f1b18;
-    --accent-foreground: #1f1b18;
+    --muted: #3f3832; /* muted text keeps 5:1 on it */
+    /* Ink is near-black here for the sticker shadows; outlines need to stay
+       visible on dark stone (3:1), so borders get their own colour. */
+    --border: #857a6f;
+    --input: #857a6f;
     --muted-foreground: #b3aa9f;
-    --destructive: #e48a74;
-    --ring: #8fb9f5;
+    --destructive: #ea957f;
   }
 }
 

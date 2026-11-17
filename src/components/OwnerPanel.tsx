@@ -12,7 +12,7 @@ export function OwnerBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-flex w-fit items-center gap-1 rounded-full border-2 bg-candy-plum px-2 text-[0.72rem] font-bold whitespace-nowrap text-foreground',
+        'inline-flex w-fit items-center gap-1 rounded-full border-2 bg-candy-plum px-2 text-[0.72rem] font-bold whitespace-nowrap text-ink',
         className
       )}
     >
