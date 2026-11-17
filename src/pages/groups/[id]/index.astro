@@ -17,6 +17,8 @@ import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
 import { ensureInviteLink, membershipStatus } from '../../../lib/inviteLinks';
+import { localWeekRange, weekStartKey } from '../../../lib/dates';
+import { weekPath } from '../../../lib/groupWeeks';
 
 if (!groupsEnabled()) {
   return Astro.redirect('/');
@@ -49,7 +51,9 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
   const rawReturn = String(form.get('return_path') ?? '');
-  const returnPath = rawReturn === home || rawReturn.startsWith(`${home}?`) ? rawReturn : home;
+  // Same-group pages only: the group page, a lens, or a week page.
+  const returnPath =
+    rawReturn === home || rawReturn.startsWith(`${home}?`) || rawReturn.startsWith(`${home}/week?`) ? rawReturn : home;
   const back = (flag: string, path = returnPath) =>
     Astro.redirect(`${path}${path.includes('?') ? '&' : '?'}${flag}`);
 
@@ -162,7 +166,12 @@ interface Section {
 
 const recentFrom = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-const [sections, recent, ownerData, invite] = await Promise.all([
+// Week pages hold older shares. "Earlier weeks" opens the week of the latest
+// share before this calendar week, so it never lands on an empty page.
+const thisWeek = weekStartKey(new Date(), Astro.locals.timeZone);
+const thisWeekStart = localWeekRange(thisWeek, Astro.locals.timeZone).start;
+
+const [sections, recent, ownerData, invite, before] = await Promise.all([
   Promise.all(
     shown.map(async (lens): Promise<Section> => {
       const { links, error: poolError } = await fetchGroupPool(supabase, group.id, {
@@ -185,6 +194,10 @@ const [sections, recent, ownerData, invite] = await Promise.all([
     : Promise.resolve(null),
   // The owner always has a link to hand out: make one if the group has none.
   isOwner ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
+  // The pool lists newest share first: one row is the latest share before this week.
+  single
+    ? Promise.resolve({ links: [] as PoolLink[], error: null })
+    : fetchGroupPool(supabase, group.id, { limit: 1, sharedBefore: thisWeekStart }),
 ]);
 
 const memberCount = ownerData?.[0].count ?? null;
@@ -199,6 +212,8 @@ const lastVisitMs = previousVisit ? new Date(previousVisit).getTime() : null;
 const isNew = (l: PoolLink) => lastVisitMs !== null && new Date(l.last_shared_at).getTime() > lastVisitMs;
 const recentNew = recent.links.filter(isNew);
 const recentEarlier = recent.links.filter((l) => !isNew(l));
+
+const earlierWeek = before.links[0] ? weekStartKey(before.links[0].last_shared_at, Astro.locals.timeZone) : null;
 
 const returnPath = single ? `${home}?lens=${single.id}` : home;
 const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? 'link' : 'links'}`;
@@ -391,9 +406,11 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
             )}
           </>
         )}
-        <p class="text-sm text-muted-foreground">
-          Older shares are in <a href={`${home}/export`}>Export</a>, by date.
-        </p>
+        {earlierWeek && (
+          <a class="text-sm font-semibold" href={weekPath(home, earlierWeek)}>
+            Earlier weeks →
+          </a>
+        )}
       </>
     )
   }

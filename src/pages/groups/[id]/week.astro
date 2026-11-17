@@ -1,0 +1,123 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import PoolCard from '@/components/PoolCard.astro';
+import { groupsEnabled } from '../../../lib/flags';
+import { fetchGroupPool } from '../../../lib/groupPool';
+import { formatWeekLabel, localWeekRange, weekStartKey } from '../../../lib/dates';
+import { resolveWeek, weekPaging, weekPath } from '../../../lib/groupWeeks';
+
+/**
+ * One week of a group's shares, Monday to Sunday in the viewer's time zone,
+ * with the same cards as "Shared this week". Paging is finite: one week per
+ * page, Earlier / Later links, no infinite scroll (PLAN.md §2).
+ */
+if (!groupsEnabled()) {
+  return Astro.redirect('/');
+}
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const groupId = Astro.params.id!;
+const home = `/groups/${groupId}`;
+// RLS: members only.
+const { data: group } = await supabase
+  .from('groups')
+  .select('id, name, owner_id, created_at')
+  .eq('id', groupId)
+  .maybeSingle();
+if (!group) {
+  return Astro.redirect('/groups');
+}
+const isOwner = group.owner_id === user.id;
+
+const timeZone = Astro.locals.timeZone;
+const params = Astro.url.searchParams;
+const currentWeek = weekStartKey(new Date(), timeZone);
+const firstWeek = weekStartKey(group.created_at as string, timeZone);
+const week = resolveWeek(params.get('of'), firstWeek, currentWeek);
+const path = weekPath(home, week);
+// Keep the URL on the week's Monday, so paging links and Remove return to one place.
+if (params.get('of') !== week) {
+  return Astro.redirect(path);
+}
+
+const LIMIT = 200;
+const { start, end } = localWeekRange(week, timeZone);
+const [shown, before] = await Promise.all([
+  // One extra row says whether the week runs past the limit.
+  fetchGroupPool(supabase, group.id, { limit: LIMIT + 1, sharedFrom: start, sharedBefore: end }),
+  // The pool lists newest share first: one row is the latest share before this week.
+  fetchGroupPool(supabase, group.id, { limit: 1, sharedBefore: start }),
+]);
+// Unknown (undefined) if the lookup failed: page back by week rather than claim there's nothing.
+const latestBefore = before.error
+  ? undefined
+  : before.links[0]
+    ? weekStartKey(before.links[0].last_shared_at, timeZone)
+    : null;
+const paging = weekPaging(week, { firstWeek, currentWeek, latestBefore });
+
+const links = shown.links.slice(0, LIMIT);
+const truncated = shown.links.length > LIMIT;
+const isCurrent = week === currentWeek;
+const label = formatWeekLabel(week);
+const notice = params.get('removed') === '1' ? 'Removed from the group.' : null;
+const error = params.get('error') ?? shown.error ?? before.error;
+---
+
+<Layout title={`Week of ${label} — ${group.name} — Radar`} user={user}>
+  <p class="mb-0 text-sm"><a class="text-muted-foreground" href={home}>← {group.name}</a></p>
+  <h1>{isCurrent ? 'This week' : `Week of ${label}`}</h1>
+  <p class="m-0 text-sm text-muted-foreground">
+    {isCurrent ? `${label}. ` : ''}Everything shared to {group.name}, newest first.
+  </p>
+
+  {notice && <Alert>{notice}</Alert>}
+  {error && <Alert variant="error">{error}</Alert>}
+
+  {
+    links.length === 0 && !shown.error ? (
+      <Empty>{isCurrent ? 'Nothing shared yet this week.' : 'Nothing was shared this week.'}</Empty>
+    ) : (
+      <CardList>
+        {links.map((l) => (
+          <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={path} />
+        ))}
+      </CardList>
+    )
+  }
+  {
+    truncated && (
+      <p class="text-sm text-muted-foreground">
+        Showing the {LIMIT} most recent. <a href={`${home}/export`}>Export</a> has the rest, by date.
+      </p>
+    )
+  }
+
+  <nav class="mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t-2 pt-4" aria-label="Weeks">
+    {paging.earlier ? (
+      <a class="font-semibold" href={weekPath(home, paging.earlier)} rel="prev">← Earlier week</a>
+    ) : (
+      <span class="text-sm text-muted-foreground">
+        {week === firstWeek ? 'The group started this week.' : 'Nothing shared before this week.'}
+      </span>
+    )}
+    {paging.later && (
+      <a class="font-semibold" href={weekPath(home, paging.later)} rel="next">Later week →</a>
+    )}
+  </nav>
+  {
+    paging.skipTo && (
+      <p class="mt-3 text-sm text-muted-foreground">
+        The weeks just before are empty. Last shares:{' '}
+        <a href={weekPath(home, paging.skipTo)}>week of {formatWeekLabel(paging.skipTo)}</a>.
+      </p>
+    )
+  }
+</Layout>

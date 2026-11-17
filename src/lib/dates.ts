@@ -84,3 +84,51 @@ export function localDayRange(day: string, zone: string): { start: string; end: 
   const end = addDays(start, 1);
   return { start: new Date(start.getTime()).toISOString(), end: new Date(end.getTime()).toISOString() };
 }
+
+/** A YYYY-MM-DD key as midnight UTC on that calendar day. */
+const keyToUTC = (day: string): Date => {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+};
+
+/**
+ * Calendar arithmetic on YYYY-MM-DD keys: no zone involved, so it never
+ * slips a day around DST.
+ */
+export function addDaysToKey(day: string, days: number): string {
+  const date = keyToUTC(day);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** The Monday (YYYY-MM-DD) of the local week holding the day key. */
+export function mondayOf(day: string): string {
+  // getUTCDay: Sunday 0 … Saturday 6. Weeks run Monday to Sunday.
+  return addDaysToKey(day, -((keyToUTC(day).getUTCDay() + 6) % 7));
+}
+
+/** The Monday (YYYY-MM-DD) of the week an instant falls in, in the zone. */
+export function weekStartKey(date: DateInput, zone: string): string {
+  return mondayOf(dayKey(date, zone));
+}
+
+/**
+ * A local week (by its Monday) as UTC instants: [start, end), from Monday's
+ * midnight to the next Monday's, so a DST week is an hour short or long.
+ */
+export function localWeekRange(monday: string, zone: string): { start: string; end: string } {
+  const [y, m, d] = monday.split('-').map(Number);
+  const start = new TZDate(y, m - 1, d, zone);
+  const end = addDays(start, 7);
+  return { start: new Date(start.getTime()).toISOString(), end: new Date(end.getTime()).toISOString() };
+}
+
+/** "Nov 9 – 15, 2026", "Nov 30 – Dec 6, 2026", "Dec 28, 2026 – Jan 3, 2027". */
+export function formatWeekLabel(monday: string): string {
+  const sunday = addDaysToKey(monday, 6);
+  // The keys are calendar days already: format them as UTC dates.
+  const show = (key: string, year: boolean) => formatDate(keyToUTC(key), 'UTC', { year });
+  if (monday.slice(0, 4) !== sunday.slice(0, 4)) return `${show(monday, true)} – ${show(sunday, true)}`;
+  if (monday.slice(5, 7) !== sunday.slice(5, 7)) return `${show(monday, false)} – ${show(sunday, true)}`;
+  return `${show(monday, false)} – ${format(keyToUTC(sunday), 'd, yyyy', { in: tz('UTC') })}`;
+}

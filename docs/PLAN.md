@@ -17,7 +17,7 @@ With single-user behavior settled, groups were rebuilt smaller. This overrides t
 - **Moderation is the owner removing a link.** The link's shares in that group are marked removed (hidden there, can't be shared there again until restored). Members' saves, and their shares to other groups, are untouched; members see "removed by owner" on their save.
 - **Settings: name and invite link.** Cadence, edition size, per-source cap, names visible, categories and contribute-to-public are gone.
 - **Shelved:** the public layer and its flag queue, the ranking (section 7) and the metrics dashboard. They need many groups to mean anything; the code is in git history.
-- **Finite, still.** The non-negotiable now reads: no infinite scroll anywhere. The group page shows one week plus lens previews; older shares are in Export by date.
+- **Finite, still.** The non-negotiable now reads: no infinite scroll anywhere. The group page shows one week plus lens previews; older shares are on week pages (one Monday-to-Sunday week per page, with Earlier / Later links and a skip past empty weeks), never a feed that loads more.
 
 ## 0a. Revision: meet members where they are
 

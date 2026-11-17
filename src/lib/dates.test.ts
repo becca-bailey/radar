@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { dayKey, formatDate, isDayKey, formatRecentDate, isValidTimeZone, localDayRange, resolveTimeZone } from './dates';
+import {
+  addDaysToKey,
+  dayKey,
+  formatDate,
+  formatRecentDate,
+  formatWeekLabel,
+  isDayKey,
+  isValidTimeZone,
+  localDayRange,
+  localWeekRange,
+  mondayOf,
+  resolveTimeZone,
+  weekStartKey,
+} from './dates';
 
 const LA = 'America/Los_Angeles';
 
@@ -92,5 +105,58 @@ describe('localDayRange', () => {
       start: '2026-12-30T15:00:00.000Z',
       end: '2026-12-31T15:00:00.000Z',
     });
+  });
+});
+
+describe('addDaysToKey', () => {
+  it('crosses months, years and leap days', () => {
+    expect(addDaysToKey('2026-11-30', 1)).toBe('2026-12-01');
+    expect(addDaysToKey('2026-12-28', 7)).toBe('2027-01-04');
+    expect(addDaysToKey('2028-03-01', -1)).toBe('2028-02-29');
+    expect(addDaysToKey('2026-11-02', -7)).toBe('2026-10-26');
+  });
+});
+
+describe('mondayOf / weekStartKey', () => {
+  it('runs weeks Monday to Sunday', () => {
+    expect(mondayOf('2026-11-16')).toBe('2026-11-16'); // Monday
+    expect(mondayOf('2026-11-17')).toBe('2026-11-16'); // Tuesday
+    expect(mondayOf('2026-11-22')).toBe('2026-11-16'); // Sunday
+    expect(mondayOf('2026-11-23')).toBe('2026-11-23'); // next Monday
+    expect(mondayOf('2027-01-01')).toBe('2026-12-28'); // across the year
+  });
+
+  it('uses the local day of the instant', () => {
+    // 11pm Sunday Nov 15 in Los Angeles is Monday Nov 16 in UTC.
+    expect(weekStartKey('2026-11-16T07:00:00Z', LA)).toBe('2026-11-09');
+    expect(weekStartKey('2026-11-16T07:00:00Z', 'UTC')).toBe('2026-11-16');
+  });
+});
+
+describe('localWeekRange', () => {
+  it('spans Monday midnight to the next Monday midnight, locally', () => {
+    expect(localWeekRange('2026-11-09', LA)).toEqual({
+      start: '2026-11-09T08:00:00.000Z',
+      end: '2026-11-16T08:00:00.000Z',
+    });
+  });
+
+  it('follows DST: the fall-back week is an hour longer', () => {
+    expect(localWeekRange('2026-10-26', LA)).toEqual({
+      start: '2026-10-26T07:00:00.000Z',
+      end: '2026-11-02T08:00:00.000Z',
+    });
+  });
+
+  it('meets the next week with no gap', () => {
+    expect(localWeekRange('2026-10-26', LA).end).toBe(localWeekRange('2026-11-02', LA).start);
+  });
+});
+
+describe('formatWeekLabel', () => {
+  it('shortens what the two ends share', () => {
+    expect(formatWeekLabel('2026-11-09')).toBe('Nov 9 – 15, 2026');
+    expect(formatWeekLabel('2026-11-30')).toBe('Nov 30 – Dec 6, 2026');
+    expect(formatWeekLabel('2026-12-28')).toBe('Dec 28, 2026 – Jan 3, 2027');
   });
 });
