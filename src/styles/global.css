@@ -4,7 +4,7 @@
  * stone-brown borders with hard offset shadows, organic blob details.
  *
  * The palette is borrowed from becca.is: stone brown ink on cream, a gold
- * primary, peach highlights, cornflower blue and candy pink. Each accent is
+ * primary, peach highlights, cornflower blue and pink. Each accent is
  * named for its colour (bg-gold, var(--peach)); the comment says what it's for.
  *
  * Styling is Tailwind utilities in the markup plus shadcn/ui components in
@@ -19,16 +19,17 @@
   --radius: 14px;
 
   --ink: #4e473f; /* stone brown */
-  --hairline: #e8d3c7; /* peach, deepened enough to read as a rule on cream */
+  --hairline: #e8d3c7; /* a deeper peach, enough to read as a rule on cream */
   --on-fill: #3d3832; /* text on gold, peach, blue and sage fills */
-  --link: #2969c2; /* blue, 5.1:1 on cream */
+  --link: #2969c2; /* links and blue text, 5.1:1 on cream (--blue is a fill) */
 
   --gold: #cfaf36; /* the brand dot, primary actions, link hover underlines */
-  --peach: #ffd9c9; /* secondary: count badges, the avatar, <mark>, the save panel */
-  --blue: #a6c8f6; /* accent: background blob, explore and group panels */
-  --pink: #fdc1e1; /* errors, background blob */
+  --peach: #ffd9c9; /* secondary: badges, the avatar, <mark>, save panel, selected cards */
+  --blue: #a6c8f6; /* accent (hover fills), background blob, explore and group panels */
+  --pink: #fdc1e1; /* error alerts, background blob */
   --rose: #f4a6cb; /* owner tools */
   --sage: #c9dca6; /* success alerts, "picked" badges */
+  /* Peach, pink and blue also tint the three steps on the landing page. */
 
   /* shadcn tokens, mapped onto the palette above */
   --background: #fbf9f8;
