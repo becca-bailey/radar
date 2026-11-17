@@ -6,8 +6,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * both sides derive labels with shareChoices, so they always agree.
  */
 
-export const JUST_SAVE = 'Just save';
-
 export interface GroupOption {
   id: string;
   name: string;
@@ -15,14 +13,13 @@ export interface GroupOption {
 
 export interface ShareChoice {
   label: string;
-  /** null for "Just save". */
-  groupId: string | null;
+  groupId: string;
 }
 
 /**
- * The menu: "Just save" first (one tap keeps it private), then the
- * last-used group, then the rest by name. Labels are unique: a repeated
- * name (or a group called "Just save") gets " (2)", " (3)", …
+ * The menu: the last-used group first, then the rest by name. Picking
+ * none keeps the save private. Labels are unique: a repeated name gets
+ * " (2)", " (3)", …
  */
 export function shareChoices(groups: GroupOption[], lastUsedId: string | null = null): ShareChoice[] {
   const ordered = [...groups].sort((a, b) => {
@@ -30,8 +27,8 @@ export function shareChoices(groups: GroupOption[], lastUsedId: string | null = 
     if (b.id === lastUsedId) return 1;
     return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) || a.id.localeCompare(b.id);
   });
-  const choices: ShareChoice[] = [{ label: JUST_SAVE, groupId: null }];
-  const taken = new Set([JUST_SAVE.toLowerCase()]);
+  const choices: ShareChoice[] = [];
+  const taken = new Set<string>();
   for (const g of ordered) {
     const base = g.name.replace(/\s+/g, ' ').trim() || 'Untitled group';
     let label = base;
@@ -54,7 +51,7 @@ export function shareChoiceLookup(
   return (label) => byLabel.get(label.trim().toLowerCase()) ?? null;
 }
 
-/** The group for a picked label; null for "Just save" or an unknown label. */
+/** The group for a picked label; null for an unknown label. */
 export function resolveShareChoice(
   label: string,
   groups: GroupOption[],
@@ -66,8 +63,8 @@ export function resolveShareChoice(
 /**
  * The labels in a `share_to` value, in order: a JSON array of labels, or
  * one string with a label per line (what the Shortcut sends when its
- * multi-select list lands in a text field). Blank lines, "Just save" and
- * repeats are dropped, and at most MAX_SHARE_TO labels are kept. Labels
+ * multi-select list lands in a text field). Blank lines and repeats are
+ * dropped, and at most MAX_SHARE_TO labels are kept. Labels
  * never contain newlines: shareChoices collapses whitespace in group names.
  */
 export const MAX_SHARE_TO = 50;
@@ -78,7 +75,7 @@ export function parseShareTo(value: unknown): string[] {
     : typeof value === 'string'
       ? value.split(/\r?\n/)
       : [];
-  const seen = new Set([JUST_SAVE.toLowerCase()]);
+  const seen = new Set<string>();
   const labels: string[] = [];
   for (const item of raw) {
     const label = item.trim();

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { userIdForBearerToken } from '../../lib/apiTokens';
-import { JUST_SAVE, groupsForUser, shareChoices } from '../../lib/shares';
+import { groupsForUser, shareChoices } from '../../lib/shares';
 import { createServiceClient } from '../../lib/supabase';
 
 /**
@@ -12,8 +12,6 @@ import { createServiceClient } from '../../lib/supabase';
  *              Shortcut offers them as a multi-select and sends the picked
  *              labels back, one per line, as `share_to` on POST /api/saves;
  *              picking none just saves.
- *   choices  — "Just save" followed by `groups`, for Shortcuts installed
- *              before multi-select (one pick, "Just save" included).
  * Group names only, never members or what's in a group.
  */
 export const GET: APIRoute = async ({ request, locals }) => {
@@ -23,7 +21,7 @@ export const GET: APIRoute = async ({ request, locals }) => {
     const lookup = await userIdForBearerToken(service, request.headers.get('Authorization'));
     if (!lookup.userId) {
       return Response.json(
-        { error: 'Sign in or pass a valid API token.', groups: [], choices: [JUST_SAVE], ask_note: 'yes' },
+        { error: 'Sign in or pass a valid API token.', groups: [], ask_note: 'yes' },
         { status: 401 }
       );
     }
@@ -33,6 +31,6 @@ export const GET: APIRoute = async ({ request, locals }) => {
   const { data: profile } = await service.from('profiles').select('shortcut_ask_note').eq('id', userId).maybeSingle();
   const askNote = profile?.shortcut_ask_note === false ? 'no' : 'yes';
   const { groups, lastUsedId } = await groupsForUser(service, userId);
-  const choices = shareChoices(groups, lastUsedId).map((c) => c.label);
-  return Response.json({ groups: choices.slice(1), choices, ask_note: askNote });
+  const labels = shareChoices(groups, lastUsedId).map((c) => c.label);
+  return Response.json({ groups: labels, ask_note: askNote });
 };

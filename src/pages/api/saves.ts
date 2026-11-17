@@ -121,7 +121,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       const missing: string[] = [];
       for (const label of shareTo) {
         const choice = byLabel(label);
-        if (!choice?.groupId) {
+        if (!choice) {
           missing.push(label);
           continue;
         }
