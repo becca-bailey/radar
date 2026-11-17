@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
-import ItemCard from '@/components/ItemCard.astro';
 import LensMenu from '@/components/LensMenu.tsx';
 import PoolCard from '@/components/PoolCard.astro';
 import OwnerPanel from '@/components/OwnerPanel.tsx';
@@ -17,7 +16,6 @@ import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
-import { formatDate } from '../../../lib/dates';
 import { ensureInviteLink, membershipStatus } from '../../../lib/inviteLinks';
 
 if (!groupsEnabled()) {
@@ -45,11 +43,14 @@ if (!group) {
 const isOwner = group.owner_id === user.id;
 
 // --- Handle actions ---------------------------------------------------------
-// Each action redirects (post/redirect/get) with a short status flag.
+// Each action redirects (post/redirect/get) with a short status flag, back
+// to the page the form was on (the group page or one of its lens pages).
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
-  const back = (flag: string, path = home) =>
+  const rawReturn = String(form.get('return_path') ?? '');
+  const returnPath = rawReturn === home || rawReturn.startsWith(`${home}?`) ? rawReturn : home;
+  const back = (flag: string, path = returnPath) =>
     Astro.redirect(`${path}${path.includes('?') ? '&' : '?'}${flag}`);
 
   if (action === 'rename' && isOwner) {
@@ -75,17 +76,8 @@ if (Astro.request.method === 'POST') {
     // saves, and their shares to other groups, are untouched. Removed links
     // can't be shared here again until restored.
     const linkId = String(form.get('link_id') ?? '');
-    const rawReturn = String(form.get('return_path') ?? '');
-    const returnPath = rawReturn === home || rawReturn.startsWith(`${home}?`) ? rawReturn : home;
     const { error } = await supabase.rpc('remove_link_from_group', { gid: group.id, lid: linkId });
-    if (error) return back('error=' + encodeURIComponent('Could not remove the link. Try again.'), returnPath);
-    return back('removed=1', returnPath);
-  }
-
-  if (action === 'restore_link' && isOwner) {
-    const linkId = String(form.get('link_id') ?? '');
-    const { error } = await supabase.rpc('restore_link_to_group', { gid: group.id, lid: linkId });
-    return back(error ? 'error=' + encodeURIComponent('Could not restore the link.') : 'restored=1');
+    return back(error ? 'error=' + encodeURIComponent('Could not remove the link. Try again.') : 'removed=1');
   }
 
   if (action === 'nickname') {
@@ -115,7 +107,6 @@ const NOTICES: Record<string, string> = {
   renamed: 'Group renamed.',
   rotated: 'Link reset. The old one no longer works.',
   removed: 'Removed from the group.',
-  restored: 'Restored to the group.',
   named: 'Saved. Your name shows on what you share here.',
 };
 // Record this visit; the previous one draws "since your last visit". A
@@ -185,24 +176,23 @@ const [sections, recent, ownerData, invite] = await Promise.all([
   single
     ? Promise.resolve({ links: [] as PoolLink[], error: null })
     : fetchGroupPool(supabase, group.id, { limit: RECENT_LIMIT, sharedFrom: recentFrom }),
-  isOwner && !single
+  // The group menu needs these on lens pages too.
+  isOwner
     ? Promise.all([
         supabase.from('memberships').select('user_id', { count: 'exact', head: true }).eq('group_id', group.id),
         supabase.rpc('group_removed_links', { gid: group.id }),
       ])
     : Promise.resolve(null),
   // The owner always has a link to hand out: make one if the group has none.
-  isOwner && !single ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
+  isOwner ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
 ]);
 
 const memberCount = ownerData?.[0].count ?? null;
 const inviteStatus = invite ? membershipStatus(memberCount, invite) : null;
-const removedLinks = (ownerData?.[1].data ?? []) as {
-  link_id: string;
-  title: string | null;
-  canonical_url: string;
-  removed_at: string;
-}[];
+const removedCount = ((ownerData?.[1].data ?? []) as unknown[]).length;
+const inviteUrl = invite ? `${Astro.url.origin}/join/${invite.token}` : null;
+// A brand-new group: the invite link is the one thing to do, so it sits up top.
+const soloOwner = isOwner && !single && memberCount === 1 && inviteUrl !== null;
 
 // Split this week's shares at the last visit (none on a first visit).
 const lastVisitMs = previousVisit ? new Date(previousVisit).getTime() : null;
@@ -217,7 +207,16 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
 <Layout title={single ? `${single.name} — ${group.name} — Radar` : `${group.name} — Radar`} user={user}>
   <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
     <h1>{group.name}</h1>
-    <GroupMenu client:visible name={group.name} home={home} />
+    <GroupMenu
+      client:visible
+      name={group.name}
+      home={home}
+      myName={myName}
+      isOwner={isOwner}
+      returnPath={returnPath}
+      invite={inviteUrl ? { url: inviteUrl, status: inviteStatus } : null}
+      removedCount={removedCount}
+    />
   </div>
   <p class="text-[0.82rem] text-muted-foreground">
     Shares are anonymous unless the sharer picks a name for this group. Emails are never shown.
@@ -225,6 +224,17 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
 
   {notice && <Alert>{notice}</Alert>}
   {error && <Alert variant="error">{error}</Alert>}
+
+  {
+    soloOwner && (
+      <OwnerPanel title="Invite people" as="h2" className="mt-6">
+        <p class="m-0 mt-2 text-sm text-muted-foreground">
+          It's just you so far. Share this link to bring people in. It's in the ⋯ menu any time.
+        </p>
+        <InviteLink client:load url={inviteUrl!} action={home} returnPath={returnPath} />
+      </OwnerPanel>
+    )
+  }
 
   {single && (
     <p class="mt-4 mb-0 text-sm">
@@ -385,73 +395,6 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
           Older shares are in <a href={`${home}/export`}>Export</a>, by date.
         </p>
       </>
-    )
-  }
-
-  {
-    !single && (
-      <>
-        <h2 class="mt-10">Your name here</h2>
-        <p class="text-sm text-muted-foreground">
-          Optional. Shown on what you share, in this group only — a nickname is fine. Leave it
-          blank to stay anonymous; your email is never shown.
-        </p>
-        <form class="mt-3 mb-6 flex flex-wrap gap-2.5" method="post">
-          <input type="hidden" name="_action" value="nickname" />
-          <Input className="w-auto flex-1" type="text" name="display_name" defaultValue={myName} maxLength={40} placeholder="Anonymous" aria-label="Your name in this group" />
-          <Button variant="outline" type="submit">Save</Button>
-        </form>
-      </>
-    )
-  }
-
-  {
-    !single && isOwner && (
-      <OwnerPanel title="Owner tools" id="owner-tools" className="mt-12">
-        <p class="m-0 mt-2 text-sm text-muted-foreground">
-          Members never see this section, or the Remove buttons and lens menus above.
-        </p>
-        {invite ? (
-          <>
-            <InviteLink client:load url={`${Astro.url.origin}/join/${invite.token}`} action={home} />
-            <p class="m-0 mt-3 text-[0.85rem]">{inviteStatus}</p>
-          </>
-        ) : (
-          <>
-            <h3 class="mt-6 text-[1.1rem]">Membership</h3>
-            <p class="text-sm">Couldn't load the invite link. Reload the page to try again.</p>
-          </>
-        )}
-
-        {removedLinks.length > 0 && (
-          <>
-            <h3 class="mt-8 text-[1.1rem]">Removed links</h3>
-            <p class="text-sm text-muted-foreground">
-              Hidden from the group and can't be shared here again. Members keep them in their
-              archives. Restoring brings back the shares that were removed.
-            </p>
-            <CardList>
-              {removedLinks.map((r) => (
-                <ItemCard href={r.canonical_url} title={r.title ?? r.canonical_url}>
-                  <Fragment slot="meta">Removed {formatDate(r.removed_at, Astro.locals.timeZone, { year: false })}</Fragment>
-                  <form slot="action" method="post">
-                    <input type="hidden" name="_action" value="restore_link" />
-                    <input type="hidden" name="link_id" value={r.link_id} />
-                    <Button variant="outline" size="sm" type="submit">Restore</Button>
-                  </form>
-                </ItemCard>
-              ))}
-            </CardList>
-          </>
-        )}
-
-        <h3 class="mt-8 text-[1.1rem]">Group name</h3>
-        <form class="mt-3 flex flex-wrap gap-2.5" method="post">
-          <input type="hidden" name="_action" value="rename" />
-          <Input className="w-auto flex-1" type="text" name="name" defaultValue={group.name} maxLength={100} aria-label="Group name" />
-          <Button variant="outline" type="submit">Rename</Button>
-        </form>
-      </OwnerPanel>
     )
   }
 

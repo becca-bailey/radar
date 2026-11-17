@@ -1,0 +1,86 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import ItemCard from '@/components/ItemCard.astro';
+import { groupsEnabled } from '../../../lib/flags';
+import { formatDate } from '../../../lib/dates';
+
+/**
+ * Owner-only: links removed from the group, with Restore. Reached from the
+ * group menu, which only offers it when there's something here.
+ */
+if (!groupsEnabled()) {
+  return Astro.redirect('/');
+}
+
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const groupId = Astro.params.id!;
+const home = `/groups/${groupId}`;
+const here = `${home}/removed`;
+const { data: group } = await supabase.from('groups').select('id, name, owner_id').eq('id', groupId).maybeSingle();
+if (!group) {
+  return Astro.redirect('/groups');
+}
+if (group.owner_id !== user.id) {
+  return Astro.redirect(home);
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (String(form.get('_action') ?? '') === 'restore_link') {
+    const linkId = String(form.get('link_id') ?? '');
+    const { error } = await supabase.rpc('restore_link_to_group', { gid: group.id, lid: linkId });
+    return Astro.redirect(error ? `${here}?error=${encodeURIComponent('Could not restore the link.')}` : `${here}?restored=1`);
+  }
+  return Astro.redirect(here);
+}
+
+const params = Astro.url.searchParams;
+const restored = params.get('restored') === '1';
+const { data, error: loadError } = await supabase.rpc('group_removed_links', { gid: group.id });
+const error = params.get('error') ?? (loadError ? "Couldn't load the removed links. Reload the page to try again." : null);
+const removedLinks = (data ?? []) as {
+  link_id: string;
+  title: string | null;
+  canonical_url: string;
+  removed_at: string;
+}[];
+---
+
+<Layout title={`Removed links — ${group.name} — Radar`} user={user}>
+  <p class="mb-0 text-sm"><a class="text-muted-foreground" href={home}>← {group.name}</a></p>
+  <h1>Removed links</h1>
+  <p class="text-sm text-muted-foreground">
+    Hidden from the group and can't be shared here again. Members keep them in their archives.
+    Restoring brings back the shares that were removed. Only you see this page.
+  </p>
+
+  {restored && <Alert>Restored to the group.</Alert>}
+  {error && <Alert variant="error">{error}</Alert>}
+
+  {
+    loadError ? null : removedLinks.length === 0 ? (
+      <Empty>Nothing removed. <a href={home}>Back to the group</a></Empty>
+    ) : (
+      <CardList>
+        {removedLinks.map((r) => (
+          <ItemCard href={r.canonical_url} title={r.title ?? r.canonical_url}>
+            <Fragment slot="meta">Removed {formatDate(r.removed_at, Astro.locals.timeZone, { year: false })}</Fragment>
+            <form slot="action" method="post">
+              <input type="hidden" name="_action" value="restore_link" />
+              <input type="hidden" name="link_id" value={r.link_id} />
+              <Button variant="outline" size="sm" type="submit">Restore</Button>
+            </form>
+          </ItemCard>
+        ))}
+      </CardList>
+    )
+  }
+</Layout>
