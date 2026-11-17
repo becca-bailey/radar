@@ -6,17 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
-import ItemCard from '@/components/ItemCard.astro';
 import LensMenu from '@/components/LensMenu.tsx';
 import PoolCard from '@/components/PoolCard.astro';
 import OwnerPanel from '@/components/OwnerPanel.tsx';
 import InviteLink from '@/components/InviteLink.tsx';
 import TopicSuggestions from '@/components/TopicSuggestions.tsx';
+import GroupMenu from '@/components/GroupMenu.tsx';
 import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
-import { formatDate } from '../../../lib/dates';
 import { ensureInviteLink, membershipStatus } from '../../../lib/inviteLinks';
 
 if (!groupsEnabled()) {
@@ -42,19 +41,16 @@ if (!group) {
   return Astro.redirect('/groups');
 }
 const isOwner = group.owner_id === user.id;
-// The owner can preview the page as a member sees it: same data, none of
-// the owner-only panels or controls.
-const preview = isOwner && Astro.url.searchParams.get('view') === 'member';
-const ownerView = isOwner && !preview;
-/** Keep the member preview on while moving around the page. */
-const withView = (path: string) => (preview ? `${path}${path.includes('?') ? '&' : '?'}view=member` : path);
 
 // --- Handle actions ---------------------------------------------------------
-// Each action redirects (post/redirect/get) with a short status flag.
+// Each action redirects (post/redirect/get) with a short status flag, back
+// to the page the form was on (the group page or one of its lens pages).
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
-  const back = (flag: string, path = home) =>
+  const rawReturn = String(form.get('return_path') ?? '');
+  const returnPath = rawReturn === home || rawReturn.startsWith(`${home}?`) ? rawReturn : home;
+  const back = (flag: string, path = returnPath) =>
     Astro.redirect(`${path}${path.includes('?') ? '&' : '?'}${flag}`);
 
   if (action === 'rename' && isOwner) {
@@ -80,17 +76,8 @@ if (Astro.request.method === 'POST') {
     // saves, and their shares to other groups, are untouched. Removed links
     // can't be shared here again until restored.
     const linkId = String(form.get('link_id') ?? '');
-    const rawReturn = String(form.get('return_path') ?? '');
-    const returnPath = rawReturn === home || rawReturn.startsWith(`${home}?`) ? rawReturn : home;
     const { error } = await supabase.rpc('remove_link_from_group', { gid: group.id, lid: linkId });
-    if (error) return back('error=' + encodeURIComponent('Could not remove the link. Try again.'), returnPath);
-    return back('removed=1', returnPath);
-  }
-
-  if (action === 'restore_link' && isOwner) {
-    const linkId = String(form.get('link_id') ?? '');
-    const { error } = await supabase.rpc('restore_link_to_group', { gid: group.id, lid: linkId });
-    return back(error ? 'error=' + encodeURIComponent('Could not restore the link.') : 'restored=1');
+    return back(error ? 'error=' + encodeURIComponent('Could not remove the link. Try again.') : 'removed=1');
   }
 
   if (action === 'nickname') {
@@ -120,12 +107,11 @@ const NOTICES: Record<string, string> = {
   renamed: 'Group renamed.',
   rotated: 'Link reset. The old one no longer works.',
   removed: 'Removed from the group.',
-  restored: 'Restored to the group.',
   named: 'Saved. Your name shows on what you share here.',
 };
 // Record this visit; the previous one draws "since your last visit". A
 // lens view doesn't count as a visit to the group's front page.
-const previousVisit: string | null = params.get('lens') || preview
+const previousVisit: string | null = params.get('lens')
   ? null
   : (((await supabase.rpc('mark_group_visited', { gid: group.id })).data as string | null) ?? null);
 const { data: myMembership } = await supabase
@@ -157,7 +143,7 @@ const lenses = (lensRows ?? []) as Lens[];
 const single = lenses.find((l) => l.id === params.get('lens')) ?? null;
 const shown = single ? [single] : lenses;
 const newQuery = params.get('new');
-const formOpen = ownerView && newQuery !== null;
+const formOpen = isOwner && newQuery !== null;
 // Prefilled from a suggested topic ("Make it a lens").
 const newName = params.get('name');
 const fromSuggestion = params.get('suggestion');
@@ -190,25 +176,23 @@ const [sections, recent, ownerData, invite] = await Promise.all([
   single
     ? Promise.resolve({ links: [] as PoolLink[], error: null })
     : fetchGroupPool(supabase, group.id, { limit: RECENT_LIMIT, sharedFrom: recentFrom }),
-  isOwner && !single
+  // The group menu needs these on lens pages too.
+  isOwner
     ? Promise.all([
         supabase.from('memberships').select('user_id', { count: 'exact', head: true }).eq('group_id', group.id),
         supabase.rpc('group_removed_links', { gid: group.id }),
       ])
     : Promise.resolve(null),
   // The owner always has a link to hand out: make one if the group has none.
-  // Not in the member preview, which shows none of this.
-  ownerView && !single ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
+  isOwner ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
 ]);
 
 const memberCount = ownerData?.[0].count ?? null;
 const inviteStatus = invite ? membershipStatus(memberCount, invite) : null;
-const removedLinks = (ownerData?.[1].data ?? []) as {
-  link_id: string;
-  title: string | null;
-  canonical_url: string;
-  removed_at: string;
-}[];
+const removedCount = ((ownerData?.[1].data ?? []) as unknown[]).length;
+const inviteUrl = invite ? `${Astro.url.origin}/join/${invite.token}` : null;
+// A brand-new group: the invite link is the one thing to do, so it sits up top.
+const soloOwner = isOwner && !single && memberCount === 1 && inviteUrl !== null;
 
 // Split this week's shares at the last visit (none on a first visit).
 const lastVisitMs = previousVisit ? new Date(previousVisit).getTime() : null;
@@ -223,27 +207,17 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
 <Layout title={single ? `${single.name} — ${group.name} — Radar` : `${group.name} — Radar`} user={user}>
   <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
     <h1>{group.name}</h1>
-    <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={`${home}/export`}>Export links</a>
+    <GroupMenu
+      client:visible
+      name={group.name}
+      home={home}
+      myName={myName}
+      isOwner={isOwner}
+      returnPath={returnPath}
+      invite={inviteUrl ? { url: inviteUrl, status: inviteStatus } : null}
+      removedCount={removedCount}
+    />
   </div>
-  {
-    preview && (
-      <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border-2 bg-candy-plum px-4 py-2.5 text-ink shadow-hard-sm">
-        <p class="m-0 text-sm font-semibold">You're previewing what members see.</p>
-        <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={home}>Back to owner view</a>
-      </div>
-    )
-  }
-  {
-    ownerView && !single && (
-      <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem]">
-        <span class="text-muted-foreground">
-          You run this group{memberCount !== null ? ` · ${memberCount} member${memberCount === 1 ? '' : 's'}` : ''}
-        </span>
-        <a class="font-semibold" href={`${home}?view=member`}>Preview as a member</a>
-        <a class="font-semibold" href="#owner-tools">Owner tools ↓</a>
-      </div>
-    )
-  }
   <p class="text-[0.82rem] text-muted-foreground">
     Shares are anonymous unless the sharer picks a name for this group. Emails are never shown.
   </p>
@@ -251,9 +225,20 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
   {notice && <Alert>{notice}</Alert>}
   {error && <Alert variant="error">{error}</Alert>}
 
+  {
+    soloOwner && (
+      <OwnerPanel title="Invite people" as="h2" className="mt-6">
+        <p class="m-0 mt-2 text-sm text-muted-foreground">
+          It's just you so far. Share this link to bring people in. It's in the ⋯ menu any time.
+        </p>
+        <InviteLink client:load url={inviteUrl!} action={home} returnPath={returnPath} />
+      </OwnerPanel>
+    )
+  }
+
   {single && (
     <p class="mt-4 mb-0 text-sm">
-      <a class="text-muted-foreground" href={`${withView(home)}#lens-${single.id}`}>← {group.name}</a>
+      <a class="text-muted-foreground" href={`${home}#lens-${single.id}`}>← {group.name}</a>
     </p>
   )}
 
@@ -261,7 +246,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
     !single && (
       <div class="mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 class="m-0">Topics</h2>
-        {ownerView && lenses.length > 0 && !formOpen && (
+        {isOwner && lenses.length > 0 && !formOpen && (
           <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={`${home}?new=`}>
             + New lens
           </a>
@@ -272,10 +257,10 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
 
   {
     !single && lenses.length === 0 && !formOpen && (
-      ownerView ? (
+      isOwner ? (
         <Empty>
-          Lenses are the topics members see: saved searches over everything shared here. Pick
-          one from the suggestions below or <a href={`${home}?new=`}>add your own</a>.
+          Lenses are the topics members see: saved searches over everything shared here.{' '}
+          <a href={`${home}?new=`}>Add one</a>.
         </Empty>
       ) : (
         <Empty>The owner hasn't set up any topics yet.</Empty>
@@ -338,7 +323,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
               {single ? (
                 lens.name
               ) : (
-                <a class="text-foreground no-underline hover:underline" href={withView(`${home}?lens=${lens.id}`)}>
+                <a class="text-foreground no-underline hover:underline" href={`${home}?lens=${lens.id}`}>
                   {lens.name}
                 </a>
               )}
@@ -347,7 +332,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
               Searching for “{lens.query}” · {countLabel(total)}
             </p>
           </div>
-          {ownerView && <LensMenu client:visible lensId={lens.id} name={lens.name} query={lens.query} inGroup />}
+          {isOwner && <LensMenu client:visible lensId={lens.id} name={lens.name} query={lens.query} inGroup />}
         </div>
         {sectionError && <Alert variant="error">{sectionError}</Alert>}
         {links.length === 0 && !sectionError ? (
@@ -355,12 +340,12 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
         ) : (
           <CardList>
             {links.map((l) => (
-              <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} snippetLines={single ? 3 : 2} />
+              <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} snippetLines={single ? 3 : 2} />
             ))}
           </CardList>
         )}
         {!single && total > links.length && (
-          <a class="text-sm font-semibold" href={withView(`${home}?lens=${lens.id}`)}>
+          <a class="text-sm font-semibold" href={`${home}?lens=${lens.id}`}>
             See all {countLabel(total)} →
           </a>
         )}
@@ -368,7 +353,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
     ))
   }
 
-  {!single && ownerView && !formOpen && <TopicSuggestions client:load groupId={group.id} home={home} />}
+  {!single && isOwner && !formOpen && <TopicSuggestions client:load groupId={group.id} home={home} />}
 
   {
     !single && (
@@ -387,7 +372,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
                 <p class="m-0 mt-3 text-sm font-semibold">New since your last visit</p>
                 <CardList>
                   {recentNew.map((l) => (
-                    <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} />
+                    <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
                   ))}
                 </CardList>
                 {recentEarlier.length > 0 && (
@@ -400,7 +385,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
             {recentEarlier.length > 0 && (
               <CardList>
                 {recentEarlier.map((l) => (
-                  <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} />
+                  <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
                 ))}
               </CardList>
             )}
@@ -410,83 +395,6 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
           Older shares are in <a href={`${home}/export`}>Export</a>, by date.
         </p>
       </>
-    )
-  }
-
-  {
-    !single && (
-      <>
-        <h2 class="mt-10">Your name here</h2>
-        <p class="text-sm text-muted-foreground">
-          Optional. Shown on what you share, in this group only — a nickname is fine. Leave it
-          blank to stay anonymous; your email is never shown.
-        </p>
-        <form class="mt-3 mb-6 flex flex-wrap gap-2.5" method="post">
-          <input type="hidden" name="_action" value="nickname" />
-          <Input className="w-auto flex-1" type="text" name="display_name" defaultValue={myName} maxLength={40} placeholder="Anonymous" aria-label="Your name in this group" />
-          <Button variant="outline" type="submit">Save</Button>
-        </form>
-      </>
-    )
-  }
-
-  {
-    !single && ownerView && (
-      <OwnerPanel title="Owner tools" id="owner-tools" className="mt-12">
-        <p class="m-0 mt-2 text-sm text-muted-foreground">
-          Members never see this section, or the Remove buttons and lens menus above.{' '}
-          <a href={`${home}?view=member`}>Preview as a member</a>
-        </p>
-        {invite ? (
-          <>
-            <InviteLink client:load url={`${Astro.url.origin}/join/${invite.token}`} action={home} />
-            <p class="m-0 mt-3 text-[0.85rem]">{inviteStatus}</p>
-          </>
-        ) : (
-          <>
-            <h3 class="mt-6 text-[1.1rem]">Membership</h3>
-            <p class="text-sm">Couldn't load the invite link. Reload the page to try again.</p>
-          </>
-        )}
-
-        {removedLinks.length > 0 && (
-          <>
-            <h3 class="mt-8 text-[1.1rem]">Removed links</h3>
-            <p class="text-sm text-muted-foreground">
-              Hidden from the group and can't be shared here again. Members keep them in their
-              archives. Restoring brings back the shares that were removed.
-            </p>
-            <CardList>
-              {removedLinks.map((r) => (
-                <ItemCard href={r.canonical_url} title={r.title ?? r.canonical_url}>
-                  <Fragment slot="meta">Removed {formatDate(r.removed_at, Astro.locals.timeZone, { year: false })}</Fragment>
-                  <form slot="action" method="post">
-                    <input type="hidden" name="_action" value="restore_link" />
-                    <input type="hidden" name="link_id" value={r.link_id} />
-                    <Button variant="outline" size="sm" type="submit">Restore</Button>
-                  </form>
-                </ItemCard>
-              ))}
-            </CardList>
-          </>
-        )}
-
-        <h3 class="mt-8 text-[1.1rem]">Group name</h3>
-        <form class="mt-3 flex flex-wrap gap-2.5" method="post">
-          <input type="hidden" name="_action" value="rename" />
-          <Input className="w-auto flex-1" type="text" name="name" defaultValue={group.name} maxLength={100} aria-label="Group name" />
-          <Button variant="outline" type="submit">Rename</Button>
-        </form>
-      </OwnerPanel>
-    )
-  }
-
-  {
-    !single && preview && (
-      <div class="mt-10">
-        <Button variant="destructive" type="button" disabled>Leave group</Button>
-        <p class="mt-2 text-sm text-muted-foreground">Members can leave from here. You run the group, so it's off for you.</p>
-      </div>
     )
   }
 

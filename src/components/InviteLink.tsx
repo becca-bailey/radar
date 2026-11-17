@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { CheckIcon, CopyIcon, MoreHorizontalIcon, RotateCcwIcon } from 'lucide-react';
+import { CheckIcon, CopyIcon, RotateCcwIcon } from 'lucide-react';
 
 import {
   AlertDialog,
@@ -11,28 +11,26 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 interface Props {
   /** The full join URL. */
   url: string;
   /** Where the reset form posts: the group page, which handles `rotate_invite`. */
   action: string;
+  /** Where to land after a reset: the page this sits on. */
+  returnPath?: string;
+  /** Who's joined, under the buttons ("3 members · 1 joined this week"). */
+  status?: string | null;
 }
 
 const COPIED_MS = 2000;
 
 /**
- * The Membership heading and the owner's invite link: the URL, a Copy button,
- * and a menu beside the heading holding Reset, which asks first because it
- * breaks the link everyone already has.
+ * The owner's invite link: the URL, Copy, and Reset, which asks first
+ * because it breaks the link everyone already has. No heading of its own:
+ * it sits in the group menu's Invite dialog or the new-group prompt.
  */
-export default function InviteLink({ url, action }: Props) {
+export default function InviteLink({ url, action, returnPath, status }: Props) {
   const [copied, setCopied] = React.useState<'no' | 'yes' | 'manual'>('no');
   const [resetting, setResetting] = React.useState(false);
   const urlRef = React.useRef<HTMLElement>(null);
@@ -73,44 +71,33 @@ export default function InviteLink({ url, action }: Props) {
 
   return (
     <>
-      <div className="mt-6 flex items-center justify-between gap-2">
-        <h3 className="m-0 text-[1.1rem]">Membership</h3>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button ref={triggerRef} variant="ghost" size="icon" aria-label="Invite link actions">
-              <MoreHorizontalIcon className="size-5" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem variant="destructive" onSelect={() => setResetting(true)}>
-              <RotateCcwIcon aria-hidden="true" />
-              Reset link…
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <p className="m-0 mt-1 text-sm text-muted-foreground">Share this link to invite people.</p>
       <code
         ref={urlRef}
         className="mt-3 block rounded-md border-2 border-dashed bg-background p-2.5 text-[0.88rem] wrap-anywhere select-all"
       >
         {url}
       </code>
-      <div className="mt-2.5 flex items-center gap-3">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button type="button" variant="outline" size="sm" onClick={copy}>
           {copied === 'yes' ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
           {copied === 'yes' ? 'Copied' : 'Copy link'}
+        </Button>
+        <Button ref={triggerRef} type="button" variant="ghost" size="sm" onClick={() => setResetting(true)}>
+          <RotateCcwIcon aria-hidden="true" />
+          Reset link…
         </Button>
         <span className={copied === 'manual' ? 'text-sm text-muted-foreground' : 'sr-only'} aria-live="polite">
           {copied === 'yes' && 'Invite link copied'}
           {copied === 'manual' && 'Couldn’t copy. The link is selected, so copy it from there.'}
         </span>
       </div>
+      {status && <p className="m-0 mt-3 text-[0.85rem]">{status}</p>}
 
       <AlertDialog open={resetting} onOpenChange={setResetting}>
         <AlertDialogContent onCloseAutoFocus={refocusTrigger}>
           <form className="grid gap-4" method="post" action={action}>
             <input type="hidden" name="_action" value="rotate_invite" />
+            {returnPath && <input type="hidden" name="return_path" value={returnPath} />}
             <AlertDialogHeader>
               <AlertDialogTitle>Reset the invite link?</AlertDialogTitle>
               <AlertDialogDescription>
