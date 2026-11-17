@@ -4,11 +4,12 @@
  * export with full text lives in /api/export; these are the light versions:
  * title, link, source, note and date.
  *
- * Group rows set `readers` (how many members shared the link) and carry
+ * Group rows set `readers` (how many people on Radar saved the link, in any
+ * group or privately) and carry
  * every member's note joined into `note`, with the date of the latest share.
  * Who shared is never part of an export. Links a member marked as their own
  * work (`memberMade`) are kept apart: lists put them last under
- * MEMBER_WORK_HEADING, without a count; CSV and JSON flag them.
+ * MEMBER_WORK_HEADING; CSV and JSON flag them.
  */
 
 export interface ExportItem {
@@ -18,7 +19,7 @@ export interface ExportItem {
   note: string | null;
   /** ISO timestamp of when it was saved (for group rows: last shared). */
   savedAt: string;
-  /** Group rows only: distinct members who shared it. */
+  /** Group rows only: people on Radar who saved it. */
   readers?: number;
   /** Group rows only: a member who shared it says they made it. */
   memberMade?: boolean;
@@ -39,11 +40,11 @@ export function joinNotes(notes: string[]): string | null {
   return kept.length ? kept.join(' / ') : null;
 }
 
-/** "Source", "Source · shared by 3", "shared by 3", or null. */
+/** "Source", "Source · saved by 3", "saved by 3", or null. */
 function sourceLabel(item: ExportItem): string | null {
   const parts: string[] = [];
   if (item.source) parts.push(oneLine(item.source));
-  if (!item.memberMade && item.readers && item.readers > 1) parts.push(`shared by ${item.readers}`);
+  if (item.readers && item.readers > 1) parts.push(`saved by ${item.readers}`);
   return parts.length ? parts.join(' · ') : null;
 }
 
@@ -121,12 +122,12 @@ function csvCell(value: string | null): string {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** RFC 4180 CSV with a header row. Group exports add shared_by and made_by_member columns. */
+/** RFC 4180 CSV with a header row. Group exports add saved_by and made_by_member columns. */
 export function toCsv(items: ExportItem[]): string {
   const group = isGroupExport(items);
   const rows = [
     group
-      ? ['last_shared_at', 'title', 'url', 'source', 'notes', 'shared_by', 'made_by_member']
+      ? ['last_shared_at', 'title', 'url', 'source', 'notes', 'saved_by', 'made_by_member']
       : ['saved_at', 'title', 'url', 'source', 'note'],
   ];
   for (const item of items) {
@@ -150,7 +151,7 @@ export function toJson(items: ExportItem[], exportedAt = new Date()): string {
               url: i.url,
               source: i.source,
               notes: i.note,
-              shared_by: i.readers ?? 1,
+              saved_by: i.readers ?? 1,
               made_by_member: !!i.memberMade,
             })),
           }

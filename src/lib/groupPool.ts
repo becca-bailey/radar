@@ -2,8 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * A group's shared links, one row per link (the group_pool function). Shares
- * are anonymous: a row says how many members shared the link and what they
- * wrote, never who.
+ * are anonymous: a row says what members wrote and how many people on Radar
+ * saved the link, never who.
  */
 export interface PoolLink {
   link_id: string;
@@ -13,6 +13,7 @@ export interface PoolLink {
   image: string | null;
   snippet: string;
   notes: string[];
+  /** Members of this group who shared it. */
   readers: number;
   /** Nicknames of sharers who set one for this group; others are anonymous. */
   names: string[];
@@ -23,6 +24,8 @@ export interface PoolLink {
   member_made: boolean;
   /** Nicknames of those makers who set one for this group. */
   made_by: string[];
+  /** People on Radar who saved the link: in this group, another, or privately. */
+  savers: number;
 }
 
 export interface PoolQuery {
@@ -52,13 +55,35 @@ export async function fetchGroupPool(
   return { links: (data ?? []) as PoolLink[], error: error?.message ?? null };
 }
 
+const listOf = (names: string[]) =>
+  names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
 /**
- * "made by a member", "made by Ana", "made by Ana and Bo". Member work
- * carries no share count: it's shown, not ranked.
+ * "", "shared by Ana", "shared by Ana and Bo", "shared by Ana, Bo and
+ * others". Only members who set a nickname are named.
  */
+export function sharedByLabel(names: string[]): string {
+  if (names.length === 0) return '';
+  return `shared by ${names.length > 2 ? `${names.slice(0, 2).join(', ')} and others` : listOf(names)}`;
+}
+
+/** "made by a member", "made by Ana", "made by Ana and Bo". */
 export function madeByLabel(names: string[]): string {
-  if (names.length === 0) return 'made by a member';
-  return `made by ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`}`;
+  return `made by ${names.length ? listOf(names) : 'a member'}`;
+}
+
+/**
+ * "saved by 5": how many people on Radar saved the link, in any group or
+ * privately. Blank for one, which is just the person who shared it.
+ */
+export function savedByLabel(savers: number): string {
+  return savers > 1 ? `saved by ${savers}` : '';
+}
+
+/** A pool card's "who" line: maker or sharers' names, then the Radar-wide count. */
+export function poolLabel(link: Pick<PoolLink, 'member_made' | 'made_by' | 'names' | 'savers'>): string {
+  const who = link.member_made ? madeByLabel(link.made_by ?? []) : sharedByLabel(link.names ?? []);
+  return [who, savedByLabel(link.savers ?? 1)].filter(Boolean).join(' · ');
 }
 
 /**
@@ -67,17 +92,4 @@ export function madeByLabel(names: string[]): string {
  */
 export function splitMemberWork<T extends { member_made?: boolean }>(links: T[]): { memberWork: T[]; shared: T[] } {
   return { memberWork: links.filter((l) => l.member_made), shared: links.filter((l) => !l.member_made) };
-}
-
-/**
- * "", "shared by 3", "shared by Ana", "shared by Ana and 2 others". Members
- * without a nickname are counted, never named.
- */
-export function sharedByLabel(readers: number, names: string[]): string {
-  const shown = names.slice(0, 2);
-  const others = readers - shown.length;
-  if (shown.length === 0) return readers > 1 ? `shared by ${readers}` : '';
-  const who = shown.join(' and ');
-  if (others <= 0) return `shared by ${who}`;
-  return `shared by ${shown.length === 2 ? shown.join(', ') : who} and ${others} other${others === 1 ? '' : 's'}`;
 }

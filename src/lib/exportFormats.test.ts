@@ -95,33 +95,33 @@ describe('group exports', () => {
     expect(joinNotes(['', ' '])).toBeNull();
   });
 
-  it('says how many members shared a link, never who', () => {
+  it('says how many people saved a link, never who', () => {
     expect(toMarkdownList(shared)).toBe(
-      '- [Sock heels](https://example.com/heels) (Knit Weekly · shared by 3) — Clear / Finally\n' +
+      '- [Sock heels](https://example.com/heels) (Knit Weekly · saved by 3) — Clear / Finally\n' +
         '- [Solo](https://example.org/a)\n'
     );
-    expect(toHtmlList(shared)).toContain('(Knit Weekly · shared by 3)');
+    expect(toHtmlList(shared)).toContain('(Knit Weekly · saved by 3)');
   });
 
-  it('adds a shared_by column to CSV and JSON', () => {
+  it('adds a saved_by column to CSV and JSON', () => {
     const csv = toCsv(shared);
-    expect(csv.split('\r\n')[0]).toBe('last_shared_at,title,url,source,notes,shared_by,made_by_member');
+    expect(csv.split('\r\n')[0]).toBe('last_shared_at,title,url,source,notes,saved_by,made_by_member');
     expect(csv).toContain(',3,no\r\n');
     const json = JSON.parse(toJson(shared, new Date('2026-11-16T00:00:00Z')));
-    expect(json.links[0]).toMatchObject({ title: 'Sock heels', notes: 'Clear / Finally', shared_by: 3 });
+    expect(json.links[0]).toMatchObject({ title: 'Sock heels', notes: 'Clear / Finally', saved_by: 3 });
     expect(json.saves).toBeUndefined();
   });
 
-  it("puts members' own work in its own section, without a count", () => {
+  it("puts members' own work in its own section", () => {
     const made = item({ title: 'My zine', url: 'https://example.net/zine', note: 'Issue 3', readers: 2, memberMade: true });
     const mixed = [made, ...shared];
     expect(toMarkdownList(mixed)).toBe(
-      '- [Sock heels](https://example.com/heels) (Knit Weekly · shared by 3) — Clear / Finally\n' +
+      '- [Sock heels](https://example.com/heels) (Knit Weekly · saved by 3) — Clear / Finally\n' +
         '- [Solo](https://example.org/a)\n' +
         '\n**From our members**\n\n' +
-        '- [My zine](https://example.net/zine) — Issue 3\n'
+        '- [My zine](https://example.net/zine) (saved by 2) — Issue 3\n'
     );
-    expect(toMarkdownList([made])).toBe('**From our members**\n\n- [My zine](https://example.net/zine) — Issue 3\n');
+    expect(toMarkdownList([made])).toBe('**From our members**\n\n- [My zine](https://example.net/zine) (saved by 2) — Issue 3\n');
     expect(toHtmlList(mixed)).toMatch(/<\/ul><p><strong>From our members<\/strong><\/p><ul><li><a href="https:\/\/example.net\/zine">/);
     expect(toCsv(mixed)).toContain(',2,yes\r\n');
     const json = JSON.parse(toJson(mixed, new Date('2026-11-16T00:00:00Z')));

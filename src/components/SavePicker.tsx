@@ -205,7 +205,8 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
                         <CardTitle>{row.title}</CardTitle>
                         <CardDescription>
                           {row.source ? `${row.source} · ` : ''}
-                          {row.memberMade ? 'made by a member · ' : row.readers && row.readers > 1 ? `shared by ${row.readers} · ` : ''}
+                          {row.memberMade ? 'made by a member · ' : ''}
+                          {row.readers && row.readers > 1 ? `saved by ${row.readers} · ` : ''}
                           {row.savedOn}
                         </CardDescription>
                       </CardHeader>

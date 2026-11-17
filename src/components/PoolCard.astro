@@ -4,12 +4,12 @@ import Why from '@/components/Why.astro';
 import { saveDisplayTitle } from '../lib/exportFormats';
 import { sanitizeSnippet } from '../lib/snippet';
 import { formatRecentDate } from '../lib/dates';
-import { madeByLabel, sharedByLabel, type PoolLink } from '../lib/groupPool';
+import { poolLabel, type PoolLink } from '../lib/groupPool';
 
 /**
- * One link shared to a group: how many members shared it and their notes,
- * never who. A member's own work ("I made this") says so in place of the
- * count. The owner gets a Remove button (moderation).
+ * One link shared to a group: members' notes and how many people on Radar
+ * saved it, never who (unless a sharer set a nickname). A member's own work
+ * ("I made this") says so. The owner gets a Remove button (moderation).
  */
 interface Props {
   link: PoolLink;
@@ -22,7 +22,7 @@ interface Props {
 }
 
 const { link, groupId, isOwner, returnPath, snippetLines = null } = Astro.props;
-const sharedBy = link.member_made ? madeByLabel(link.made_by ?? []) : sharedByLabel(link.readers, link.names ?? []);
+const sharedBy = poolLabel(link);
 const title = saveDisplayTitle(link.title, link.canonical_url);
 const confirmText = `Remove this link from the group? It's hidden here and can't be shared here again until you restore it. Members keep it in their archives.`;
 ---

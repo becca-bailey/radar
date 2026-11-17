@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { madeByLabel, sharedByLabel, splitMemberWork } from './groupPool';
+import { madeByLabel, poolLabel, savedByLabel, sharedByLabel, splitMemberWork } from './groupPool';
 
-describe('sharedByLabel', () => {
-  it('counts anonymous sharers and names the ones with a nickname', () => {
-    expect(sharedByLabel(1, [])).toBe('');
-    expect(sharedByLabel(3, [])).toBe('shared by 3');
-    expect(sharedByLabel(1, ['Ana'])).toBe('shared by Ana');
-    expect(sharedByLabel(2, ['Ana', 'Bo'])).toBe('shared by Ana and Bo');
-    expect(sharedByLabel(3, ['Ana'])).toBe('shared by Ana and 2 others');
-    expect(sharedByLabel(4, ['Ana', 'Bo', 'Cy'])).toBe('shared by Ana, Bo and 2 others');
+describe('pool labels', () => {
+  it('names sharers who set a nickname, and nobody else', () => {
+    expect(sharedByLabel([])).toBe('');
+    expect(sharedByLabel(['Ana'])).toBe('shared by Ana');
+    expect(sharedByLabel(['Ana', 'Bo'])).toBe('shared by Ana and Bo');
+    expect(sharedByLabel(['Ana', 'Bo', 'Cy'])).toBe('shared by Ana, Bo and others');
+  });
+
+  it('counts everyone on Radar who saved the link, once there is more than one', () => {
+    expect(savedByLabel(1)).toBe('');
+    expect(savedByLabel(5)).toBe('saved by 5');
+    expect(poolLabel({ member_made: false, made_by: [], names: [], savers: 1 })).toBe('');
+    expect(poolLabel({ member_made: false, made_by: [], names: ['Ana'], savers: 4 })).toBe('shared by Ana · saved by 4');
+    expect(poolLabel({ member_made: true, made_by: [], names: ['Ana'], savers: 3 })).toBe('made by a member · saved by 3');
   });
 });
 

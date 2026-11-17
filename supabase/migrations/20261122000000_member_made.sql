@@ -1,13 +1,16 @@
 -- RAD-52: "I made this". A member can mark a share as their own work. The
--- group shows it under "Made by members", apart from recommendations.
+-- group shows it under "Made by members", apart from recommendations. The
+-- count a group sees on a link becomes Radar-wide: everyone who saved it,
+-- whether privately or shared to any group. A number only, never who.
 
 -- Set when sharing; like the rest of a share row it never changes afterwards
 -- (unshare and share again to change it).
 alter table public.shares add column made_by_sharer boolean not null default false;
 
 -- group_pool gains member_made (someone who shared the link says they made
--- it) and made_by (those members' nicknames, if they set one). The return
--- type changes, so drop and recreate; the body is otherwise unchanged.
+-- it), made_by (those members' nicknames, if they set one) and savers (how
+-- many people on Radar saved the link). The return type changes, so drop and
+-- recreate; the body is otherwise unchanged.
 drop function public.group_pool (uuid, text, public.vector, int, real, timestamptz, timestamptz);
 
 create function public.group_pool (
@@ -33,6 +36,7 @@ returns table (
   last_shared_at timestamptz,
   member_made boolean,
   made_by text[],
+  savers int,
   rank real
 )
 language sql
@@ -79,7 +83,8 @@ shared as (
     l.search_tsv,
     l.embedding,
     l.lead_text,
-    l.full_text
+    l.full_text,
+    (select count(*)::int from public.saves sv where sv.link_id = p.link_id) as savers
   from pool p
   join public.links l on l.id = p.link_id
   where l.status <> 'held'
@@ -136,6 +141,7 @@ select
   s.last_shared_at,
   s.member_made,
   s.made_by,
+  s.savers,
   (coalesce(kw.kw_rank, 0) * 2.0 + coalesce(sem.sim, 0))::real as rank
 from shared s
 left join kw on kw.link_id = s.link_id
