@@ -85,6 +85,8 @@ export default function SaveMenu({
   const noteId = React.useId();
   const shareNoteId = React.useId();
   const shareGroupId = React.useId();
+  const shareMadeId = React.useId();
+  const [made, setMade] = React.useState(false);
   const shareGroupName = shareTo.find((g) => g.id === shareGroup)?.name ?? 'The group';
 
   const action = `/api/saves/${saveId}`;
@@ -252,12 +254,31 @@ export default function SaveMenu({
                   type="text"
                   name="note"
                   defaultValue={note ?? ''}
-                  placeholder="Why it's worth reading (optional)"
+                  placeholder={made ? 'Who might like it? (optional)' : "Why it's worth reading (optional)"}
                 />
                 <p className="m-0 text-[0.8rem] text-muted-foreground">
                   The link and this note. Never your email, and your name only if you've set one for
                   that group.
                   {sharedIn.length > 0 ? ` It's the same note ${listNames(sharedIn)} sees.` : ''}
+                </p>
+              </div>
+              <div className="grid gap-1">
+                <label htmlFor={shareMadeId} className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold">
+                  <input
+                    id={shareMadeId}
+                    className="size-4 shrink-0 accent-primary"
+                    type="checkbox"
+                    name="made"
+                    value="1"
+                    checked={made}
+                    onChange={(e) => setMade(e.currentTarget.checked)}
+                    aria-describedby={`${shareMadeId}-about`}
+                  />
+                  I made this
+                </label>
+                <p id={`${shareMadeId}-about`} className="m-0 text-[0.8rem] text-muted-foreground">
+                  Sharing your own work is welcome. It goes under “Made by members”, apart from
+                  recommendations. If your name is on the work, members will know it's yours.
                 </p>
               </div>
               <DialogFooter>

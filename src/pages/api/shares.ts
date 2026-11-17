@@ -5,7 +5,8 @@ import { groupsEnabled } from '../../lib/flags';
  * POST /api/shares — share a save to a group, or unshare it. A save can be
  * shared to many groups; each group sees its link and note, never who saved
  * it. The `action` field picks:
- *   share   — link the save to group_id, optionally updating its note first
+ *   share   — link the save to group_id, optionally updating its note first;
+ *             `made=1` marks it as the sharer's own work ("I made this")
  *   unshare — remove that link (your save stays in your archive)
  * RLS checks you own the save and are in the group, and refuses links the
  * group's owner removed.
@@ -51,7 +52,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     await supabase.from('saves').update({ note }).eq('id', save.id);
   }
 
-  const { error } = await supabase.from('shares').insert({ save_id: save.id, group_id: groupId });
+  const { error } = await supabase
+    .from('shares')
+    .insert({ save_id: save.id, group_id: groupId, made_by_sharer: form.get('made') === '1' });
   if (error) {
     if (error.code === '23505') return fail('Already shared to that group.');
     // RLS refusal: you're in the group (it was offered), so this is almost

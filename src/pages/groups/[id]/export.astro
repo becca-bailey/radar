@@ -15,7 +15,8 @@ import { formatDate, isDayKey, localDayRange } from '../../../lib/dates';
  * Export a group's shared links: pick by the dates they were shared, sort by
  * how many members shared them, copy as a list or download. Built for
  * crowdsourcing a newsletter's links post. Any member can export what they
- * can already see; exports carry counts and notes, never names.
+ * can already see; exports carry counts and notes, never names. Members'
+ * own work ("I made this") comes out in its own section.
  */
 if (!groupsEnabled()) {
   return Astro.redirect('/');
@@ -72,6 +73,7 @@ const rows: PickerRow[] = links.map((l) => ({
   note: joinNotes(l.notes),
   savedAt: l.last_shared_at,
   readers: l.readers,
+  memberMade: l.member_made,
   image: l.image,
   savedOn: formatDate(l.last_shared_at, timeZone),
 }));
@@ -91,7 +93,7 @@ const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$
   <p>
     Everything shared to {group.name}, one row per link, with how many members shared it and
     their notes. Pick what you want and copy it into a draft, or download it. Names are never
-    included.
+    included. Work that members made themselves goes in its own “From our members” section.
   </p>
 
   <form class="mt-4 mb-2 flex flex-wrap items-end gap-2.5" method="get">

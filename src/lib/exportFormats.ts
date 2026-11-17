@@ -6,7 +6,9 @@
  *
  * Group rows set `readers` (how many members shared the link) and carry
  * every member's note joined into `note`, with the date of the latest share.
- * Who shared is never part of an export.
+ * Who shared is never part of an export. Links a member marked as their own
+ * work (`memberMade`) are kept apart: lists put them last under
+ * MEMBER_WORK_HEADING, without a count; CSV and JSON flag them.
  */
 
 export interface ExportItem {
@@ -18,6 +20,15 @@ export interface ExportItem {
   savedAt: string;
   /** Group rows only: distinct members who shared it. */
   readers?: number;
+  /** Group rows only: a member who shared it says they made it. */
+  memberMade?: boolean;
+}
+
+export const MEMBER_WORK_HEADING = 'From our members';
+
+/** Recommendations first, then members' own work; order is kept within each. */
+function splitMemberWork(items: ExportItem[]): [ExportItem[], ExportItem[]] {
+  return [items.filter((i) => !i.memberMade), items.filter((i) => i.memberMade)];
 }
 
 const isGroupExport = (items: ExportItem[]) => items.some((i) => i.readers !== undefined);
@@ -32,7 +43,7 @@ export function joinNotes(notes: string[]): string | null {
 function sourceLabel(item: ExportItem): string | null {
   const parts: string[] = [];
   if (item.source) parts.push(oneLine(item.source));
-  if (item.readers && item.readers > 1) parts.push(`shared by ${item.readers}`);
+  if (!item.memberMade && item.readers && item.readers > 1) parts.push(`shared by ${item.readers}`);
   return parts.length ? parts.join(' · ') : null;
 }
 
@@ -70,29 +81,37 @@ function oneLine(s: string): string {
 
 /** `- [Title](url) (Source) — note`, one line per save. */
 export function toMarkdownList(items: ExportItem[]): string {
-  return items
-    .map((item) => {
-      let line = `- [${escapeMarkdownText(oneLine(item.title))}](${escapeMarkdownUrl(item.url)})`;
-      const label = sourceLabel(item);
-      if (label) line += ` (${escapeMarkdownText(label)})`;
-      if (item.note?.trim()) line += ` — ${escapeMarkdownText(oneLine(item.note))}`;
-      return line;
-    })
-    .join('\n')
-    .concat(items.length ? '\n' : '');
+  const list = (part: ExportItem[]) =>
+    part
+      .map((item) => {
+        let line = `- [${escapeMarkdownText(oneLine(item.title))}](${escapeMarkdownUrl(item.url)})`;
+        const label = sourceLabel(item);
+        if (label) line += ` (${escapeMarkdownText(label)})`;
+        if (item.note?.trim()) line += ` — ${escapeMarkdownText(oneLine(item.note))}`;
+        return line + '\n';
+      })
+      .join('');
+  const [shared, memberWork] = splitMemberWork(items);
+  if (memberWork.length === 0) return list(shared);
+  return `${list(shared)}${shared.length ? '\n' : ''}**${MEMBER_WORK_HEADING}**\n\n${list(memberWork)}`;
 }
 
 /** The same list as an HTML `<ul>`, so pasting into a rich-text editor keeps the links. */
 export function toHtmlList(items: ExportItem[]): string {
-  if (items.length === 0) return '';
-  const lis = items.map((item) => {
-    let li = `<a href="${escapeHtml(item.url)}">${escapeHtml(oneLine(item.title))}</a>`;
-    const label = sourceLabel(item);
-    if (label) li += ` (${escapeHtml(label)})`;
-    if (item.note?.trim()) li += ` — ${escapeHtml(oneLine(item.note))}`;
-    return `<li>${li}</li>`;
-  });
-  return `<ul>${lis.join('')}</ul>`;
+  const list = (part: ExportItem[]) => {
+    if (part.length === 0) return '';
+    const lis = part.map((item) => {
+      let li = `<a href="${escapeHtml(item.url)}">${escapeHtml(oneLine(item.title))}</a>`;
+      const label = sourceLabel(item);
+      if (label) li += ` (${escapeHtml(label)})`;
+      if (item.note?.trim()) li += ` — ${escapeHtml(oneLine(item.note))}`;
+      return `<li>${li}</li>`;
+    });
+    return `<ul>${lis.join('')}</ul>`;
+  };
+  const [shared, memberWork] = splitMemberWork(items);
+  if (memberWork.length === 0) return list(shared);
+  return `${list(shared)}<p><strong>${MEMBER_WORK_HEADING}</strong></p>${list(memberWork)}`;
 }
 
 function csvCell(value: string | null): string {
@@ -102,17 +121,17 @@ function csvCell(value: string | null): string {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** RFC 4180 CSV with a header row. Group exports add a shared_by column. */
+/** RFC 4180 CSV with a header row. Group exports add shared_by and made_by_member columns. */
 export function toCsv(items: ExportItem[]): string {
   const group = isGroupExport(items);
   const rows = [
     group
-      ? ['last_shared_at', 'title', 'url', 'source', 'notes', 'shared_by']
+      ? ['last_shared_at', 'title', 'url', 'source', 'notes', 'shared_by', 'made_by_member']
       : ['saved_at', 'title', 'url', 'source', 'note'],
   ];
   for (const item of items) {
     const row = [item.savedAt, item.title, item.url, item.source ?? '', item.note ?? ''];
-    if (group) row.push(String(item.readers ?? 1));
+    if (group) row.push(String(item.readers ?? 1), item.memberMade ? 'yes' : 'no');
     rows.push(row);
   }
   return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
@@ -132,6 +151,7 @@ export function toJson(items: ExportItem[], exportedAt = new Date()): string {
               source: i.source,
               notes: i.note,
               shared_by: i.readers ?? 1,
+              made_by_member: !!i.memberMade,
             })),
           }
         : {

@@ -19,6 +19,10 @@ export interface PoolLink {
   /** The owner marked it picked (say, for a newsletter). */
   picked: boolean;
   last_shared_at: string;
+  /** A member who shared it says they made it ("I made this"). */
+  member_made: boolean;
+  /** Nicknames of those makers who set one for this group. */
+  made_by: string[];
 }
 
 export interface PoolQuery {
@@ -46,6 +50,23 @@ export async function fetchGroupPool(
     shared_before: sharedBefore,
   });
   return { links: (data ?? []) as PoolLink[], error: error?.message ?? null };
+}
+
+/**
+ * "made by a member", "made by Ana", "made by Ana and Bo". Member work
+ * carries no share count: it's shown, not ranked.
+ */
+export function madeByLabel(names: string[]): string {
+  if (names.length === 0) return 'made by a member';
+  return `made by ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`}`;
+}
+
+/**
+ * Splits a list of pool links into members' own work and everything else,
+ * keeping the order within each.
+ */
+export function splitMemberWork<T extends { member_made?: boolean }>(links: T[]): { memberWork: T[]; shared: T[] } {
+  return { memberWork: links.filter((l) => l.member_made), shared: links.filter((l) => !l.member_made) };
 }
 
 /**

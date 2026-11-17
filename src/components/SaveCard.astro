@@ -21,7 +21,7 @@ export interface SaveRow {
     fetch_blocked?: string | null;
   } | null;
   /** Groups this save is shared to (loaded only when groups are on). */
-  shares?: { group_id: string; removed_at: string | null; picked_at?: string | null }[];
+  shares?: { group_id: string; removed_at: string | null; picked_at?: string | null; made_by_sharer?: boolean }[];
 }
 
 interface Props {
@@ -116,6 +116,14 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
           ) : (
             <li class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full border-2 bg-card py-0.5 pr-1 pl-2">
               <span class="truncate">{groupName.get(s.group_id)}</span>
+              {s.made_by_sharer && (
+                <span
+                  class="shrink-0 rounded-full bg-candy-sky px-1.5 text-[0.72rem] font-bold text-ink"
+                  title="You shared this as your own work. It shows under “Made by members”."
+                >
+                  made by you
+                </span>
+              )}
               {s.picked_at && (
                 <span
                   class="shrink-0 rounded-full bg-candy-lime px-1.5 text-[0.72rem] font-bold text-ink"

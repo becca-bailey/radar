@@ -14,7 +14,7 @@ import InviteLink from '@/components/InviteLink.tsx';
 import TopicSuggestions from '@/components/TopicSuggestions.tsx';
 import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../../../lib/flags';
-import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
+import { fetchGroupPool, splitMemberWork, type PoolLink } from '../../../lib/groupPool';
 import { createServiceClient } from '../../../lib/supabase';
 import { formatDate } from '../../../lib/dates';
 import { ensureInviteLink, membershipStatus } from '../../../lib/inviteLinks';
@@ -210,11 +210,14 @@ const removedLinks = (ownerData?.[1].data ?? []) as {
   removed_at: string;
 }[];
 
-// Split this week's shares at the last visit (none on a first visit).
+// Members' own work ("I made this") gets its own section, so it never
+// competes with recommendations. Split the rest of this week's shares at
+// the last visit (none on a first visit).
+const { memberWork, shared: recentShared } = splitMemberWork(recent.links);
 const lastVisitMs = previousVisit ? new Date(previousVisit).getTime() : null;
 const isNew = (l: PoolLink) => lastVisitMs !== null && new Date(l.last_shared_at).getTime() > lastVisitMs;
-const recentNew = recent.links.filter(isNew);
-const recentEarlier = recent.links.filter((l) => !isNew(l));
+const recentNew = recentShared.filter(isNew);
+const recentEarlier = recentShared.filter((l) => !isNew(l));
 
 const returnPath = single ? `${home}?lens=${single.id}` : home;
 const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? 'link' : 'links'}`;
@@ -375,7 +378,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
       <>
         <h2 class="mt-10">Shared this week</h2>
         {recent.error && <Alert variant="error">{recent.error}</Alert>}
-        {recent.links.length === 0 && !recent.error ? (
+        {recentShared.length === 0 && !recent.error ? (
           <Empty>
             Nothing shared in the last {RECENT_DAYS} days. Share a save from your{' '}
             <a href="/">archive</a> with a note of why.
@@ -409,6 +412,25 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
         <p class="text-sm text-muted-foreground">
           Older shares are in <a href={`${home}/export`}>Export</a>, by date.
         </p>
+
+        <h2 class="mt-10" id="member-work">Made by members</h2>
+        <p class="text-sm text-muted-foreground">
+          Things people in this group made themselves, this week. Sharing your own work is welcome here.
+        </p>
+        {memberWork.length === 0 ? (
+          !recent.error && (
+            <Empty>
+              Nothing yet this week. Made something? Share it from your <a href="/">archive</a> and
+              tick “I made this”.
+            </Empty>
+          )
+        ) : (
+          <CardList>
+            {memberWork.map((l) => (
+              <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} />
+            ))}
+          </CardList>
+        )}
       </>
     )
   }
