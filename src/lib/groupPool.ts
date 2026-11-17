@@ -61,3 +61,18 @@ export function sharedByLabel(readers: number, names: string[]): string {
   if (others <= 0) return `shared by ${who}`;
   return `shared by ${shown.length === 2 ? shown.join(', ') : who} and ${others} other${others === 1 ? '' : 's'}`;
 }
+
+/** A `?page=` value as a page number: 1 if missing or bad, at most maxPage. */
+export function parsePage(raw: string | null, maxPage: number): number {
+  const n = raw !== null && /^\d{1,6}$/.test(raw) ? Number(raw) : 1;
+  return Math.min(Math.max(n, 1), maxPage);
+}
+
+/**
+ * One page of a newest-first list, from rows fetched up to one past the page
+ * (`page * perPage + 1`), so the extra row says whether an older page exists.
+ */
+export function pageOf<T>(rows: T[], page: number, perPage: number): { items: T[]; hasOlder: boolean } {
+  const start = (page - 1) * perPage;
+  return { items: rows.slice(start, start + perPage), hasOlder: rows.length > start + perPage };
+}

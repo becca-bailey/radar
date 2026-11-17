@@ -45,7 +45,14 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
   const rawReturn = String(form.get('return_path') ?? '');
-  const returnPath = rawReturn === home || rawReturn.startsWith(`${home}?`) ? rawReturn : home;
+  // Back to a page of this group only (the group page, a lens, the shared list).
+  const returnUrl = URL.canParse(rawReturn, Astro.url.origin) ? new URL(rawReturn, Astro.url.origin) : null;
+  const returnPath =
+    returnUrl &&
+    returnUrl.origin === Astro.url.origin &&
+    (returnUrl.pathname === home || returnUrl.pathname.startsWith(`${home}/`))
+      ? returnUrl.pathname + returnUrl.search
+      : home;
   const back = (flag: string, path = returnPath) =>
     Astro.redirect(`${path}${path.includes('?') ? '&' : '?'}${flag}`);
 
@@ -157,7 +164,7 @@ interface Section {
 
 const recentFrom = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-const [sections, recent, ownerData, invite] = await Promise.all([
+const [sections, recent, ownerData, invite, before] = await Promise.all([
   Promise.all(
     shown.map(async (lens): Promise<Section> => {
       const { links, error: poolError } = await fetchGroupPool(supabase, group.id, {
@@ -180,6 +187,10 @@ const [sections, recent, ownerData, invite] = await Promise.all([
     : Promise.resolve(null),
   // The owner always has a link to hand out: make one if the group has none.
   isOwner ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
+  // One row says whether anything was shared before this week ("View more").
+  single
+    ? Promise.resolve({ links: [] as PoolLink[], error: null })
+    : fetchGroupPool(supabase, group.id, { limit: 1, sharedBefore: recentFrom }),
 ]);
 
 const memberCount = ownerData?.[0].count ?? null;
@@ -194,6 +205,10 @@ const lastVisitMs = previousVisit ? new Date(previousVisit).getTime() : null;
 const isNew = (l: PoolLink) => lastVisitMs !== null && new Date(l.last_shared_at).getTime() > lastVisitMs;
 const recentNew = recent.links.filter(isNew);
 const recentEarlier = recent.links.filter((l) => !isNew(l));
+
+// More than "Shared this week" lists: older shares, or a week past its limit.
+// If that lookup failed, show the link anyway rather than hide older shares.
+const hasMore = before.links.length > 0 || !!before.error || recent.links.length >= RECENT_LIMIT;
 
 const returnPath = single ? `${home}?lens=${single.id}` : home;
 const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? 'link' : 'links'}`;
@@ -386,9 +401,11 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
             )}
           </>
         )}
-        <p class="text-sm text-muted-foreground">
-          Older shares are in <a href={`${home}/export`}>Export</a>, by date.
-        </p>
+        {hasMore && (
+          <a class="text-sm font-semibold" href={`${home}/shared`}>
+            View more →
+          </a>
+        )}
       </>
     )
   }
