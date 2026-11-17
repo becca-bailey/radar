@@ -4,7 +4,6 @@ import { Alert } from '@/components/ui/alert';
 import Empty from '@/components/Empty.astro';
 import CardList from '@/components/CardList.astro';
 import PoolCard from '@/components/PoolCard.astro';
-import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool } from '../../../lib/groupPool';
 import { formatWeekLabel, localWeekRange, weekStartKey } from '../../../lib/dates';
 import { resolveWeek, weekPaging, weekPath } from '../../../lib/groupWeeks';
@@ -14,10 +13,6 @@ import { resolveWeek, weekPaging, weekPath } from '../../../lib/groupWeeks';
  * with the same cards as "Shared this week". Paging is finite: one week per
  * page, Earlier / Later links, no infinite scroll (PLAN.md §2).
  */
-if (!groupsEnabled()) {
-  return Astro.redirect('/');
-}
-
 const { user, supabase } = Astro.locals;
 if (!user) {
   return Astro.redirect('/login');
