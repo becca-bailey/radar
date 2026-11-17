@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { XIcon } from 'lucide-react';
 
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import OwnerPanel from '@/components/OwnerPanel';
 import type { Suggestion, SuggestionsResult } from '@/lib/topicSuggestions';
 
@@ -58,28 +59,38 @@ export default function TopicSuggestions({ groupId, home }: Props) {
           <p className="m-0 mt-2 text-sm text-muted-foreground">
             Found in what's been shared here. Make one a lens and every member sees it as a topic.
           </p>
-          <ul className="m-0 mt-3 grid list-none gap-2 p-0">
+          <ul className="m-0 mt-3 grid list-none gap-3.5 p-0">
             {topics.map((t) => (
-              <li key={t.key} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border-2 bg-card p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="m-0 font-semibold wrap-anywhere">{t.name}</p>
-                  <p className="m-0 text-[0.82rem] text-muted-foreground">
-                    {t.count} links
-                    {t.newThisWeek > 0 ? ` · ${t.newThisWeek} new this week` : ''} · searches for “{t.query}”
-                  </p>
-                </div>
-                <a className={buttonVariants({ variant: 'outline', size: 'sm' })} href={pinHref(t)}>
-                  Make it a lens
-                </a>
-                <button
-                  type="button"
-                  className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  aria-label={`Dismiss “${t.name}”`}
-                  title="Dismiss"
-                  onClick={() => void dismiss(t)}
-                >
-                  <XIcon aria-hidden="true" className="size-4" />
-                </button>
+              <li key={t.key}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t.name}</CardTitle>
+                    <CardDescription>
+                      {t.count} links{t.newThisWeek > 0 ? ` · ${t.newThisWeek} new this week` : ''}
+                    </CardDescription>
+                    <CardAction>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="-mt-1 -mr-2 text-muted-foreground"
+                        aria-label={`Dismiss “${t.name}”`}
+                        title="Dismiss"
+                        onClick={() => void dismiss(t)}
+                      >
+                        <XIcon aria-hidden="true" className="size-4" />
+                      </Button>
+                    </CardAction>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="m-0 text-sm wrap-anywhere">Searches for “{t.query}”</p>
+                  </CardContent>
+                  <CardFooter>
+                    <a className={buttonVariants({ variant: 'outline', size: 'sm' })} href={pinHref(t)}>
+                      Make it a lens
+                    </a>
+                  </CardFooter>
+                </Card>
               </li>
             ))}
           </ul>
