@@ -80,7 +80,7 @@ const sinceLabel = since ? formatDate(since, timeZone) : '';
 const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'group';
 ---
 
-<Layout title={`Export — ${group.name} — Radar`} user={user}>
+<Layout title={`Export — ${group.name} — On Your Radar`} user={user}>
   <p class="mb-0 text-sm"><a class="text-muted-foreground" href={home}>← {group.name}</a></p>
   <h1>Export links</h1>
   <p>

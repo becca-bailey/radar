@@ -39,7 +39,7 @@ const [{ data: groups }, { data: news }] = await Promise.all([
 const newIn = new Map(((news ?? []) as { group_id: string; new_count: number }[]).map((r) => [r.group_id, r.new_count]));
 ---
 
-<Layout title="Groups — Radar" user={user}>
+<Layout title="Groups — On Your Radar" user={user}>
   <h1>Groups</h1>
   <p>
     A group is a shared pool of links. Members share saves from their archive with a

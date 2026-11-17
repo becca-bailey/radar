@@ -106,7 +106,7 @@ const returnPath = single ? `/explore?lens=${single.id}` : '/explore';
 const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? 'save' : 'saves'}`;
 ---
 
-<Layout title={single ? `${single.name} — Explore — Radar` : 'Explore — Radar'} user={user}>
+<Layout title={single ? `${single.name} — Explore — On Your Radar` : 'Explore — On Your Radar'} user={user}>
   <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
     <h1>Explore</h1>
     {lenses.length > 0 && !formOpen && (

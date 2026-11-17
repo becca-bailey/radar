@@ -105,9 +105,9 @@ export const POST: APIRoute = async ({ request, locals, url, redirect, clientAdd
   try {
     await sendEmail({
       to: email,
-      subject: `Finish joining ${groupName} on Radar`,
-      text: `This address was entered to join ${groupName} on Radar.\n\nCreate your account and join:\n${link}\n\nThe link works for an hour. If this wasn't you, ignore this email and no account will be created.`,
-      html: `<p>This address was entered to join ${escapeHtml(groupName)} on Radar.</p><p><a href="${link}">Create your account and join</a></p><p>The link works for an hour. If this wasn't you, ignore this email and no account will be created.</p>`,
+      subject: `Finish joining ${groupName} (On Your Radar)`,
+      text: `This address was entered at On Your Radar to join ${groupName}.\n\nCreate your account and join:\n${link}\n\nThe link works for an hour. If this wasn't you, ignore this email and no account will be created.`,
+      html: `<p>This address was entered at On Your Radar to join ${escapeHtml(groupName)}.</p><p><a href="${link}">Create your account and join</a></p><p>The link works for an hour. If this wasn't you, ignore this email and no account will be created.</p>`,
     });
   } catch {
     return fail("Couldn't send the email. Try again in a minute.");
