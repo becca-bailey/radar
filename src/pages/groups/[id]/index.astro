@@ -12,6 +12,7 @@ import PoolCard from '@/components/PoolCard.astro';
 import OwnerPanel from '@/components/OwnerPanel.tsx';
 import InviteLink from '@/components/InviteLink.tsx';
 import TopicSuggestions from '@/components/TopicSuggestions.tsx';
+import GroupMenu from '@/components/GroupMenu.tsx';
 import SkeletonCards from '@/components/SkeletonCards.astro';
 import { groupsEnabled } from '../../../lib/flags';
 import { fetchGroupPool, type PoolLink } from '../../../lib/groupPool';
@@ -42,12 +43,6 @@ if (!group) {
   return Astro.redirect('/groups');
 }
 const isOwner = group.owner_id === user.id;
-// The owner can preview the page as a member sees it: same data, none of
-// the owner-only panels or controls.
-const preview = isOwner && Astro.url.searchParams.get('view') === 'member';
-const ownerView = isOwner && !preview;
-/** Keep the member preview on while moving around the page. */
-const withView = (path: string) => (preview ? `${path}${path.includes('?') ? '&' : '?'}view=member` : path);
 
 // --- Handle actions ---------------------------------------------------------
 // Each action redirects (post/redirect/get) with a short status flag.
@@ -125,7 +120,7 @@ const NOTICES: Record<string, string> = {
 };
 // Record this visit; the previous one draws "since your last visit". A
 // lens view doesn't count as a visit to the group's front page.
-const previousVisit: string | null = params.get('lens') || preview
+const previousVisit: string | null = params.get('lens')
   ? null
   : (((await supabase.rpc('mark_group_visited', { gid: group.id })).data as string | null) ?? null);
 const { data: myMembership } = await supabase
@@ -157,7 +152,7 @@ const lenses = (lensRows ?? []) as Lens[];
 const single = lenses.find((l) => l.id === params.get('lens')) ?? null;
 const shown = single ? [single] : lenses;
 const newQuery = params.get('new');
-const formOpen = ownerView && newQuery !== null;
+const formOpen = isOwner && newQuery !== null;
 // Prefilled from a suggested topic ("Make it a lens").
 const newName = params.get('name');
 const fromSuggestion = params.get('suggestion');
@@ -197,8 +192,7 @@ const [sections, recent, ownerData, invite] = await Promise.all([
       ])
     : Promise.resolve(null),
   // The owner always has a link to hand out: make one if the group has none.
-  // Not in the member preview, which shows none of this.
-  ownerView && !single ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
+  isOwner && !single ? ensureInviteLink(createServiceClient(), group.id) : Promise.resolve(null),
 ]);
 
 const memberCount = ownerData?.[0].count ?? null;
@@ -223,27 +217,8 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
 <Layout title={single ? `${single.name} — ${group.name} — Radar` : `${group.name} — Radar`} user={user}>
   <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
     <h1>{group.name}</h1>
-    <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={`${home}/export`}>Export links</a>
+    <GroupMenu client:visible name={group.name} home={home} />
   </div>
-  {
-    preview && (
-      <div class="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border-2 bg-candy-plum px-4 py-2.5 text-ink shadow-hard-sm">
-        <p class="m-0 text-sm font-semibold">You're previewing what members see.</p>
-        <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={home}>Back to owner view</a>
-      </div>
-    )
-  }
-  {
-    ownerView && !single && (
-      <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem]">
-        <span class="text-muted-foreground">
-          You run this group{memberCount !== null ? ` · ${memberCount} member${memberCount === 1 ? '' : 's'}` : ''}
-        </span>
-        <a class="font-semibold" href={`${home}?view=member`}>Preview as a member</a>
-        <a class="font-semibold" href="#owner-tools">Owner tools ↓</a>
-      </div>
-    )
-  }
   <p class="text-[0.82rem] text-muted-foreground">
     Shares are anonymous unless the sharer picks a name for this group. Emails are never shown.
   </p>
@@ -253,7 +228,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
 
   {single && (
     <p class="mt-4 mb-0 text-sm">
-      <a class="text-muted-foreground" href={`${withView(home)}#lens-${single.id}`}>← {group.name}</a>
+      <a class="text-muted-foreground" href={`${home}#lens-${single.id}`}>← {group.name}</a>
     </p>
   )}
 
@@ -261,7 +236,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
     !single && (
       <div class="mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 class="m-0">Topics</h2>
-        {ownerView && lenses.length > 0 && !formOpen && (
+        {isOwner && lenses.length > 0 && !formOpen && (
           <a class={buttonVariants({ variant: 'outline', size: 'sm' })} href={`${home}?new=`}>
             + New lens
           </a>
@@ -272,10 +247,10 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
 
   {
     !single && lenses.length === 0 && !formOpen && (
-      ownerView ? (
+      isOwner ? (
         <Empty>
-          Lenses are the topics members see: saved searches over everything shared here. Pick
-          one from the suggestions below or <a href={`${home}?new=`}>add your own</a>.
+          Lenses are the topics members see: saved searches over everything shared here.{' '}
+          <a href={`${home}?new=`}>Add one</a>.
         </Empty>
       ) : (
         <Empty>The owner hasn't set up any topics yet.</Empty>
@@ -338,7 +313,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
               {single ? (
                 lens.name
               ) : (
-                <a class="text-foreground no-underline hover:underline" href={withView(`${home}?lens=${lens.id}`)}>
+                <a class="text-foreground no-underline hover:underline" href={`${home}?lens=${lens.id}`}>
                   {lens.name}
                 </a>
               )}
@@ -347,7 +322,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
               Searching for “{lens.query}” · {countLabel(total)}
             </p>
           </div>
-          {ownerView && <LensMenu client:visible lensId={lens.id} name={lens.name} query={lens.query} inGroup />}
+          {isOwner && <LensMenu client:visible lensId={lens.id} name={lens.name} query={lens.query} inGroup />}
         </div>
         {sectionError && <Alert variant="error">{sectionError}</Alert>}
         {links.length === 0 && !sectionError ? (
@@ -355,12 +330,12 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
         ) : (
           <CardList>
             {links.map((l) => (
-              <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} snippetLines={single ? 3 : 2} />
+              <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} snippetLines={single ? 3 : 2} />
             ))}
           </CardList>
         )}
         {!single && total > links.length && (
-          <a class="text-sm font-semibold" href={withView(`${home}?lens=${lens.id}`)}>
+          <a class="text-sm font-semibold" href={`${home}?lens=${lens.id}`}>
             See all {countLabel(total)} →
           </a>
         )}
@@ -368,7 +343,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
     ))
   }
 
-  {!single && ownerView && !formOpen && <TopicSuggestions client:load groupId={group.id} home={home} />}
+  {!single && isOwner && !formOpen && <TopicSuggestions client:load groupId={group.id} home={home} />}
 
   {
     !single && (
@@ -387,7 +362,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
                 <p class="m-0 mt-3 text-sm font-semibold">New since your last visit</p>
                 <CardList>
                   {recentNew.map((l) => (
-                    <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} />
+                    <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
                   ))}
                 </CardList>
                 {recentEarlier.length > 0 && (
@@ -400,7 +375,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
             {recentEarlier.length > 0 && (
               <CardList>
                 {recentEarlier.map((l) => (
-                  <PoolCard link={l} groupId={group.id} isOwner={ownerView} returnPath={returnPath} />
+                  <PoolCard link={l} groupId={group.id} isOwner={isOwner} returnPath={returnPath} />
                 ))}
               </CardList>
             )}
@@ -431,11 +406,10 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
   }
 
   {
-    !single && ownerView && (
+    !single && isOwner && (
       <OwnerPanel title="Owner tools" id="owner-tools" className="mt-12">
         <p class="m-0 mt-2 text-sm text-muted-foreground">
-          Members never see this section, or the Remove buttons and lens menus above.{' '}
-          <a href={`${home}?view=member`}>Preview as a member</a>
+          Members never see this section, or the Remove buttons and lens menus above.
         </p>
         {invite ? (
           <>
@@ -478,15 +452,6 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
           <Button variant="outline" type="submit">Rename</Button>
         </form>
       </OwnerPanel>
-    )
-  }
-
-  {
-    !single && preview && (
-      <div class="mt-10">
-        <Button variant="destructive" type="button" disabled>Leave group</Button>
-        <p class="mt-2 text-sm text-muted-foreground">Members can leave from here. You run the group, so it's off for you.</p>
-      </div>
     )
   }
 
