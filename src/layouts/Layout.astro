@@ -26,7 +26,7 @@ if (groups && user) {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -49,33 +49,41 @@ if (groups && user) {
       } catch (e) {}
     </script>
   </head>
-  <body>
+  <body class="relative min-h-svh">
     {/* Shown while a form submit waits on the server (src/scripts/submitting.ts). */}
     <div
-      class="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 hidden h-1 animate-pulse bg-candy-orange [html:has(form[data-submitting])_&]:block"
+      class="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-1 animate-pulse bg-candy-orange [html:has(form[data-submitting])_&]:block"
       aria-hidden="true"
     ></div>
-    <svg
-      class="pointer-events-none fixed -top-[60px] -right-20 -z-10 w-[260px] text-candy-pink opacity-30 min-[721px]:opacity-55"
-      viewBox="0 0 200 200"
-      aria-hidden="true"
-    >
-      <path
-        fill="currentColor"
-        d="M48 15c25-14 62-18 84-2s24 48 17 76-23 54-49 62-61-4-77-27S5 66 17 44 32 24 48 15Z"></path>
-    </svg>
-    <svg
-      class="pointer-events-none fixed -bottom-[90px] -left-[100px] -z-10 w-80 text-candy-sky opacity-30 min-[721px]:opacity-55"
-      viewBox="0 0 200 200"
-      aria-hidden="true"
-    >
-      <path
-        fill="currentColor"
-        d="M103 8c28 2 57 16 68 40s2 55-13 77-38 36-64 34S41 139 26 115 7 62 22 40 75 6 103 8Z"></path>
-    </svg>
-    <main
-      class="relative mx-auto max-w-[660px] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-16 pl-[max(1rem,env(safe-area-inset-left))]"
-    >
+    {/*
+      Background blobs. Not position: fixed: iOS Safari clips fixed elements
+      to a viewport that stops short of its status bar and floating address
+      bar, while page content scrolls under both, so fixed blobs showed a
+      hard edge there (RAD-54). Instead, a viewport-tall sticky layer rides
+      along with the scroll inside a page-sized clip box: it draws wherever
+      content does, and the clip keeps the blobs from adding scroll overflow.
+    */}
+    <div class="pointer-events-none absolute inset-0 -z-10 overflow-clip" aria-hidden="true">
+      <div class="sticky top-0 h-lvh">
+        <svg
+          class="absolute -top-[60px] -right-20 w-[260px] text-candy-pink opacity-30 min-[721px]:opacity-55"
+          viewBox="0 0 200 200"
+        >
+          <path
+            fill="currentColor"
+            d="M48 15c25-14 62-18 84-2s24 48 17 76-23 54-49 62-61-4-77-27S5 66 17 44 32 24 48 15Z"></path>
+        </svg>
+        <svg
+          class="absolute -bottom-[90px] -left-[100px] w-80 text-candy-sky opacity-30 min-[721px]:opacity-55"
+          viewBox="0 0 200 200"
+        >
+          <path
+            fill="currentColor"
+            d="M103 8c28 2 57 16 68 40s2 55-13 77-38 36-64 34S41 139 26 115 7 62 22 40 75 6 103 8Z"></path>
+        </svg>
+      </div>
+    </div>
+    <main class="relative mx-auto max-w-[660px] px-4 pt-4 pb-16">
       <header
         class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-[3px] border-foreground py-3.5"
       >
