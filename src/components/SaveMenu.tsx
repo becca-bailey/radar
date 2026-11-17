@@ -255,8 +255,7 @@ export default function SaveMenu({
                   placeholder="Why it's worth reading (optional)"
                 />
                 <p className="m-0 text-[0.8rem] text-muted-foreground">
-                  The link and this note. Never your email, and your name only if you've set one for
-                  that group.
+                  The link, this note and your name in that group. Never your email.
                   {sharedIn.length > 0 ? ` It's the same note ${listNames(sharedIn)} sees.` : ''}
                 </p>
               </div>

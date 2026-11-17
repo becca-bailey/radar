@@ -3,7 +3,9 @@ import Layout from '../../layouts/Layout.astro';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { findInviteLink, inviteState } from '../../lib/inviteLinks';
+import { cleanMemberName, MEMBER_NAME_MAX } from '../../lib/memberNames';
 import { createServiceClient } from '../../lib/supabase';
 
 const token = Astro.params.token!;
@@ -13,7 +15,12 @@ const service = createServiceClient();
 const invite = await findInviteLink(service, token);
 const state = inviteState(invite);
 
-let outcome: 'signup' | 'joined' | 'already' | 'dead' | 'paused' = state.status === 'dead' ? 'dead' : 'paused';
+let outcome: 'signup' | 'name' | 'joined' | 'already' | 'dead' | 'paused' =
+  state.status === 'dead' ? 'dead' : 'paused';
+// The name form: what was typed (after a failed submit) or the default name
+// from settings.
+let nameValue = '';
+let nameError: string | null = null;
 const groupName = invite?.groups?.name ?? '';
 const groupId = invite?.group_id ?? '';
 
@@ -49,18 +56,35 @@ if (invite && state.status !== 'dead') {
   } else if (!user) {
     // Anyone with an open link can sign up (or sign in) and land back here.
     outcome = 'signup';
+  } else if (Astro.request.method !== 'POST') {
+    // Joining needs a name for this group: ask first, pre-filled with the
+    // default name from settings.
+    outcome = 'name';
+    const { data: profile } = await service.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
+    nameValue = (profile?.display_name as string | undefined) ?? '';
   } else {
-    const { error: joinError } = await service
-      .from('memberships')
-      .insert({ group_id: invite.group_id, user_id: user.id, role: 'member' });
-    if (!joinError) {
-      await service
-        .from('invite_links')
-        .update({ uses_this_week: state.uses + 1 })
-        .eq('id', invite.id);
-      outcome = 'joined';
+    const form = await Astro.request.formData();
+    const displayName = cleanMemberName(form.get('display_name'));
+    if (!displayName) {
+      outcome = 'name';
+      nameError = 'Pick a name for this group.';
     } else {
-      outcome = 'already';
+      const { error: joinError } = await service
+        .from('memberships')
+        .insert({ group_id: invite.group_id, user_id: user.id, role: 'member', display_name: displayName });
+      if (!joinError) {
+        await service
+          .from('invite_links')
+          .update({ uses_this_week: state.uses + 1 })
+          .eq('id', invite.id);
+        outcome = 'joined';
+      } else if (joinError.code === '23505') {
+        outcome = 'already';
+      } else {
+        outcome = 'name';
+        nameValue = displayName;
+        nameError = 'Could not join the group. Try again.';
+      }
     }
   }
 }
@@ -73,8 +97,8 @@ if (invite && state.status !== 'dead') {
         <h1>Join {groupName} on Radar</h1>
         <p>
           Radar keeps the good things you read, and lets you pass the best of them to {groupName}{' '}
-          with a sentence about why. The group sees the link and your note, never your name, your
-          email or your other saves.
+          with a sentence about why. The group sees the link, your note and the name you pick for
+          the group, never your email or your other saves.
         </p>
         {sent ? (
           <Alert>
@@ -103,13 +127,42 @@ if (invite && state.status !== 'dead') {
     )
   }
   {
+    outcome === 'name' && (
+      <>
+        <h1>Join {groupName}</h1>
+        <p>
+          Pick the name {groupName} will know you by. It shows on everything you share there, and
+          only there. It doesn't have to be your real name. Your email is never shown.
+        </p>
+        {nameError && <Alert variant="error">{nameError}</Alert>}
+        <form class="mt-4 mb-2 grid gap-2.5" method="post">
+          <Label htmlFor="join-name">Your name in {groupName}</Label>
+          <Input
+            id="join-name"
+            type="text"
+            name="display_name"
+            defaultValue={nameValue}
+            maxLength={MEMBER_NAME_MAX}
+            autoComplete="nickname"
+            required
+            autoFocus
+          />
+          <Button type="submit">Join {groupName}</Button>
+        </form>
+        <p class="m-0 text-sm text-muted-foreground">
+          You can change it later from the group's menu.
+        </p>
+      </>
+    )
+  }
+  {
     outcome === 'joined' && (
       <>
         <h1>Welcome to {groupName}</h1>
         <p>
           You're in. Share something you loved from your <a href="/">archive</a>, with a
-          short note of why. The group sees the link and your note, never your name or your
-          other saves.
+          short note of why. The group sees the link, your note and your name here, never your
+          email or your other saves.
         </p>
         <p>
           <a href={`/groups/${groupId}`}>Go to the group</a>

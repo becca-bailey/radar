@@ -28,12 +28,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import InviteLink from '@/components/InviteLink';
+import { MEMBER_NAME_MAX } from '@/lib/memberNames';
 
 interface Props {
   name: string;
   /** The group page: menu links hang off it, and its forms post to it. */
   home: string;
-  /** Your display name in this group ('' for anonymous). */
+  /** Your name in this group. */
   myName: string;
   /** The page the menu is on, so its forms land back there. */
   returnPath: string;
@@ -147,8 +148,8 @@ export default function GroupMenu({ name, home, myName, returnPath, isOwner, inv
             <DialogHeader>
               <DialogTitle>Your name here</DialogTitle>
               <DialogDescription>
-                Shown on what you share, in this group only. A nickname is fine. Leave it blank to stay anonymous; your
-                email is never shown.
+                Shown on what you share, in this group only. It doesn't have to be your real name. Your email is never
+                shown.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-1.5">
@@ -158,8 +159,9 @@ export default function GroupMenu({ name, home, myName, returnPath, isOwner, inv
                 type="text"
                 name="display_name"
                 defaultValue={myName}
-                maxLength={40}
-                placeholder="Anonymous"
+                maxLength={MEMBER_NAME_MAX}
+                autoComplete="nickname"
+                required
               />
             </div>
             <DialogFooter>
