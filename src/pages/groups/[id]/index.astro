@@ -182,7 +182,7 @@ const [sections, recent, ownerData, invite, before] = await Promise.all([
   isOwner
     ? Promise.all([
         supabase.from('memberships').select('user_id', { count: 'exact', head: true }).eq('group_id', group.id),
-        supabase.rpc('group_removed_links', { gid: group.id }),
+        supabase.rpc('group_removed_link_count', { gid: group.id }),
       ])
     : Promise.resolve(null),
   // The owner always has a link to hand out: make one if the group has none.
@@ -195,7 +195,7 @@ const [sections, recent, ownerData, invite, before] = await Promise.all([
 
 const memberCount = ownerData?.[0].count ?? null;
 const inviteStatus = invite ? membershipStatus(memberCount, invite) : null;
-const removedCount = ((ownerData?.[1].data ?? []) as unknown[]).length;
+const removedCount = Number(ownerData?.[1].data ?? 0);
 const inviteUrl = invite ? `${Astro.url.origin}/join/${invite.token}` : null;
 // A brand-new group: the invite link is the one thing to do, so it sits up top.
 const soloOwner = isOwner && !single && memberCount === 1 && inviteUrl !== null;
