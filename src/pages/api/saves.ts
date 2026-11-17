@@ -18,14 +18,14 @@ import { createServiceClient } from '../../lib/supabase';
  * the web form (session cookie), the bookmarklet and the iOS Shortcut
  * (Bearer rdr_… token). Form posts get redirects; everything else gets JSON.
  *
- * JSON callers may also send `share_to`: group labels from GET
- * /api/shortcut-options, as a JSON array or one string with a label per
- * line. The save always happens first; sharing is a second step whose
+ * JSON callers may also send `share_to`: items from GET
+ * /api/shortcut-options ("Share to Readers", or a bare "Readers"), as a
+ * JSON array or one string with an item per line. The save always happens first; sharing is a second step whose
  * outcome goes into `message` ("Saved and shared to Readers and Bakers").
  *
  * "I made this" marks the save as your own work: `own_work=1` from the web
  * form, `own_work: true` in JSON, or the "★ I made this" item picked in the
- * Shortcut's list (it arrives in `share_to` and isn't a group).
+ * Shortcut's Options list (it arrives in `share_to` and isn't a group).
  */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const service = createServiceClient();

@@ -100,23 +100,45 @@ describe('shareSummary', () => {
   });
 });
 
-describe('"I made this" in the Shortcut list', () => {
-  it('comes first, before the groups, even with no groups', () => {
-    expect(shortcutMenu(groups, 'g-r')).toEqual([OWN_WORK_LABEL, 'Readers', 'Allotment', 'Bakers']);
+describe('the Shortcut\'s Options list', () => {
+  it('puts "I made this" first, then "Share to" each group, even with no groups', () => {
+    expect(shortcutMenu(groups, 'g-r')).toEqual([
+      OWN_WORK_LABEL,
+      'Share to Readers',
+      'Share to Allotment',
+      'Share to Bakers',
+    ]);
     expect(shortcutMenu([])).toEqual([OWN_WORK_LABEL]);
   });
 
-  it('never lets a group take its label', () => {
-    const labels = shortcutMenu([{ id: 'g-x', name: OWN_WORK_LABEL }]);
-    expect(labels).toEqual([OWN_WORK_LABEL, `${OWN_WORK_LABEL} (2)`]);
-    expect(resolveShareChoice(`${OWN_WORK_LABEL} (2)`, [{ id: 'g-x', name: OWN_WORK_LABEL }])?.groupId).toBe('g-x');
-    expect(resolveShareChoice(OWN_WORK_LABEL, [{ id: 'g-x', name: OWN_WORK_LABEL }])).toBeNull();
+  it('resolves "Share to" items and bare labels to the same group', () => {
+    expect(resolveShareChoice('Share to Readers', groups)?.groupId).toBe('g-r');
+    expect(resolveShareChoice(' share to readers ', groups)?.groupId).toBe('g-r');
+    expect(resolveShareChoice('Readers', groups)?.groupId).toBe('g-r');
+    expect(resolveShareChoice('Share to Knitters', groups)).toBeNull();
   });
 
-  it('is read out of share_to, leaving only group labels', () => {
-    expect(splitOwnWork([OWN_WORK_LABEL, 'Readers'])).toEqual({ ownWork: true, groupLabels: ['Readers'] });
+  it('reaches groups whose names collide with the prefix or the own-work item', () => {
+    const odd = [
+      { id: 'g-1', name: 'Readers' },
+      { id: 'g-2', name: 'Share to Readers' },
+      { id: 'g-3', name: OWN_WORK_LABEL },
+    ];
+    const menu = shortcutMenu(odd);
+    expect(menu).toContain('Share to Share to Readers');
+    expect(menu).toContain(`Share to ${OWN_WORK_LABEL}`);
+    const ids = menu.slice(1).map((label) => resolveShareChoice(label, odd)?.groupId).sort();
+    expect(ids).toEqual(['g-1', 'g-2', 'g-3']);
+  });
+
+  it('reads "I made this" out of share_to, leaving only group items', () => {
+    expect(splitOwnWork([OWN_WORK_LABEL, 'Share to Readers'])).toEqual({ ownWork: true, groupLabels: ['Share to Readers'] });
     expect(splitOwnWork([' ★ i made this '])).toEqual({ ownWork: true, groupLabels: [] });
     expect(splitOwnWork(['Readers'])).toEqual({ ownWork: false, groupLabels: ['Readers'] });
-    expect(splitOwnWork(parseShareTo(`${OWN_WORK_LABEL}\nBakers`))).toEqual({ ownWork: true, groupLabels: ['Bakers'] });
+    expect(splitOwnWork([`Share to ${OWN_WORK_LABEL}`])).toEqual({ ownWork: false, groupLabels: [`Share to ${OWN_WORK_LABEL}`] });
+    expect(splitOwnWork(parseShareTo(`${OWN_WORK_LABEL}\nShare to Bakers`))).toEqual({
+      ownWork: true,
+      groupLabels: ['Share to Bakers'],
+    });
   });
 });

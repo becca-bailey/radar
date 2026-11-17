@@ -8,10 +8,11 @@ Signing uses the macOS `shortcuts` CLI, so this must run on a Mac:
 
 The shortcut accepts a page from the share sheet, extracts the URL, fetches
 its options (GET /api/shortcut-options), asks for an optional note unless
-the person turned that off in Settings, and shows one multi-select: "★ I
-made this" first, then their groups (pick any number; none just saves).
-The server builds that list and reads "★ I made this" back out of
-share_to, so the Shortcut doesn't treat it specially. Then
+the person turned that off in Settings, and shows one "Options"
+multi-select: "★ I made this" first, then "Share to <group>" for each
+group (pick any number; none just saves). The server builds that list and
+reads the picks back out of share_to, so the Shortcut doesn't treat any
+item specially. Then
 it POSTs url + note + share_to to /api/saves with a Bearer token and shows
 the reply's message. The token is an import question: the Shortcuts app
 asks the person to paste theirs when they first set up the shortcut, into
@@ -287,7 +288,7 @@ workflow = {
             "WFWorkflowActionParameters": {
                 "UUID": UUID_CHOSEN,
                 "WFInput": output_attachment(UUID_CHOICES, "Dictionary Value"),
-                "WFChooseFromListActionPrompt": "Share to groups, or mark it as yours? Pick none to just save.",
+                "WFChooseFromListActionPrompt": "Options",
                 "WFChooseFromListActionSelectMultiple": True,
             },
         },

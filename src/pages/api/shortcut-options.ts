@@ -8,11 +8,11 @@ import { createServiceClient } from '../../lib/supabase';
  * before it asks anything:
  *   ask_note — "yes" or "no" (Settings → Shortcut). A string, because
  *              Shortcuts compares text more reliably than JSON booleans.
- *   groups   — the Shortcut's multi-select: "★ I made this" first, then
- *              the group labels, last-used first. The Shortcut sends the
- *              picked labels back, one per line, as `share_to` on POST
- *              /api/saves; picking none just saves. ("groups" is the
- *              historical key; installed Shortcuts read it.)
+ *   groups   — the Shortcut's "Options" multi-select: "★ I made this"
+ *              first, then "Share to <group>" per group, last-used first.
+ *              The Shortcut sends the picked items back, one per line, as
+ *              `share_to` on POST /api/saves; picking none just saves.
+ *              ("groups" is the historical key; installed Shortcuts read it.)
  * Group names only, never members or what's in a group.
  */
 export const GET: APIRoute = async ({ request, locals }) => {
