@@ -51,7 +51,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   let url = '';
   let note: string | null = null;
   let title: string | null = null;
-  let wayback = false;
   let shareTo: string[] = [];
   let origin: SaveFormOrigin = 'home';
   // Echoed in the no-link error so the Shortcut's notification shows
@@ -80,7 +79,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     // rename keep working.
     note = typeof b.note === 'string' ? b.note : typeof b.sentence === 'string' ? b.sentence : null;
     title = typeof b.title === 'string' ? b.title : null;
-    wayback = b.wayback === true;
+    // "wayback" is ignored: Wayback saves were removed (RAD-49), and older
+    // callers that still send it keep working.
     shareTo = parseShareTo(b.share_to);
     bodyDebug = `url=${JSON.stringify(b.url ?? null)?.slice(0, 80)} keys=${
       Object.keys(b).join(',') || 'none'
@@ -101,7 +101,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       url,
       note,
       title,
-      waybackRequested: wayback,
     });
     if (import.meta.env.DEV) {
       // No scheduled functions in local dev, so a save kicks the ingest

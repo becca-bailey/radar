@@ -73,7 +73,7 @@ These are product decisions, already made. Do not reopen them in implementation 
 
 - **User.** Auth identity (Apple, Google, or email magic link). Display name. No public profile.
 - **Link.** Canonical URL, title, source, archived full text, extracted metadata, category (computed once, cached), first-seen timestamp. One row per canonical URL across the whole system.
-- **Save.** User × Link. Timestamp. Note (short, optional, why you saved it): private in the archive, shown to a group when the save is shared. Archive flags (e.g., Wayback requested). *(Until 2026-11-09 a save had two text fields — a long private note and a public "sentence"; collapsed into the single note to keep capture simple.)*
+- **Save.** User × Link. Timestamp. Note (short, optional, why you saved it): private in the archive, shown to a group when the save is shared. *(Until 2026-11-09 a save had two text fields — a long private note and a public "sentence"; collapsed into the single note to keep capture simple.)*
 - **Group.** Name, owner, settings: edition cadence (daily / weekly / biweekly), edition size (K), recommender names visible (bool, default true for private groups), contributes to public layer (bool, default false), categories enabled (bool, default false).
 - **Membership.** User × Group. Joined via invite link. Role: owner / member.
 - **Invite link.** Group, token, use cap per period, active flag, created and rotated timestamps.
@@ -216,9 +216,9 @@ Suggestions, not requirements. Pick the boring option.
 
 - **Web:** Astro + React (matches existing projects), Netlify.
 - **Database:** Postgres with pgvector (Supabase is fine). Links, saves, embeddings all in one place.
-- **Worker:** a queue-backed job per new Link: fetch → Readability-style extraction → embed → categorize → optional Wayback save. Idempotent on canonical URL.
+- **Worker:** a queue-backed job per new Link: fetch → Readability-style extraction → embed → categorize. Idempotent on canonical URL.
 - **Embeddings:** either a self-hosted open model (nomic-embed, bge-small) or an API with no-training terms. Decision recorded on the privacy page.
-- **Archiving:** store extracted text and a cleaned HTML snapshot. Wayback Save Page Now is opt-in per save and never for pages that required login.
+- **Archiving:** store extracted text and a cleaned HTML snapshot. *(An opt-in Wayback Machine save per link was built and then removed on 2026-11-17 (RAD-49), after its only UI, the bookmarklet checkbox, went in RAD-48. API callers that still send `wayback` have it ignored. The unused `wayback_requested` / `wayback_saved_at` columns stay on `saves` until a later migration drops them.)*
 - **Capture:** Phase 1 is a Shortcut posting to an authenticated endpoint plus a bookmarklet. Phase 4 is a native share extension.
 - **Email:** editions via a transactional provider. One email per edition, nothing else. No notification system.
 
@@ -296,7 +296,7 @@ Written down now so the first request doesn't reopen it:
 - Native capture: Expo share extension vs Swift.
 - Default for recommender names in private groups (current lean: visible). **Build default: visible.**
 - Default edition cadence for new groups (current lean: weekly, K = 10). **Build default: weekly, K = 10.**
-- Whether Wayback saving is default-on for public pages or opt-in everywhere (current lean: opt-in). **Build default: opt-in everywhere.**
+- Whether Wayback saving is default-on for public pages or opt-in everywhere (current lean: opt-in). **Moot: Wayback saving was removed (RAD-49).**
 - License. **Decided: AGPL-3.0-or-later**, so anyone can self-host or change it, but a modified version run as a service must share its source.
 - Whether the personal archive clusters themes before Phase 4 if the owner's own archive is large enough to test on.
 

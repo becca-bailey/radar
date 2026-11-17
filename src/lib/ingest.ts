@@ -117,8 +117,7 @@ async function processOneLink(
   if (page.challenged) {
     // Keep what we can tell from the URL so the save still reads well, and
     // note why, so the card can say so instead of offering a retry. The link
-    // stays 'failed', never 'ready': it may be members-only, and 'ready'
-    // links are eligible for Wayback saves.
+    // stays 'failed', never 'ready': it may be members-only.
     const { error: noteErr } = await service
       .from('links')
       .update({

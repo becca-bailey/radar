@@ -8,7 +8,6 @@ export interface SaveInput {
   /** Page title as seen by the saver (bookmarklet/Shortcut). Provisional:
    * shown until ingest extracts the real one. */
   title?: string | null;
-  waybackRequested?: boolean;
 }
 
 export interface SaveResult {
@@ -107,11 +106,8 @@ export async function createSave(
 
   if (existing) {
     // Re-saving updates the note only when new text was provided.
-    const patch: Record<string, unknown> = {};
-    if (input.note) patch.note = input.note;
-    if (input.waybackRequested) patch.wayback_requested = true;
-    if (Object.keys(patch).length > 0) {
-      const updated = await service.from('saves').update(patch).eq('id', existing.id);
+    if (input.note) {
+      const updated = await service.from('saves').update({ note: input.note }).eq('id', existing.id);
       if (updated.error) throw new Error(`Failed to update save: ${updated.error.message}`);
     }
     return { saveId: existing.id, linkId: link.id, canonicalUrl, alreadySaved: true };
@@ -124,7 +120,6 @@ export async function createSave(
       link_id: link.id,
       original_url: originalUrl,
       note: input.note || null,
-      wayback_requested: input.waybackRequested ?? false,
     })
     .select('id')
     .single();
