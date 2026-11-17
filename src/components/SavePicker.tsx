@@ -252,7 +252,7 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
         </div>
       )}
 
-      <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2.5 rounded-lg border-2 bg-card px-4 py-3 shadow-hard">
+      <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2.5 rounded-lg border-2 bg-card px-4 py-3 shadow-hard">
         <span className="mr-auto text-sm font-semibold" aria-live="polite">
           {status || `${count} selected`}
         </span>

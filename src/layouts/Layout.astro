@@ -26,7 +26,7 @@ if (groups && user) {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -52,7 +52,7 @@ if (groups && user) {
   <body>
     {/* Shown while a form submit waits on the server (src/scripts/submitting.ts). */}
     <div
-      class="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-1 animate-pulse bg-candy-orange [html:has(form[data-submitting])_&]:block"
+      class="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 hidden h-1 animate-pulse bg-candy-orange [html:has(form[data-submitting])_&]:block"
       aria-hidden="true"
     ></div>
     <svg
@@ -73,7 +73,9 @@ if (groups && user) {
         fill="currentColor"
         d="M103 8c28 2 57 16 68 40s2 55-13 77-38 36-64 34S41 139 26 115 7 62 22 40 75 6 103 8Z"></path>
     </svg>
-    <main class="relative mx-auto max-w-[660px] px-4 pt-4 pb-16">
+    <main
+      class="relative mx-auto max-w-[660px] pt-4 pr-[max(1rem,env(safe-area-inset-right))] pb-16 pl-[max(1rem,env(safe-area-inset-left))]"
+    >
       <header
         class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-[3px] border-foreground py-3.5"
       >
