@@ -10,7 +10,6 @@ import { Badge, badgeVariants } from '@/components/ui/badge';
 import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
 import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
 import SkeletonCards from '@/components/SkeletonCards.astro';
-import { groupsEnabled } from '../lib/flags';
 import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
 import { dayKey } from '../lib/dates';
 import { UUID_RE, afterCursorFilter, nextPageHref, parseCursor } from '../lib/archiveCursor';
@@ -51,10 +50,9 @@ const bySlug = new Map(cats.map((c) => [c.slug, c]));
 const activeCat = topic && topic !== 'uncategorized' ? (bySlug.get(topic) ?? null) : null;
 
 const linkCols = 'title, source, canonical_url, status, image:metadata->>image, fetch_blocked:metadata->>fetchBlocked';
-const shareCols = groupsEnabled() ? ', shares(group_id, removed_at, picked_at)' : '';
 let query = supabase
   .from('saves')
-  .select(`id, original_url, note, created_at, ${topic ? 'links!inner' : 'links'}(${linkCols})${shareCols}`);
+  .select(`id, original_url, note, created_at, ${topic ? 'links!inner' : 'links'}(${linkCols}), shares(group_id, removed_at, picked_at)`);
 if (topic === 'uncategorized') query = query.is('links.category_id', null);
 else if (activeCat) query = query.eq('links.category_id', activeCat.id);
 if (cursor) query = query.or(afterCursorFilter(cursor));
@@ -70,7 +68,7 @@ const [{ data: saves }, { data: oldSaves }] = await Promise.all([
     ? Promise.resolve({ data: [] })
     : supabase
         .from('saves')
-        .select(`id, original_url, note, created_at, links(${linkCols})${shareCols}`)
+        .select(`id, original_url, note, created_at, links(${linkCols}), shares(group_id, removed_at, picked_at)`)
         .lt('created_at', resurfaceCutoff)
         .order('created_at')
         .limit(365),
@@ -104,7 +102,6 @@ const rows = fetched.slice(0, PAGE_SIZE);
 const lastRow = rows.at(-1);
 const moreHref =
   fetched.length > PAGE_SIZE && lastRow ? nextPageHref({ createdAt: lastRow.created_at, id: lastRow.id }, topic) : null;
-const shareGroups = groupsEnabled() ? groups : [];
 const chip = badgeVariants({ variant: 'chip' });
 
 // Once there's an archive, saving mostly happens from the share sheet;
@@ -170,7 +167,7 @@ const lensTopic = activeCat?.name ?? null;
           From {agoLabel(new Date(resurfaced.created_at), now)}
         </h2>
         <CardList>
-          <SaveCard row={resurfaced} groups={shareGroups} defaultGroupId={defaultGroupId} topic={topic} />
+          <SaveCard row={resurfaced} groups={groups} defaultGroupId={defaultGroupId} topic={topic} />
         </CardList>
         <p class="m-0 mt-1.5 text-sm text-muted-foreground">A different one tomorrow.</p>
       </section>
@@ -261,7 +258,7 @@ const lensTopic = activeCat?.name ?? null;
     ) : (
       <CardList data-archive-list>
         {rows.map((row) => (
-          <SaveCard row={row} groups={shareGroups} defaultGroupId={defaultGroupId} topic={topic} />
+          <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} topic={topic} />
         ))}
       </CardList>
     )

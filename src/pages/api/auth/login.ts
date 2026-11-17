@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { ensureInvitedUser, isInvited, normalizeEmail } from '../../../lib/invites';
 import { findInviteLink, inviteState, joinToken } from '../../../lib/inviteLinks';
-import { groupsEnabled } from '../../../lib/flags';
 import { mailConfigured, sendEmail } from '../../../lib/mail';
 import { safeLocalPath } from '../../../lib/redirects';
 import {
@@ -33,7 +32,7 @@ export const POST: APIRoute = async ({ request, locals, url, redirect, clientAdd
 
   // Only ever bounce back to a local path (e.g. the /join page that sent us here).
   const safeNext = safeLocalPath(String(form.get('next') ?? ''), '');
-  const token = groupsEnabled() ? joinToken(safeNext) : null;
+  const token = joinToken(safeNext);
 
   // Messages go back to the page the form was on: the join page for an
   // invite link, the sign-in page otherwise (keeping `next`).

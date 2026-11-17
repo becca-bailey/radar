@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { userIdForBearerToken } from '../../lib/apiTokens';
-import { groupsEnabled } from '../../lib/flags';
 import { saveErrorPath, saveFormOrigin, saveSuccessPath, type SaveFormOrigin } from '../../lib/saveRedirects';
 import { createSave } from '../../lib/saves';
 import {
@@ -112,7 +111,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     if (isForm) return redirect(saveSuccessPath(origin, result));
     let message = result.alreadySaved ? 'Already on Radar' : 'Saved to Radar';
     const shared: string[] = [];
-    if (shareTo.length && groupsEnabled()) {
+    if (shareTo.length) {
       // Resolve every label against one snapshot of the menu: sharing
       // updates the last-used group, which reorders (never relabels) it.
       // Shares run in order so the last one picked becomes last-used.
@@ -122,7 +121,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       const missing: string[] = [];
       for (const label of shareTo) {
         const choice = byLabel(label);
-        if (!choice?.groupId) {
+        if (!choice) {
           missing.push(label);
           continue;
         }

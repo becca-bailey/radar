@@ -5,11 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import CardList from '@/components/CardList.astro';
 import ItemCard from '@/components/ItemCard.astro';
-import { groupsEnabled } from '../../lib/flags';
-
-if (!groupsEnabled()) {
-  return Astro.redirect('/');
-}
 
 const { user, supabase } = Astro.locals;
 if (!user) {

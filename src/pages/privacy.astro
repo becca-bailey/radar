@@ -1,9 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { groupsEnabled } from '../lib/flags';
 
 const { user } = Astro.locals;
-const groups = groupsEnabled();
 ---
 
 <Layout title="Privacy — Radar" user={user}>
@@ -13,55 +11,38 @@ const groups = groupsEnabled();
     It changes only when the software changes.
   </p>
 
-  {
-    groups ? (
-      <>
-        <h2>Your archive, and groups</h2>
-        <p>
-          <strong>Your archive</strong> holds everything: the links you save, the page text we
-          archive for you, and your short note about why you saved each link. Only you can
-          see it unless you share a save to a group.
-        </p>
-        <p>
-          <strong>A group</strong> you share to sees the link and your note — not your email, and
-          not who else is in the group. That goes for the group's owner too. Your shares are
-          anonymous unless you choose a name for that group; it's shown on your shares there and
-          nowhere else. Members
-          see how many people shared a link, and can export the links with those counts and
-          notes. A group never sees your other saves or anything you didn't explicitly share
-          to it.
-        </p>
-        <p>
-          Sharing is always a choice you make per save, on the web or in the Shortcut;
-          nothing you save is shared automatically. The group's owner can remove a link from
-          the group, which removes everyone's share
-          of it there. It stays in your archive.
-        </p>
-      </>
-    ) : (
-      <>
-        <h2>Your archive is private</h2>
-        <p>
-          <strong>Your archive</strong> holds everything: the links you save, the page text we
-          archive for you, and your short note about why you saved each link. Only you can see
-          it.
-        </p>
-      </>
-    )
-  }
+  <h2>Your archive, and groups</h2>
+  <p>
+    <strong>Your archive</strong> holds everything: the links you save, the page text we
+    archive for you, and your short note about why you saved each link. Only you can
+    see it unless you share a save to a group.
+  </p>
+  <p>
+    <strong>A group</strong> you share to sees the link and your note — not your email, and
+    not who else is in the group. That goes for the group's owner too. Your shares are
+    anonymous unless you choose a name for that group; it's shown on your shares there and
+    nowhere else. Members
+    see how many people shared a link, and can export the links with those counts and
+    notes. A group never sees your other saves or anything you didn't explicitly share
+    to it.
+  </p>
+  <p>
+    Sharing is always a choice you make per save, on the web or in the Shortcut;
+    nothing you save is shared automatically. The group's owner can remove a link from
+    the group, which removes everyone's share
+    of it there. It stays in your archive.
+  </p>
 
   <h2>What is stored</h2>
   <ul>
     <li>Your email address, for sign-in.</li>
     <li>Links you save: the canonical URL, the URL you actually saved, and the page's
       extracted text and a cleaned snapshot, archived so you can search and keep it.</li>
-    <li>Your notes and timestamps{groups ? ', and group memberships' : ''}.</li>
+    <li>Your notes and timestamps, and group memberships.</li>
     <li>Your browser's time zone (like "America/Los_Angeles"), in a cookie and on your
       account, so dates show on your own calendar.</li>
   </ul>
-  <p>No ad identifiers, no analytics profiles, no payment data{groups
-    ? ', no data about where a group member came from'
-    : ''}.</p>
+  <p>No ad identifiers, no analytics profiles, no payment data, no data about where a group member came from.</p>
 
   <h2>What leaves the server, and to whom</h2>
   <ul>
@@ -71,10 +52,8 @@ const groups = groupsEnabled();
       your notes, never your name, never which user saved it. OpenAI's API terms exclude
       training on this data. When you search your archive or save a lens, the words you
       searched for go to OpenAI as well, so results can match by meaning. They aren't sent
-      with your name or account.{groups && (
-        <> To suggest topics to a group's owner, the titles of links shared to that group
-        go to OpenAI in batches, without notes or who shared them.</>
-      )}
+      with your name or account. To suggest topics to a group's owner, the titles of links shared to that group
+      go to OpenAI in batches, without notes or who shared them.
     </li>
     <li>
       <strong>Internet Archive (Wayback Machine)</strong>: only when you tick "also save
@@ -100,7 +79,7 @@ const groups = groupsEnabled();
   <p>
     Your whole archive exports to markdown or JSON — full archived text included — any
     time, from <a href="/settings">Settings</a>. Deleting your account deletes your
-    saves, lenses, tokens{groups ? ', memberships and what you shared to groups. Groups you own are deleted for every member' : ' — everything tied to you'}.
+    saves, lenses, tokens, memberships and what you shared to groups. Groups you own are deleted for every member.
     You can delete your account at the bottom of <a href="/settings#delete-account">Settings</a>,
     and archived pages that nobody else saved are deleted along with it.
   </p>
