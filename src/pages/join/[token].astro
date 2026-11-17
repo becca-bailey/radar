@@ -18,13 +18,19 @@ const service = createServiceClient();
 const invite = await findInviteLink(service, token);
 const state = inviteState(invite);
 
-let outcome: 'signup' | 'joined' | 'already' | 'dead' | 'paused' = state.status === 'dead' ? 'dead' : 'paused';
+let outcome: 'signup' | 'name' | 'joined' | 'already' | 'dead' | 'paused' = state.status === 'dead' ? 'dead' : 'paused';
 const groupName = invite?.groups?.name ?? '';
 const groupId = invite?.group_id ?? '';
 
 // Signed out, sign-in form state (the login endpoint sends people back here).
 const sent = Astro.url.searchParams.get('sent') === '1';
 const error = Astro.url.searchParams.get('error');
+
+// Signed in: joining is a form post carrying the name you'll have in the group.
+const joinForm = Astro.request.method === 'POST' ? await Astro.request.formData() : null;
+const pickedName = joinForm ? String(joinForm.get('display_name') ?? '').trim().slice(0, 40) : '';
+let nameError: string | null = null;
+let lastName = '';
 
 if (invite && state.status !== 'dead') {
   // Weekly window rollover.
@@ -54,15 +60,26 @@ if (invite && state.status !== 'dead') {
   } else if (!user) {
     // Anyone with an open link can sign up (or sign in) and land back here.
     outcome = 'signup';
+  } else if (!pickedName) {
+    // Everyone in a group has a name: ask for it before joining.
+    outcome = 'name';
+    if (joinForm) nameError = 'Pick a name. It can be a nickname.';
+    const { data: profile } = await Astro.locals.supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', user.id)
+      .maybeSingle();
+    lastName = (profile?.display_name as string | null) ?? '';
   } else {
     const { error: joinError } = await service
       .from('memberships')
-      .insert({ group_id: invite.group_id, user_id: user.id, role: 'member' });
+      .insert({ group_id: invite.group_id, user_id: user.id, role: 'member', display_name: pickedName });
     if (!joinError) {
-      await service
-        .from('invite_links')
-        .update({ uses_this_week: state.uses + 1 })
-        .eq('id', invite.id);
+      await Promise.all([
+        service.from('invite_links').update({ uses_this_week: state.uses + 1 }).eq('id', invite.id),
+        // Remembered to prefill the next group.
+        service.from('profiles').update({ display_name: pickedName }).eq('id', user.id),
+      ]);
       outcome = 'joined';
     } else {
       outcome = 'already';
@@ -78,8 +95,8 @@ if (invite && state.status !== 'dead') {
         <h1>Join {groupName} on Radar</h1>
         <p>
           Radar keeps the good things you read, and lets you pass the best of them to {groupName}{' '}
-          with a sentence about why. The group sees the link and your note, never your name, your
-          email or your other saves.
+          with a sentence about why. The group sees the link, your note and a name you pick (it
+          needn't be your real one), never your email or your other saves.
         </p>
         {sent ? (
           <Alert>
@@ -108,13 +125,32 @@ if (invite && state.status !== 'dead') {
     )
   }
   {
+    outcome === 'name' && (
+      <>
+        <h1>Join {groupName}</h1>
+        <p>
+          Pick the name {groupName} will see on what you share. It doesn't have to be your real
+          name, and you can change it later. Your email is never shown.
+        </p>
+        {nameError && <Alert variant="error">{nameError}</Alert>}
+        <form class="mt-4 mb-2 grid gap-2.5" method="post">
+          <label class="grid gap-1 text-sm font-semibold">
+            Your name in this group
+            <Input type="text" name="display_name" defaultValue={lastName} required maxLength={40} autoFocus />
+          </label>
+          <Button type="submit">Join {groupName}</Button>
+        </form>
+      </>
+    )
+  }
+  {
     outcome === 'joined' && (
       <>
         <h1>Welcome to {groupName}</h1>
         <p>
           You're in. Share something you loved from your <a href="/">archive</a>, with a
-          short note of why. The group sees the link and your note, never your name or your
-          other saves.
+          short note of why. The group sees the link, your note and the name you just picked,
+          never your email or your other saves.
         </p>
         <p>
           <a href={`/groups/${groupId}`}>Go to the group</a>

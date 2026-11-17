@@ -257,8 +257,7 @@ export default function SaveMenu({
                   placeholder={made ? 'Who might like it? (optional)' : "Why it's worth reading (optional)"}
                 />
                 <p className="m-0 text-[0.8rem] text-muted-foreground">
-                  The link and this note. Never your email, and your name only if you've set one for
-                  that group.
+                  The link, this note and your name in that group. Never your email.
                   {sharedIn.length > 0 ? ` It's the same note ${listNames(sharedIn)} sees.` : ''}
                 </p>
               </div>
@@ -277,8 +276,8 @@ export default function SaveMenu({
                   I made this
                 </label>
                 <p id={`${shareMadeId}-about`} className="m-0 text-[0.8rem] text-muted-foreground">
-                  Sharing your own work is welcome. It goes under “Made by members”, apart from
-                  recommendations. If your name is on the work, members will know it's yours.
+                  Sharing your own work is welcome: one thing a week in each group. It goes under
+                  “Made by members”, with your name, apart from recommendations.
                 </p>
               </div>
               <DialogFooter>

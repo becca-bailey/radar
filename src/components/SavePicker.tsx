@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { dayKey } from '@/lib/dates';
 import { toCsv, toHtmlList, toJson, toMarkdownList, type ExportItem } from '@/lib/exportFormats';
+import { nameList } from '@/lib/groupPool';
 
 export interface PickerRow extends ExportItem {
   id: string;
@@ -205,7 +206,7 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
                         <CardTitle>{row.title}</CardTitle>
                         <CardDescription>
                           {row.source ? `${row.source} · ` : ''}
-                          {row.memberMade ? 'made by a member · ' : ''}
+                          {row.sharedBy?.length ? `${row.memberMade ? 'made' : 'shared'} by ${nameList(row.sharedBy)} · ` : ''}
                           {row.readers && row.readers > 1 ? `saved by ${row.readers} · ` : ''}
                           {row.savedOn}
                         </CardDescription>

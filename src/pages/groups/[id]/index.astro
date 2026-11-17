@@ -94,10 +94,9 @@ if (Astro.request.method === 'POST') {
   }
 
   if (action === 'nickname') {
-    const { error } = await supabase.rpc('set_group_display_name', {
-      gid: group.id,
-      name: String(form.get('display_name') ?? ''),
-    });
+    const name = String(form.get('display_name') ?? '').trim();
+    if (!name) return back('error=' + encodeURIComponent('Everyone in a group has a name. It can be a nickname.'));
+    const { error } = await supabase.rpc('set_group_display_name', { gid: group.id, name });
     return back(error ? 'error=' + encodeURIComponent('Could not save your name.') : 'named=1');
   }
 
@@ -121,7 +120,7 @@ const NOTICES: Record<string, string> = {
   rotated: 'Link reset. The old one no longer works.',
   removed: 'Removed from the group.',
   restored: 'Restored to the group.',
-  named: 'Saved. Your name shows on what you share here.',
+  named: 'Saved. That name shows on everything you share here.',
 };
 // Record this visit; the previous one draws "since your last visit". A
 // lens view doesn't count as a visit to the group's front page.
@@ -248,7 +247,7 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
     )
   }
   <p class="text-[0.82rem] text-muted-foreground">
-    Shares are anonymous unless the sharer picks a name for this group. Emails are never shown.
+    Shares show the name each member picked for this group. Emails are never shown.
   </p>
 
   {notice && <Alert>{notice}</Alert>}
@@ -415,7 +414,8 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
 
         <h2 class="mt-10" id="member-work">Made by members</h2>
         <p class="text-sm text-muted-foreground">
-          Things people in this group made themselves, this week. Sharing your own work is welcome here.
+          Things people in this group made themselves, this week. Sharing your own work is welcome
+          here: one thing a week each.
         </p>
         {memberWork.length === 0 ? (
           !recent.error && (
@@ -440,12 +440,12 @@ const countLabel = (n: number) => `${n >= LIMIT ? `${LIMIT}+` : n} ${n === 1 ? '
       <>
         <h2 class="mt-10">Your name here</h2>
         <p class="text-sm text-muted-foreground">
-          Optional. Shown on what you share, in this group only — a nickname is fine. Leave it
-          blank to stay anonymous; your email is never shown.
+          Shown on what you share here and in this group's exports, nowhere else. It doesn't
+          have to be your real name. Your email is never shown.
         </p>
         <form class="mt-3 mb-6 flex flex-wrap gap-2.5" method="post">
           <input type="hidden" name="_action" value="nickname" />
-          <Input className="w-auto flex-1" type="text" name="display_name" defaultValue={myName} maxLength={40} placeholder="Anonymous" aria-label="Your name in this group" />
+          <Input className="w-auto flex-1" type="text" name="display_name" defaultValue={myName} maxLength={40} required aria-label="Your name in this group" />
           <Button variant="outline" type="submit">Save</Button>
         </form>
       </>

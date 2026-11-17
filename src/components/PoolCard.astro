@@ -7,9 +7,9 @@ import { formatRecentDate } from '../lib/dates';
 import { poolLabel, type PoolLink } from '../lib/groupPool';
 
 /**
- * One link shared to a group: members' notes and how many people on Radar
- * saved it, never who (unless a sharer set a nickname). A member's own work
- * ("I made this") says so. The owner gets a Remove button (moderation).
+ * One link shared to a group: who shared it (their names in this group),
+ * their notes, and how many people on Radar saved it. A member's own work
+ * ("I made this") says who made it. The owner gets a Remove button.
  */
 interface Props {
   link: PoolLink;
@@ -72,5 +72,13 @@ const confirmText = `Remove this link from the group? It's hidden here and can't
       />
     )
   }
-  {link.notes.map((n) => <Why>{n}</Why>)}
+  {link.notes.map((n, i) => (
+    <Why>
+      {n}
+      {/* One sharer is already named in the line above. */}
+      {link.names.length > 1 && link.note_names?.[i] && (
+        <span class="font-sans text-[0.8rem] text-muted-foreground not-italic"> — {link.note_names[i]}</span>
+      )}
+    </Why>
+  ))}
 </ItemCard>

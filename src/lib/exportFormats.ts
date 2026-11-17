@@ -1,15 +1,17 @@
+import { nameList } from './groupPool';
+
 /**
  * Formats for exporting a hand-picked selection of links: your own saves
  * (/export) or a group's shared links (/groups/:id/export). The whole-archive
  * export with full text lives in /api/export; these are the light versions:
  * title, link, source, note and date.
  *
- * Group rows set `readers` (how many people on Radar saved the link, in any
- * group or privately) and carry
- * every member's note joined into `note`, with the date of the latest share.
- * Who shared is never part of an export. Links a member marked as their own
- * work (`memberMade`) are kept apart: lists put them last under
- * MEMBER_WORK_HEADING; CSV and JSON flag them.
+ * Group rows carry who shared the link (`sharedBy`, their names in that
+ * group), every member's note joined into `note`, the date of the latest
+ * share, and `readers`: how many people on Radar saved the link, in any
+ * group or privately. Links a member marked as their own work (`memberMade`)
+ * are kept apart: lists put them last under MEMBER_WORK_HEADING; CSV and JSON
+ * flag them.
  */
 
 export interface ExportItem {
@@ -21,6 +23,8 @@ export interface ExportItem {
   savedAt: string;
   /** Group rows only: people on Radar who saved it. */
   readers?: number;
+  /** Group rows only: names (in that group) of the members who shared it. */
+  sharedBy?: string[];
   /** Group rows only: a member who shared it says they made it. */
   memberMade?: boolean;
 }
@@ -40,10 +44,11 @@ export function joinNotes(notes: string[]): string | null {
   return kept.length ? kept.join(' / ') : null;
 }
 
-/** "Source", "Source · saved by 3", "saved by 3", or null. */
+/** "Source · shared by Ana and Bo · saved by 3", any part of it, or null. */
 function sourceLabel(item: ExportItem): string | null {
   const parts: string[] = [];
   if (item.source) parts.push(oneLine(item.source));
+  if (item.sharedBy?.length) parts.push(`${item.memberMade ? 'made' : 'shared'} by ${nameList(item.sharedBy.map(oneLine))}`);
   if (item.readers && item.readers > 1) parts.push(`saved by ${item.readers}`);
   return parts.length ? parts.join(' · ') : null;
 }
@@ -122,17 +127,17 @@ function csvCell(value: string | null): string {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** RFC 4180 CSV with a header row. Group exports add saved_by and made_by_member columns. */
+/** RFC 4180 CSV with a header row. Group exports add shared_by, saved_by and made_by_member columns. */
 export function toCsv(items: ExportItem[]): string {
   const group = isGroupExport(items);
   const rows = [
     group
-      ? ['last_shared_at', 'title', 'url', 'source', 'notes', 'saved_by', 'made_by_member']
+      ? ['last_shared_at', 'title', 'url', 'source', 'notes', 'shared_by', 'saved_by', 'made_by_member']
       : ['saved_at', 'title', 'url', 'source', 'note'],
   ];
   for (const item of items) {
     const row = [item.savedAt, item.title, item.url, item.source ?? '', item.note ?? ''];
-    if (group) row.push(String(item.readers ?? 1), item.memberMade ? 'yes' : 'no');
+    if (group) row.push((item.sharedBy ?? []).join('; '), String(item.readers ?? 1), item.memberMade ? 'yes' : 'no');
     rows.push(row);
   }
   return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
@@ -151,6 +156,7 @@ export function toJson(items: ExportItem[], exportedAt = new Date()): string {
               url: i.url,
               source: i.source,
               notes: i.note,
+              shared_by: i.sharedBy ?? [],
               saved_by: i.readers ?? 1,
               made_by_member: !!i.memberMade,
             })),

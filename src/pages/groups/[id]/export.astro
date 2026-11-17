@@ -15,8 +15,9 @@ import { formatDate, isDayKey, localDayRange } from '../../../lib/dates';
  * Export a group's shared links: pick by the dates they were shared, sort by
  * how many people on Radar saved them, copy as a list or download. Built for
  * crowdsourcing a newsletter's links post. Any member can export what they
- * can already see; exports carry counts and notes, never names. Members'
- * own work ("I made this") comes out in its own section.
+ * can already see; exports carry members' group names, notes and counts,
+ * never emails. Members' own work ("I made this") comes out in its own
+ * section.
  */
 if (!groupsEnabled()) {
   return Astro.redirect('/');
@@ -73,6 +74,8 @@ const rows: PickerRow[] = links.map((l) => ({
   note: joinNotes(l.notes),
   savedAt: l.last_shared_at,
   readers: l.savers,
+  // A member's own work is credited to its maker, not to everyone who shared it.
+  sharedBy: l.member_made ? l.made_by : l.names,
   memberMade: l.member_made,
   image: l.image,
   savedOn: formatDate(l.last_shared_at, timeZone),
@@ -91,9 +94,10 @@ const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$
   <p class="mb-0 text-sm"><a class="text-muted-foreground" href={home}>← {group.name}</a></p>
   <h1>Export links</h1>
   <p>
-    Everything shared to {group.name}, one row per link, with members' notes and how many people on
-    Radar saved it. Pick what you want and copy it into a draft, or download it. Names are never
-    included. Work that members made themselves goes in its own “From our members” section.
+    Everything shared to {group.name}, one row per link, with who shared it, their notes and how
+    many people on Radar saved it. Pick what you want and copy it into a draft, or download it.
+    Names are the ones members picked for this group; take them out of a post if someone would
+    rather not be credited. Work that members made themselves goes in its own “From our members” section.
   </p>
 
   <form class="mt-4 mb-2 flex flex-wrap items-end gap-2.5" method="get">
