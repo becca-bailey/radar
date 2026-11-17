@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_SHARE_TO, parseShareTo, resolveShareChoice, shareChoices, shareSummary } from './shares';
+import {
+  MAX_SHARE_TO,
+  OWN_WORK_LABEL,
+  parseShareTo,
+  resolveShareChoice,
+  shareChoices,
+  shareSummary,
+  shortcutMenu,
+  splitOwnWork,
+} from './shares';
 
 const groups = [
   { id: 'g-b', name: 'Bakers' },
@@ -88,5 +97,26 @@ describe('shareSummary', () => {
       " and shared to Readers, Bakers and Allotment — not shared: Chess's owner removed this link; " +
         "couldn't share to Film, try from the archive; couldn't find the group “Knitters”"
     );
+  });
+});
+
+describe('"I made this" in the Shortcut list', () => {
+  it('comes first, before the groups, even with no groups', () => {
+    expect(shortcutMenu(groups, 'g-r')).toEqual([OWN_WORK_LABEL, 'Readers', 'Allotment', 'Bakers']);
+    expect(shortcutMenu([])).toEqual([OWN_WORK_LABEL]);
+  });
+
+  it('never lets a group take its label', () => {
+    const labels = shortcutMenu([{ id: 'g-x', name: OWN_WORK_LABEL }]);
+    expect(labels).toEqual([OWN_WORK_LABEL, `${OWN_WORK_LABEL} (2)`]);
+    expect(resolveShareChoice(`${OWN_WORK_LABEL} (2)`, [{ id: 'g-x', name: OWN_WORK_LABEL }])?.groupId).toBe('g-x');
+    expect(resolveShareChoice(OWN_WORK_LABEL, [{ id: 'g-x', name: OWN_WORK_LABEL }])).toBeNull();
+  });
+
+  it('is read out of share_to, leaving only group labels', () => {
+    expect(splitOwnWork([OWN_WORK_LABEL, 'Readers'])).toEqual({ ownWork: true, groupLabels: ['Readers'] });
+    expect(splitOwnWork([' ★ i made this '])).toEqual({ ownWork: true, groupLabels: [] });
+    expect(splitOwnWork(['Readers'])).toEqual({ ownWork: false, groupLabels: ['Readers'] });
+    expect(splitOwnWork(parseShareTo(`${OWN_WORK_LABEL}\nBakers`))).toEqual({ ownWork: true, groupLabels: ['Bakers'] });
   });
 });

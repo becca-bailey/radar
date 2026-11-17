@@ -6,6 +6,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * both sides derive labels with shareChoices, so they always agree.
  */
 
+/**
+ * "I made this" rides in the Shortcut's group list as its first item, so
+ * marking your own work costs no extra question. Group labels never take
+ * this one: a group with the same name gets " (2)".
+ */
+export const OWN_WORK_LABEL = '★ I made this';
+
 export interface GroupOption {
   id: string;
   name: string;
@@ -28,7 +35,7 @@ export function shareChoices(groups: GroupOption[], lastUsedId: string | null = 
     return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) || a.id.localeCompare(b.id);
   });
   const choices: ShareChoice[] = [];
-  const taken = new Set<string>();
+  const taken = new Set<string>([OWN_WORK_LABEL.toLowerCase()]);
   for (const g of ordered) {
     const base = g.name.replace(/\s+/g, ' ').trim() || 'Untitled group';
     let label = base;
@@ -86,6 +93,21 @@ export function parseShareTo(value: unknown): string[] {
     if (labels.length === MAX_SHARE_TO) break;
   }
   return labels;
+}
+
+/**
+ * The Shortcut's menu: "I made this" first, then the group labels. Always
+ * has at least one item, so the Shortcut always shows it.
+ */
+export function shortcutMenu(groups: GroupOption[], lastUsedId: string | null = null): string[] {
+  return [OWN_WORK_LABEL, ...shareChoices(groups, lastUsedId).map((c) => c.label)];
+}
+
+/** Splits picked `share_to` labels into "I made this" and group labels. */
+export function splitOwnWork(labels: string[]): { ownWork: boolean; groupLabels: string[] } {
+  const own = OWN_WORK_LABEL.toLowerCase();
+  const groupLabels = labels.filter((l) => l.trim().toLowerCase() !== own);
+  return { ownWork: groupLabels.length < labels.length, groupLabels };
 }
 
 /** "A", "A and B", "A, B and C". */

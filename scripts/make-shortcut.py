@@ -8,8 +8,10 @@ Signing uses the macOS `shortcuts` CLI, so this must run on a Mac:
 
 The shortcut accepts a page from the share sheet, extracts the URL, fetches
 its options (GET /api/shortcut-options), asks for an optional note unless
-the person turned that off in Settings, and, if they're in any groups, asks
-which to share it to (pick any number; none just saves). Then
+the person turned that off in Settings, and shows one multi-select: "★ I
+made this" first, then their groups (pick any number; none just saves).
+The server builds that list and reads "★ I made this" back out of
+share_to, so the Shortcut doesn't treat it specially. Then
 it POSTs url + note + share_to to /api/saves with a Bearer token and shows
 the reply's message. The token is an import question: the Shortcuts app
 asks the person to paste theirs when they first set up the shortcut, into
@@ -17,7 +19,7 @@ an empty field.
 
 Nothing here can be checked without a device: after signing, import it on
 an iPhone and try a save with no groups, with groups (picking none, one and
-several), and with a blank note.
+several), with "★ I made this" picked, and with a blank note.
 """
 
 import plistlib
@@ -262,7 +264,9 @@ workflow = {
             },
         },
         {
-            # Only ask when the person is in a group.
+            # Only ask when there's something to pick. The server always
+            # sends "★ I made this", so today this is always true; kept so
+            # an empty list still just saves.
             # WFCondition 2 is "is greater than".
             "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
             "WFWorkflowActionParameters": {
@@ -283,7 +287,7 @@ workflow = {
             "WFWorkflowActionParameters": {
                 "UUID": UUID_CHOSEN,
                 "WFInput": output_attachment(UUID_CHOICES, "Dictionary Value"),
-                "WFChooseFromListActionPrompt": "Share to groups? Pick none to just save.",
+                "WFChooseFromListActionPrompt": "Share to groups, or mark it as yours? Pick none to just save.",
                 "WFChooseFromListActionSelectMultiple": True,
             },
         },

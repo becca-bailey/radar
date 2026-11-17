@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { dayKey } from '@/lib/dates';
+import { savedByLabel } from '@/lib/groupPool';
 import { toCsv, toHtmlList, toJson, toMarkdownList, type ExportItem } from '@/lib/exportFormats';
 
 export interface PickerRow extends ExportItem {
@@ -205,7 +206,8 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
                         <CardTitle>{row.title}</CardTitle>
                         <CardDescription>
                           {row.source ? `${row.source} · ` : ''}
-                          {row.readers && row.readers > 1 ? `shared by ${row.readers} · ` : ''}
+                          {row.ownWork ? (noun === 'link' ? 'made by a member · ' : 'made by you · ') : ''}
+                          {savedByLabel(row.savedBy) ? `${savedByLabel(row.savedBy)} · ` : ''}
                           {row.savedOn}
                         </CardDescription>
                       </CardHeader>

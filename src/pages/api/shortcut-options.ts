@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { userIdForBearerToken } from '../../lib/apiTokens';
-import { groupsForUser, shareChoices } from '../../lib/shares';
+import { groupsForUser, shortcutMenu } from '../../lib/shares';
 import { createServiceClient } from '../../lib/supabase';
 
 /**
@@ -8,10 +8,11 @@ import { createServiceClient } from '../../lib/supabase';
  * before it asks anything:
  *   ask_note — "yes" or "no" (Settings → Shortcut). A string, because
  *              Shortcuts compares text more reliably than JSON booleans.
- *   groups   — the share menu's group labels, last-used first. The
- *              Shortcut offers them as a multi-select and sends the picked
- *              labels back, one per line, as `share_to` on POST /api/saves;
- *              picking none just saves.
+ *   groups   — the Shortcut's multi-select: "★ I made this" first, then
+ *              the group labels, last-used first. The Shortcut sends the
+ *              picked labels back, one per line, as `share_to` on POST
+ *              /api/saves; picking none just saves. ("groups" is the
+ *              historical key; installed Shortcuts read it.)
  * Group names only, never members or what's in a group.
  */
 export const GET: APIRoute = async ({ request, locals }) => {
@@ -31,6 +32,5 @@ export const GET: APIRoute = async ({ request, locals }) => {
   const { data: profile } = await service.from('profiles').select('shortcut_ask_note').eq('id', userId).maybeSingle();
   const askNote = profile?.shortcut_ask_note === false ? 'no' : 'yes';
   const { groups, lastUsedId } = await groupsForUser(service, userId);
-  const labels = shareChoices(groups, lastUsedId).map((c) => c.label);
-  return Response.json({ groups: labels, ask_note: askNote });
+  return Response.json({ groups: shortcutMenu(groups, lastUsedId), ask_note: askNote });
 };

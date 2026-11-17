@@ -12,7 +12,12 @@ With single-user behavior settled, groups were rebuilt smaller. This overrides t
 
 - **A group is a shared pool.** Members share saves with a note; the group page shows the owner's **lenses** (saved searches over the pool, so members can browse by recurring topic) and what was shared in the last week.
 - **Named shares (revised 2026-11-17, RAD-63).** Every member picks a name for each group when they join or create it, and it shows on every share there. It doesn't have to be a legal name, and it can be changed but not cleared. A default name in Settings pre-fills it; changing the default doesn't rename anyone in groups they're already in. Members still don't see the member list. (Shares were anonymous before: nobody, owner included, saw who shared a link.)
-- **Export instead of editions.** Any member can export the pool by share date, sorted by how many shared, as a copyable list or Markdown/CSV/JSON. Built for crowdsourcing a newsletter's links post. No scheduled editions, no edition emails, no publishing step.
+- **Export instead of editions.** Any member can export the pool by share date, sorted by how many saved it (revised 2026-11-17, RAD-52; was how many shared), as a copyable list or Markdown/CSV/JSON. Built for crowdsourcing a newsletter's links post. No scheduled editions, no edition emails, no publishing step.
+- **Your own work (2026-11-17, RAD-52).** Keeping your own essay or newsletter is a different job from saving links to read later, so "I made this" marks a save as your own work. You can tick it in the save form, pick "★ I made this" at the top of the Shortcut's group list, or change it any time from a save's menu.
+  - **Archive.** Your own work sits in "Made by you" above Recent saves (the newest few, then a paged list at `/made`), and Recent saves, its topic chips and "from a while ago" leave it out.
+  - **Groups.** The group page lists this week's member work under "Made by members", apart from "Shared this week", and labels it "Made by a member" in lens results. A link one member made and another recommended shows in both lists, each with its own notes, because the flag belongs to each person's save.
+  - **Exports.** Own work comes last, under "From our members" in a group export and "My own work" in yours. The full archive export marks it too.
+- **Radar-wide save counts (2026-11-17, RAD-52).** Group cards and exports show how many people on Radar saved a link ("saved by 5"), in any group or privately, from two up. This replaces the count of members who shared it in exports (`shared_by` became `saved_by`). Sharers' names still show on cards.
 - **A share is a save × group link.** A save belongs to its user and can be shared to many groups; the group sees the save's link and note. Unsharing or leaving a group never touches the save.
 - **Moderation is the owner removing a link.** The link's shares in that group are marked removed (hidden there, can't be shared there again until restored). Members' saves, and their shares to other groups, are untouched; members see "removed by owner" on their save.
 - **Settings: name and invite link.** Cadence, edition size, per-source cap, names visible, categories and contribute-to-public are gone.
@@ -55,7 +60,7 @@ These are product decisions, already made. Do not reopen them in implementation 
 - **Personal archive first.** Saving never requires sharing. The archive is free for everyone and never gated by group membership.
 - **Export always on.** Markdown and JSON, including archived full text, from day one.
 - **Transparent ranking.** Every surfaced link shows why it is there (a label). The ranking method is documented on a public page.
-- **Layered privacy.** The archive sees everything. A group sees the link and the note. The public layer sees counts. Nothing flows upward without an explicit setting.
+- **Layered privacy.** The archive sees everything. A group sees the link and the note. The public layer sees counts. Nothing flows upward without an explicit setting. (Loosened 2026-11-17, RAD-52: a group also sees how many people on Radar saved a link, private saves included. It's a number from two up, never who.)
 - **No ads. No training on content.** If a model provider is used, its terms must exclude training, and the privacy page says which provider and what is sent.
 - **Platform-agnostic membership.** Groups are joined by invite link. The app never syncs with Substack, Patreon, or anyone else.
 

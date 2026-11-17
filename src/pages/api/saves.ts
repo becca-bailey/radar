@@ -7,6 +7,7 @@ import {
   groupsForUser,
   parseShareTo,
   shareChoiceLookup,
+  splitOwnWork,
   shareSaveAsService,
   shareSummary,
 } from '../../lib/shares';
@@ -21,6 +22,10 @@ import { createServiceClient } from '../../lib/supabase';
  * /api/shortcut-options, as a JSON array or one string with a label per
  * line. The save always happens first; sharing is a second step whose
  * outcome goes into `message` ("Saved and shared to Readers and Bakers").
+ *
+ * "I made this" marks the save as your own work: `own_work=1` from the web
+ * form, `own_work: true` in JSON, or the "★ I made this" item picked in the
+ * Shortcut's list (it arrives in `share_to` and isn't a group).
  */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const service = createServiceClient();
@@ -52,6 +57,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   let note: string | null = null;
   let title: string | null = null;
   let shareTo: string[] = [];
+  let ownWork = false;
   let origin: SaveFormOrigin = 'home';
   // Echoed in the no-link error so the Shortcut's notification shows
   // what actually arrived; tokens never appear in the body.
@@ -62,6 +68,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     url = String(form.get('url') ?? '');
     note = (form.get('note') as string) || null;
     title = (form.get('title') as string) || null;
+    ownWork = form.get('own_work') === '1';
     origin = saveFormOrigin(form.get('return_to'));
   } else {
     let body: unknown;
@@ -81,7 +88,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     title = typeof b.title === 'string' ? b.title : null;
     // "wayback" is ignored: Wayback saves were removed (RAD-49), and older
     // callers that still send it keep working.
-    shareTo = parseShareTo(b.share_to);
+    const picked = splitOwnWork(parseShareTo(b.share_to));
+    shareTo = picked.groupLabels;
+    ownWork = b.own_work === true || b.own_work === 'yes' || picked.ownWork;
     bodyDebug = `url=${JSON.stringify(b.url ?? null)?.slice(0, 80)} keys=${
       Object.keys(b).join(',') || 'none'
     }`;
@@ -101,6 +110,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       url,
       note,
       title,
+      ownWork,
     });
     if (import.meta.env.DEV) {
       // No scheduled functions in local dev, so a save kicks the ingest
@@ -109,6 +119,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     }
     if (isForm) return redirect(saveSuccessPath(origin, result));
     let message = result.alreadySaved ? 'Already on Radar' : 'Saved to Radar';
+    if (ownWork) message += ' as your own work';
     const shared: string[] = [];
     if (shareTo.length) {
       // Resolve every label against one snapshot of the menu: sharing

@@ -8,6 +8,8 @@ export interface SaveInput {
   /** Page title as seen by the saver (bookmarklet/Shortcut). Provisional:
    * shown until ingest extracts the real one. */
   title?: string | null;
+  /** "I made this": the saver's own work. Re-saving can set it, never clear it. */
+  ownWork?: boolean;
 }
 
 export interface SaveResult {
@@ -105,9 +107,11 @@ export async function createSave(
     .maybeSingle();
 
   if (existing) {
-    // Re-saving updates the note only when new text was provided.
-    if (input.note) {
-      const updated = await service.from('saves').update({ note: input.note }).eq('id', existing.id);
+    // Re-saving updates the note only when new text was provided, and
+    // marks it as your own work only when asked (it never unmarks it).
+    const changes = { ...(input.note ? { note: input.note } : {}), ...(input.ownWork ? { own_work: true } : {}) };
+    if (Object.keys(changes).length) {
+      const updated = await service.from('saves').update(changes).eq('id', existing.id);
       if (updated.error) throw new Error(`Failed to update save: ${updated.error.message}`);
     }
     return { saveId: existing.id, linkId: link.id, canonicalUrl, alreadySaved: true };
@@ -120,6 +124,7 @@ export async function createSave(
       link_id: link.id,
       original_url: originalUrl,
       note: input.note || null,
+      own_work: !!input.ownWork,
     })
     .select('id')
     .single();

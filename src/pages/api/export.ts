@@ -4,6 +4,7 @@ import { dayKey } from '../../lib/dates';
 interface ExportRow {
   original_url: string;
   note: string | null;
+  own_work: boolean;
   created_at: string;
   links: {
     canonical_url: string;
@@ -31,7 +32,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
   const { data, error } = await supabase
     .from('saves')
     .select(
-      'original_url, note, created_at, links(canonical_url, title, source, lead_text, full_text, status)'
+      'original_url, note, created_at, own_work, links(canonical_url, title, source, lead_text, full_text, status)'
     )
     .order('created_at', { ascending: true });
   if (error) {
@@ -54,6 +55,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
           title: r.links?.title ?? null,
           source: r.links?.source ?? null,
           note: r.note,
+          own_work: r.own_work,
           lead_text: r.links?.lead_text ?? null,
           full_text: r.links?.full_text ?? null,
         })),
@@ -77,6 +79,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
     if (r.links?.source) parts.push(`- Source: ${r.links.source}`);
     parts.push(`- Saved: ${dayKey(r.created_at, locals.timeZone)}`);
     if (r.note) parts.push(`- Why: ${r.note}`);
+    if (r.own_work) parts.push('- Made by me');
     if (r.links?.full_text) parts.push(`\n### Archived text\n\n${r.links.full_text}`);
   }
   return new Response(parts.join('\n'), {
