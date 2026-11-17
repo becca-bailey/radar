@@ -93,9 +93,14 @@ function DropdownMenuTrigger({
   );
 }
 
+// Keep menus at least this far from the screen edges. 16px is the same as the
+// page's side gutter (px-4 on <main> in Layout.astro).
+const COLLISION_PADDING = 16;
+
 function DropdownMenuContent({
   className,
   sideOffset = 6,
+  collisionPadding = COLLISION_PADDING,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -103,6 +108,7 @@ function DropdownMenuContent({
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
+        collisionPadding={collisionPadding}
         className={cn(
           'z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-40 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border-2 bg-popover p-1 font-sans text-popover-foreground shadow-hard data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           className

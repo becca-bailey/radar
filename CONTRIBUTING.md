@@ -46,8 +46,7 @@ npm run dev
 
 With `ADMIN_EMAILS` set to your email in `.env`, you can sign in locally and
 invite other test accounts at `/admin/invites`. Local sign-in emails land in the
-Supabase mail viewer that `supabase start` prints (port 55324 by default). Groups
-are behind a flag: set `GROUPS_ENABLED=true` to work on them.
+Supabase mail viewer that `supabase start` prints (port 55324 by default).
 
 `OPENAI_API_KEY` and `SAFE_BROWSING_API_KEY` are optional. Without them, links are
 archived but not categorized or semantically searchable, and the malware check

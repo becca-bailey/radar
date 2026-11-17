@@ -7,7 +7,6 @@ import CardList from '@/components/CardList.astro';
 import ItemCard from '@/components/ItemCard.astro';
 import TokenReveal from '../components/TokenReveal.astro';
 import { generateApiToken } from '../lib/apiTokens';
-import { groupsEnabled } from '../lib/flags';
 import { createServiceClient } from '../lib/supabase';
 import { formatDate } from '../lib/dates';
 
@@ -77,7 +76,7 @@ const timeZone = Astro.locals.timeZone;
       <span>
         Ask "why are you saving it?" each time
         <span class="block font-normal text-muted-foreground">
-          Off: the Shortcut saves without a note{groupsEnabled() ? ' and only asks about groups' : ''}. You can add a note later from your archive.
+          Off: the Shortcut saves without a note and only asks about groups. You can add a note later from your archive.
         </span>
       </span>
     </label>
@@ -87,7 +86,7 @@ const timeZone = Astro.locals.timeZone;
   <h2>API tokens</h2>
   <p>
     For the Radar Shortcut and anything else that saves on your behalf. A token can save
-    links to your archive{groupsEnabled() ? ' and share them to your groups' : ''}. It can't read your archive.
+    links to your archive and share them to your groups. It can't read your archive.
   </p>
 
   {newToken && <TokenReveal token={newToken} />}
@@ -136,7 +135,7 @@ const timeZone = Astro.locals.timeZone;
   <h2 id="delete-account">Delete your account</h2>
   <p>
     Permanently deletes your account, every save and note, your lenses and your API
-    tokens{groupsEnabled() ? ', and your group memberships. Groups you own are deleted for everyone' : ''}.
+    tokens, and your group memberships. Groups you own are deleted for everyone.
     Archived pages that nobody else saved are deleted too. This can't be undone, so <a href="/api/export?format=markdown">export your archive</a> first if you want to keep it.
   </p>
   {deleteError && <Alert variant="error">{deleteError}</Alert>}

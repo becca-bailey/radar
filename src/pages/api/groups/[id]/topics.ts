@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { groupsEnabled } from '../../../../lib/flags';
 import { loadSuggestions, retireSuggestion } from '../../../../lib/topicSuggestions';
 
 /**
@@ -15,7 +14,6 @@ async function ownsGroup(locals: App.Locals, groupId: string | undefined): Promi
 }
 
 export const GET: APIRoute = async ({ params, locals }) => {
-  if (!groupsEnabled()) return Response.json({ error: 'Groups are not enabled.' }, { status: 404 });
   if (!(await ownsGroup(locals, params.id))) {
     return Response.json({ error: 'Only the group owner sees suggestions.' }, { status: 403 });
   }
@@ -24,7 +22,6 @@ export const GET: APIRoute = async ({ params, locals }) => {
 };
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
-  if (!groupsEnabled()) return Response.json({ error: 'Groups are not enabled.' }, { status: 404 });
   if (!(await ownsGroup(locals, params.id))) {
     return Response.json({ error: 'Only the group owner can do that.' }, { status: 403 });
   }

@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { createdLensPath, embedLensQuery, lensHomePath, parseLensForm } from '../../lib/lenses';
-import { groupsEnabled } from '../../lib/flags';
 import { retireSuggestion } from '../../lib/topicSuggestions';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,7 +18,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   const form = await request.formData();
   const rawGroup = String(form.get('group_id') ?? '');
-  const groupId = groupsEnabled() && UUID_RE.test(rawGroup) ? rawGroup : null;
+  const groupId = UUID_RE.test(rawGroup) ? rawGroup : null;
   const home = lensHomePath(groupId);
   const fail = (msg: string) => redirect(`${home}?error=${encodeURIComponent(msg)}`);
 

@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { groupsEnabled } from '../../lib/flags';
 
 /**
  * POST /api/shares — share a save to a group, or unshare it. A save can be
@@ -11,9 +10,6 @@ import { groupsEnabled } from '../../lib/flags';
  * group's owner removed.
  */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
-  if (!groupsEnabled()) {
-    return Response.json({ error: 'Groups are not enabled.' }, { status: 404 });
-  }
   const { user, supabase } = locals;
   if (!user) {
     return Response.json({ error: 'Sign in first.' }, { status: 401 });
