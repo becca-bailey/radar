@@ -34,6 +34,17 @@ After the UX pass (TASKS Stages 10–11), the question became how to make Radar 
 - **Validate before building much more.** Run Phase 0 (§6, §11) with about ten paid subscribers. Watch one number: **the share of members who share a second link in their second week.** Interviews explain whatever the number says.
 - **Public face.** Signed-out visitors get a landing page at `/` that says what Radar is for and what it won't do. The code is open source under AGPL-3.0-or-later, with contributor guidelines and a security policy; the footer links to the source.
 
+## 0b. Revision: creators first (2026-11-18)
+
+This sharpens the mission. It adds to §0 and §0a; the non-negotiables (§2) and refusals (§14) stand.
+
+- **The mission: help people find good creators, not just the people who share them.** Sharers are how you find things; the writer, publication or channel behind the link is what you're there to find. When a choice comes down to crediting the sharer or the source, the source comes first.
+- **Send people to creators; don't host them.** No follows (§2), so Radar is never where you follow someone. It points you to the creator's own site, feed or newsletter and gets out of the way.
+- **Your archive knows your creators.** The creators you return to most come from your own saves, never from engagement data, and only you see them. Showing them is the first payoff after an import (RAD-72).
+- **The way in is the read-later refugee.** People leaving Pocket and Omnivore have years of saves and no home for them. Importing those saves, with full text fetched, is how strangers arrive without a community (RAD-69). They come because the archive works alone; groups come later.
+- **Say the promise out loud.** Those people have already been let down once. Export always on, open source and self-hostable are the pitch, not small print (RAD-70, RAD-71).
+- **Small sources, again.** "First time in this group" (RAD-27) and the shelved small-source ranking existed for this mission. Revisit them in that light before building anything like them.
+
 ## 1. Premise
 
 People read things they love and have nowhere good to put them. Bookmark managers fail because managing the manager is a job. Social platforms turn sharing into performance and reading into scrolling.
@@ -42,7 +53,7 @@ The app does three things, in this order:
 
 1. **Save.** Every link goes to the user's own archive first. Full text captured, searchable, never filed. Private by default, exportable always.
 2. **Share.** Optionally, the same save goes to one or more groups with a short note of why.
-3. **Surface.** Groups publish finite editions. Editions aggregate into public categories through a ranking designed to promote new and small sources alongside popular ones.
+3. **Surface.** Help people find the creators behind what they love: in their own archive first, then through groups. *(Revised 2026-11-18, see §0b. Originally: groups publish finite editions, which aggregate into public categories through a ranking designed to promote new and small sources alongside popular ones.)*
 
 Useful with one user. Fun with ten. Works with the whole internet.
 
