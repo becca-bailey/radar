@@ -106,11 +106,17 @@ if (user) {
             <circle cx="127.83" cy="330" r="21" fill="var(--gold)" stroke="var(--ink)" stroke-width="18"
             ></circle>
           </svg>
-          radar
+          {/* Fraunces sits its x-height low in the line box; lift it so the wordmark centres on the mark (RAD-65). */}
+          <span class="relative -top-[0.1em]">radar</span>
         </a>
+        {/*
+          Links carry a transparent border top and bottom, not just the bottom
+          one the hover underline needs, so their text stays centred with the
+          avatar and logo (RAD-65).
+        */}
         <nav
           aria-label="Main"
-          class="flex items-center gap-3.5 text-[0.92rem] font-semibold [&_a]:border-b-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-gold"
+          class="flex items-center gap-3.5 text-[0.92rem] font-semibold [&_a]:border-y-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-b-gold"
         >
           {
             user ? (
