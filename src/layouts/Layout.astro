@@ -26,6 +26,7 @@ if (user) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -86,13 +87,27 @@ if (user) {
         class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-[3px] border-foreground py-3.5"
       >
         <a
-          class="font-display font-wonk inline-flex items-baseline text-[1.45rem] leading-[1.15] font-extrabold tracking-[-0.01em] text-foreground no-underline"
+          class="font-display font-wonk inline-flex items-center gap-[0.3em] text-[1.45rem] leading-[1.15] font-extrabold tracking-[-0.01em] text-foreground no-underline"
           href="/"
           aria-label="Radar"
-          >radar<span
-            class="ml-[0.22em] size-[0.34em] -translate-y-[0.3em] self-center rounded-full border-2 border-foreground bg-gold shadow-[0_0_0_3px_var(--background),0_0_0_5px_var(--foreground)]"
-            aria-hidden="true"></span></a
         >
+          {/* The logo (public/favicon.svg), drawn with theme colours so it dims in dark mode. */}
+          <svg class="size-[1.3em] shrink-0" viewBox="26 26 460 460" aria-hidden="true">
+            <circle cx="256" cy="256" r="220" fill="var(--peach)"></circle>
+            <path d="M256 256 L256 36 A220 220 0 0 1 446.53 146 Z" fill="var(--blue)"></path>
+            <g fill="none" stroke="var(--ink)" stroke-width="18">
+              <circle cx="256" cy="256" r="76"></circle>
+              <circle cx="256" cy="256" r="148"></circle>
+              <circle cx="256" cy="256" r="220"></circle>
+              <line x1="256" y1="256" x2="446.53" y2="146"></line>
+            </g>
+            <circle cx="256" cy="256" r="20" fill="var(--ink)"></circle>
+            <circle cx="127.83" cy="330" r="36" fill="var(--peach)"></circle>
+            <circle cx="127.83" cy="330" r="21" fill="var(--gold)" stroke="var(--ink)" stroke-width="18"
+            ></circle>
+          </svg>
+          radar
+        </a>
         <nav
           aria-label="Main"
           class="flex items-center gap-3.5 text-[0.92rem] font-semibold [&_a]:border-b-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-gold"
