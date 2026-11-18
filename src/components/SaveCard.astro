@@ -3,6 +3,7 @@ import ItemCard from '@/components/ItemCard.astro';
 import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
 import { formatRecentDate } from '../lib/dates';
+import { opensInReader } from '../lib/readerHtml';
 
 /** One save in the archive list. */
 export interface SaveRow {
@@ -19,6 +20,8 @@ export interface SaveRow {
     image?: string | null;
     /** Set by ingest when bot protection blocked the fetch (links.metadata->>fetchBlocked). */
     fetch_blocked?: string | null;
+    /** Content type of the fetched page (links.metadata->>contentType); non-HTML has no archived text. */
+    content_type?: string | null;
   } | null;
   /** Groups this save is shared to (loaded only when groups are on). */
   shares?: { group_id: string; removed_at: string | null; picked_at?: string | null }[];
@@ -50,6 +53,8 @@ const title = displayTitle();
 const failed = link?.status === 'failed';
 // A site that challenges bots will challenge the retry too, so don't offer one.
 const blocked = failed && !!link?.fetch_blocked;
+// Archived pages open in the reader view, which links to the original.
+const href = opensInReader(link?.status, link?.content_type) ? `/saves/${row.id}` : (link?.canonical_url ?? row.original_url);
 
 // A save can be shared to many groups. Shares to groups you've left are
 // hidden; the form offers only groups it isn't in yet.
@@ -62,7 +67,7 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
 ---
 
 <ItemCard
-  href={link?.canonical_url ?? row.original_url}
+  href={href}
   title={title}
   thumb={link?.image ?? null}
   data-save-id={row.id}

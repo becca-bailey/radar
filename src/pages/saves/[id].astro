@@ -1,0 +1,233 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Why from '@/components/Why.astro';
+import { Alert } from '@/components/ui/alert';
+import SaveMenu from '@/components/SaveMenu.tsx';
+import { UUID_RE } from '../../lib/archiveCursor';
+import { formatRecentDate } from '../../lib/dates';
+import { readingMinutes, sanitizeSnapshot, textToHtml } from '../../lib/readerHtml';
+
+/**
+ * Reader view (RAD-21): one save's archived text on a clean page, with your
+ * note and a link to the original. The snapshot comes from someone else's
+ * site, so it's sanitized here on every render (src/lib/readerHtml.ts).
+ */
+const { user, supabase } = Astro.locals;
+const id = Astro.params.id ?? '';
+if (!user) {
+  return Astro.redirect(`/login?next=${encodeURIComponent(`/saves/${id}`)}`);
+}
+
+const notFound = () => new Response('Not found', { status: 404 });
+if (!UUID_RE.test(id)) return notFound();
+
+// RLS: a save, and its link, are readable only by the person who saved it.
+const { data: save } = await supabase
+  .from('saves')
+  .select('id, original_url, note, created_at, links(title, source, canonical_url, status, full_text, html_snapshot, archived_at)')
+  .eq('id', id)
+  .maybeSingle();
+if (!save) {
+  // Deleted from this page's menu: show "Deleted. Undo" on the archive instead.
+  const params = Astro.url.searchParams;
+  const trash = params.get('trash');
+  if (params.get('deleted') === '1' && trash && UUID_RE.test(trash)) {
+    return Astro.redirect(`/?deleted=1&trash=${trash}`);
+  }
+  return notFound();
+}
+const updated = Astro.url.searchParams.get('updated') === '1';
+const error = Astro.url.searchParams.get('error');
+
+const link = (save as unknown as {
+  links: {
+    title: string | null;
+    source: string | null;
+    canonical_url: string;
+    status: string;
+    full_text: string | null;
+    html_snapshot: string | null;
+    archived_at: string | null;
+  } | null;
+}).links;
+
+const originalUrl = link?.canonical_url ?? save.original_url;
+let host = '';
+try {
+  host = new URL(originalUrl).hostname.replace(/^www\./, '');
+} catch {}
+const title = link?.title || host || save.original_url;
+
+const body = link?.html_snapshot
+  ? sanitizeSnapshot(link.html_snapshot, originalUrl)
+  : link?.full_text
+    ? textToHtml(link.full_text)
+    : '';
+const minutes = link?.full_text ? readingMinutes(link.full_text) : null;
+const pending = link?.status === 'pending';
+const timeZone = Astro.locals.timeZone;
+---
+
+<Layout title={`${title} · Radar`} user={user}>
+  {updated && <Alert>Note updated.</Alert>}
+  {error && <Alert variant="error">{error}</Alert>}
+  <nav class="mt-2 flex items-center justify-between gap-3 text-sm">
+    <a class="text-muted-foreground" href="/">← Your archive</a>
+    <SaveMenu
+      client:visible
+      saveId={save.id}
+      title={title}
+      url={originalUrl}
+      note={save.note}
+      canRetry={false}
+      returnPath={`/saves/${save.id}`}
+    />
+  </nav>
+
+  <article class="reader">
+    <header>
+      <h1 class="font-display mt-5 mb-2 break-words">{title}</h1>
+      <p class="m-0 text-[0.9rem] text-muted-foreground">
+        {link?.source ?? host}
+        {' · '}{formatRecentDate(save.created_at, timeZone)}
+        {minutes !== null && ` · ${minutes} min read`}
+      </p>
+      <p class="mt-2 mb-0 text-[0.9rem]">
+        <a href={originalUrl} rel="noopener noreferrer">Read the original{host ? ` on ${host}` : ''} ↗</a>
+      </p>
+      {
+        save.note && (
+          <div class="mt-5 rounded-lg border-2 bg-card px-4 py-3 shadow-hard-sm">
+            <Why>{save.note}</Why>
+          </div>
+        )
+      }
+    </header>
+
+    {
+      body ? (
+        <div class="reader-body mt-8" set:html={body} />
+      ) : (
+        <p class="font-display mt-10 text-[1.05rem] text-muted-foreground italic">
+          {pending
+            ? 'Still archiving this one. Check back in a minute, or read the original.'
+            : "There's no archived text for this one. The original link is above."}
+        </p>
+      )
+    }
+
+    {
+      body && (
+        <footer class="mt-12 border-t-2 border-dashed border-hairline pt-4 text-[0.85rem] text-muted-foreground">
+          Archived{link?.archived_at ? ` ${formatRecentDate(link.archived_at, timeZone)}` : ''} from{' '}
+          <a href={originalUrl} rel="noopener noreferrer">{host || 'the original page'}</a>. Images load from
+          the original site.
+        </footer>
+      )
+    }
+  </article>
+</Layout>
+
+<style is:global>
+  /* Article text from the archived page. Base prose styles for main p, h2,
+     ul and ol come from global.css; these cover the rest. */
+  .reader-body {
+    font-size: 1.08rem;
+    line-height: 1.7;
+    overflow-wrap: break-word;
+  }
+  .reader-body h1,
+  .reader-body h2,
+  .reader-body h3,
+  .reader-body h4,
+  .reader-body h5,
+  .reader-body h6 {
+    margin: 2rem 0 0.6rem;
+    line-height: 1.25;
+  }
+  .reader-body h1 {
+    font-size: 1.5rem;
+  }
+  .reader-body h2 {
+    font-size: 1.3rem;
+  }
+  .reader-body h3 {
+    font-size: 1.15rem;
+  }
+  .reader-body h4,
+  .reader-body h5,
+  .reader-body h6 {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .reader-body img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem auto;
+    border-radius: var(--radius-md);
+  }
+  .reader-body figure {
+    margin: 1.5rem 0;
+  }
+  .reader-body figure img {
+    margin-bottom: 0.4rem;
+  }
+  .reader-body figcaption {
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+  .reader-body blockquote {
+    margin: 1.5rem 0;
+    padding-left: 1rem;
+    border-left: 4px solid var(--gold);
+    font-style: italic;
+  }
+  .reader-body pre {
+    margin: 1.5rem 0;
+    padding: 0.8rem 1rem;
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    background: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .reader-body code {
+    font-size: 0.9em;
+  }
+  .reader-body :not(pre) > code {
+    padding: 0.1em 0.3em;
+    border-radius: 4px;
+    background: var(--muted);
+  }
+  .reader-body table {
+    display: block;
+    max-width: 100%;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .reader-body th,
+  .reader-body td {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--hairline);
+    text-align: left;
+    vertical-align: top;
+  }
+  .reader-body hr {
+    margin: 2rem 0;
+    border: 0;
+    border-top: 2px dashed var(--hairline);
+  }
+  .reader-body li + li {
+    margin-top: 0.3rem;
+  }
+  .reader-body ul ul,
+  .reader-body ol ol,
+  .reader-body ul ol,
+  .reader-body ol ul {
+    margin: 0.3rem 0;
+  }
+</style>

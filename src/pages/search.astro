@@ -11,6 +11,7 @@ import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
 import { embedTexts, embeddingsConfigured } from '../lib/embeddings';
 import { sanitizeSnippet } from '../lib/snippet';
+import { opensInReader } from '../lib/readerHtml';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -53,6 +54,22 @@ if (q) {
   });
   if (error) searchError = error.message;
   results = (data ?? []) as Result[];
+}
+
+// Archived pages open in the reader view, the rest go to the original, as
+// on the archive page. search_archive doesn't return status or type.
+const readerIds = new Set<string>();
+if (results.length > 0) {
+  const { data: rows } = await supabase
+    .from('saves')
+    .select('id, links(status, content_type:metadata->>contentType)')
+    .in(
+      'id',
+      results.map((r) => r.save_id)
+    );
+  for (const row of (rows ?? []) as unknown as { id: string; links: { status: string; content_type: string | null } | null }[]) {
+    if (opensInReader(row.links?.status, row.links?.content_type)) readerIds.add(row.id);
+  }
 }
 
 function displayTitle(r: Result): string {
@@ -102,7 +119,7 @@ function displayTitle(r: Result): string {
         </div>
         <CardList>
           {results.map((r) => (
-            <ItemCard href={r.canonical_url} title={displayTitle(r)}>
+            <ItemCard href={readerIds.has(r.save_id) ? `/saves/${r.save_id}` : r.canonical_url} title={displayTitle(r)}>
               <Fragment slot="meta">{r.source ?? ''}</Fragment>
               <SaveMenu
                 slot="action"
