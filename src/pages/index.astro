@@ -14,6 +14,7 @@ import SkeletonCards from '@/components/SkeletonCards.astro';
 import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
 import { dayKey } from '../lib/dates';
 import { UUID_RE, afterCursorFilter, nextPageHref, parseCursor } from '../lib/archiveCursor';
+import { savesWithArchivedText } from '../lib/saves';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -125,6 +126,11 @@ const rows = fetched.slice(0, PAGE_SIZE);
 const lastRow = rows.at(-1);
 const moreHref =
   fetched.length > PAGE_SIZE && lastRow ? nextPageHref({ createdAt: lastRow.created_at, id: lastRow.id }, topic) : null;
+// Which shown saves can open in the reader view ("Read archived text").
+const withText = await savesWithArchivedText(
+  supabase,
+  [...rows, ...made, ...(resurfaced ? [resurfaced] : [])].map((r) => r.id)
+);
 const chip = badgeVariants({ variant: 'chip' });
 
 // Once there's an archive, saving mostly happens from the share sheet;
@@ -196,7 +202,7 @@ const lensTopic = activeCat?.name ?? null;
           From {agoLabel(new Date(resurfaced.created_at), now)}
         </h2>
         <CardList>
-          <SaveCard row={resurfaced} groups={groups} defaultGroupId={defaultGroupId} topic={topic} />
+          <SaveCard row={resurfaced} groups={groups} defaultGroupId={defaultGroupId} topic={topic} hasArchivedText={withText.has(resurfaced.id)} />
         </CardList>
         <p class="m-0 mt-1.5 text-sm text-muted-foreground">A different one tomorrow.</p>
       </section>
@@ -212,7 +218,7 @@ const lensTopic = activeCat?.name ?? null;
         </div>
         <CardList>
           {made.map((row) => (
-            <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} hideOwnWork />
+            <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} hideOwnWork hasArchivedText={withText.has(row.id)} />
           ))}
         </CardList>
         {(madeCount ?? 0) > made.length && (
@@ -310,7 +316,7 @@ const lensTopic = activeCat?.name ?? null;
     ) : (
       <CardList data-archive-list>
         {rows.map((row) => (
-          <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} topic={topic} />
+          <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} topic={topic} hasArchivedText={withText.has(row.id)} />
         ))}
       </CardList>
     )

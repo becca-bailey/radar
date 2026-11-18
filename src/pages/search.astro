@@ -11,6 +11,7 @@ import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
 import { embedTexts, embeddingsConfigured } from '../lib/embeddings';
 import { sanitizeSnippet } from '../lib/snippet';
+import { savesWithArchivedText } from '../lib/saves';
 
 const { user, supabase } = Astro.locals;
 if (!user) {
@@ -54,6 +55,13 @@ if (q) {
   if (error) searchError = error.message;
   results = (data ?? []) as Result[];
 }
+
+// Saves with archived text get "Read archived text" in the menu, as on
+// the archive page.
+const readerIds = await savesWithArchivedText(
+  supabase,
+  results.map((r) => r.save_id)
+);
 
 function displayTitle(r: Result): string {
   if (r.title) return r.title;
@@ -111,6 +119,7 @@ function displayTitle(r: Result): string {
                 title={displayTitle(r)}
                 url={r.canonical_url}
                 note={r.note}
+                readerHref={readerIds.has(r.save_id) ? `/saves/${r.save_id}` : null}
                 canRetry={false}
                 returnPath={`/search?q=${encodeURIComponent(q)}`}
               />

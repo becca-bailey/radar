@@ -38,9 +38,12 @@ interface Props {
   hideOwnWork?: boolean;
   /** Same-site path to come back to after an action (default: home). */
   returnPath?: string | null;
+  /** The save has archived text (savesWithArchivedText), so the menu offers the reader view. */
+  hasArchivedText?: boolean;
 }
 
-const { row, groups = [], defaultGroupId = '', topic = null, hideOwnWork = false, returnPath = null } = Astro.props;
+const { row, groups = [], defaultGroupId = '', topic = null, hideOwnWork = false, returnPath = null, hasArchivedText = false } =
+  Astro.props;
 const link = row.links;
 
 function displayTitle(): string {
@@ -57,6 +60,10 @@ const title = displayTitle();
 const failed = link?.status === 'failed';
 // A site that challenges bots will challenge the retry too, so don't offer one.
 const blocked = failed && !!link?.fetch_blocked;
+// The title goes to the original; saves with archived text add "Read
+// archived text" to the menu.
+const href = link?.canonical_url ?? row.original_url;
+const readerHref = hasArchivedText ? `/saves/${row.id}` : null;
 
 // A save can be shared to many groups. Shares to groups you've left are
 // hidden; the form offers only groups it isn't in yet.
@@ -69,7 +76,7 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
 ---
 
 <ItemCard
-  href={link?.canonical_url ?? row.original_url}
+  href={href}
   title={title}
   thumb={link?.image ?? null}
   data-save-id={row.id}
@@ -109,6 +116,7 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
     title={title}
     url={link?.canonical_url ?? row.original_url}
     note={row.note}
+    readerHref={readerHref}
     canRetry={failed && !blocked}
     ownWork={!!row.own_work}
     topic={topic}

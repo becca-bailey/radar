@@ -7,6 +7,7 @@ import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
 import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
 import PendingSavesRefresh from '@/components/PendingSavesRefresh.astro';
 import { parsePage } from '../lib/groupPool';
+import { savesWithArchivedText } from '../lib/saves';
 
 /**
  * Everything you marked "I made this", newest first, in numbered pages with
@@ -47,6 +48,8 @@ const [{ data, error: loadError }, { data: myGroups }, { data: profile }] = awai
 const fetched = (data ?? []) as unknown as SaveRow[];
 const items = fetched.slice(0, PER_PAGE);
 const hasOlder = fetched.length > PER_PAGE;
+// Which shown saves can open in the reader view ("Read archived text").
+const withText = await savesWithArchivedText(supabase, items.map((r) => r.id));
 
 const groups = (myGroups ?? []) as { id: string; name: string }[];
 const defaultGroupId = profile?.last_shared_group_id ?? groups[0]?.id ?? '';
@@ -89,7 +92,7 @@ const error = params.get('error') ?? loadError?.message ?? null;
     ) : (
       <CardList>
         {items.map((row) => (
-          <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} hideOwnWork returnPath={pagePath(page)} />
+          <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} hideOwnWork returnPath={pagePath(page)} hasArchivedText={withText.has(row.id)} />
         ))}
       </CardList>
     )
