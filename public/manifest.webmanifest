@@ -1,0 +1,21 @@
+{
+  "name": "Radar",
+  "short_name": "Radar",
+  "description": "Your reading archive: save links, keep the full text, read it offline.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "minimal-ui",
+  "background_color": "#fbf9f8",
+  "theme_color": "#fbf9f8",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "/save",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  }
+}

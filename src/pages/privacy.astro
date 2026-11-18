@@ -43,8 +43,26 @@ const { user } = Astro.locals;
     <li>Your notes and timestamps, and group memberships.</li>
     <li>Your browser's time zone (like "America/Los_Angeles"), in a cookie and on your
       account, so dates show on your own calendar.</li>
+    <li>Copies of your recent saves in your own browser, for offline reading (see
+      <a href="#on-this-device">On your device</a>).</li>
   </ul>
   <p>No ad identifiers, no analytics profiles, no payment data, no data about where a group member came from.</p>
+
+  <h2 id="on-this-device">On your device</h2>
+  <p>
+    So you can read without a connection, the browser you're signed in on keeps copies of
+    your most recent saves that have archived text: the archived text, your note on each,
+    and the page around them. They stay in that browser's storage for Radar, on that device
+    only, and are replaced as you save new things. You can see them at{' '}
+    <a href="/offline">Available offline</a>.
+  </p>
+  <p>
+    Signing out or deleting your account removes them from the browser you do it in. Signing
+    out ends your sessions everywhere, so on your other devices they're removed the next
+    time Radar opens there with a connection. You can also clear the site's data in that
+    browser's settings. Article images aren't copied:
+    offline, they don't show.
+  </p>
 
   <h2>What leaves the server, and to whom</h2>
   <ul>

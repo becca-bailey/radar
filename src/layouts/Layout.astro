@@ -27,6 +27,9 @@ if (user) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#fbf9f8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#2a2622" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -48,7 +51,7 @@ if (user) {
       } catch (e) {}
     </script>
   </head>
-  <body class="relative min-h-svh">
+  <body class="relative min-h-svh" data-user-id={user?.id}>
     {/* Shown while a form submit waits on the server (src/scripts/submitting.ts). */}
     <div
       class="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-1 animate-pulse bg-gold [html:has(form[data-submitting])_&]:block"
@@ -155,6 +158,11 @@ if (user) {
     </main>
     <script>
       import '../scripts/submitting';
+      import { startOffline } from '../scripts/offline';
+
+      // Offline copies of recent saves for a signed-in reader; cleared on
+      // any signed-out page (RAD-25).
+      startOffline(document.body.dataset.userId || null);
     </script>
   </body>
 </html>
