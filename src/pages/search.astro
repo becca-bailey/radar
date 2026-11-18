@@ -56,8 +56,8 @@ if (q) {
   results = (data ?? []) as Result[];
 }
 
-// Archived pages open in the reader view, the rest go to the original, as
-// on the archive page. search_archive doesn't return status or type.
+// Archived pages get "Read archived text" in the menu, as on the archive
+// page. search_archive doesn't return status or type.
 const readerIds = new Set<string>();
 if (results.length > 0) {
   const { data: rows } = await supabase
@@ -119,7 +119,7 @@ function displayTitle(r: Result): string {
         </div>
         <CardList>
           {results.map((r) => (
-            <ItemCard href={readerIds.has(r.save_id) ? `/saves/${r.save_id}` : r.canonical_url} title={displayTitle(r)}>
+            <ItemCard href={r.canonical_url} title={displayTitle(r)}>
               <Fragment slot="meta">{r.source ?? ''}</Fragment>
               <SaveMenu
                 slot="action"
@@ -128,6 +128,7 @@ function displayTitle(r: Result): string {
                 title={displayTitle(r)}
                 url={r.canonical_url}
                 note={r.note}
+                readerHref={readerIds.has(r.save_id) ? `/saves/${r.save_id}` : null}
                 canRetry={false}
                 returnPath={`/search?q=${encodeURIComponent(q)}`}
               />

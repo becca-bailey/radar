@@ -53,8 +53,10 @@ const title = displayTitle();
 const failed = link?.status === 'failed';
 // A site that challenges bots will challenge the retry too, so don't offer one.
 const blocked = failed && !!link?.fetch_blocked;
-// Archived pages open in the reader view, which links to the original.
-const href = opensInReader(link?.status, link?.content_type) ? `/saves/${row.id}` : (link?.canonical_url ?? row.original_url);
+// The title goes to the original; archived pages add "Read archived text"
+// to the menu.
+const href = link?.canonical_url ?? row.original_url;
+const readerHref = opensInReader(link?.status, link?.content_type) ? `/saves/${row.id}` : null;
 
 // A save can be shared to many groups. Shares to groups you've left are
 // hidden; the form offers only groups it isn't in yet.
@@ -99,6 +101,7 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
     title={title}
     url={link?.canonical_url ?? row.original_url}
     note={row.note}
+    readerHref={readerHref}
     canRetry={failed && !blocked}
     topic={topic}
     sharedIn={sharedIn}
