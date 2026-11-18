@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  BookOpenIcon,
   CheckIcon,
   LinkIcon,
   MoreHorizontalIcon,
@@ -43,6 +44,8 @@ interface Props {
   /** The saved page's URL, for the copy-link action. */
   url: string;
   note: string | null;
+  /** The reader view for this save (/saves/:id), when its text is archived. */
+  readerHref?: string | null;
   /** Archiving failed, so offer to try again. */
   canRetry: boolean;
   /** Active topic filter, so the page returns to the same view. */
@@ -57,8 +60,8 @@ interface Props {
 }
 
 /**
- * The three-dot menu on a save: copy the link, edit the note, share to a
- * group, retry a failed archive, delete. Every action is a plain form post
+ * The three-dot menu on a save: read the archived text, copy the link, edit
+ * the note, share to a group, retry a failed archive, delete. Every action is a plain form post
  * (to /api/saves/:id or /api/shares); React only provides the menu and
  * dialogs. Delete has no confirm step: the page offers Undo afterwards.
  */
@@ -67,6 +70,7 @@ export default function SaveMenu({
   title,
   url,
   note,
+  readerHref,
   canRetry,
   topic,
   returnPath,
@@ -147,6 +151,14 @@ export default function SaveMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {readerHref && (
+            <DropdownMenuItem asChild>
+              <a href={readerHref} className="text-inherit no-underline">
+                <BookOpenIcon aria-hidden="true" />
+                Read archived text
+              </a>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onSelect={() => void copyLink()}>
             <LinkIcon aria-hidden="true" />
             Copy link

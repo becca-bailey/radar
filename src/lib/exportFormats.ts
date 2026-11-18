@@ -56,7 +56,8 @@ function escapeMarkdownUrl(s: string): string {
   return s.replace(/[()\s]/g, (c) => (c === '(' ? '%28' : c === ')' ? '%29' : encodeURIComponent(c)));
 }
 
-function escapeHtml(s: string): string {
+/** Escape text for HTML content or a double-quoted attribute. */
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
