@@ -6,9 +6,10 @@ import { Alert } from '@/components/ui/alert';
 import { generateApiToken } from '../lib/apiTokens';
 import { createServiceClient } from '../lib/supabase';
 import { detectPlatform, methodOrder, type SaveMethod } from '../lib/platform';
+import { OFFLINE_LIMIT } from '../lib/offline';
 
-// Guided capture setup: get Radar into the iOS share sheet and the
-// desktop bookmarks bar without asking anyone to build anything.
+// Guided capture setup: get Radar into the iOS and Android share sheets and
+// the desktop bookmarks bar without asking anyone to build anything.
 const { user } = Astro.locals;
 if (!user) {
   return Astro.redirect('/login');
@@ -36,11 +37,12 @@ if (Astro.request.method === 'POST') {
 const shortcutHref = '/Put%20it%20on%20Radar.shortcut';
 
 // Each method gets its own section; the one for the visitor's platform goes
-// first. Both are always rendered, only the order changes.
+// first. All are always rendered, only the order changes.
 const order = methodOrder(detectPlatform(Astro.request.headers.get('user-agent')));
 const methodLabels: Record<SaveMethod, string> = {
   shortcut: 'iPhone & iPad',
   bookmarklet: 'Desktop browsers',
+  android: 'Android',
 };
 ---
 
@@ -53,7 +55,7 @@ const methodLabels: Record<SaveMethod, string> = {
 
   {message && <Alert>{message}</Alert>}
 
-  <nav class="text-sm text-muted-foreground" aria-label="Save methods">
+  <nav class="text-sm text-muted-foreground" aria-label="Sections">
     Jump to:{' '}
     <ul class="inline-flex list-none flex-wrap gap-x-4 p-0" data-method-list>
       {
@@ -63,6 +65,7 @@ const methodLabels: Record<SaveMethod, string> = {
           </li>
         ))
       }
+      <li><a href="#home-screen">Home Screen</a></li>
     </ul>
   </nav>
 
@@ -110,6 +113,31 @@ const methodLabels: Record<SaveMethod, string> = {
               share menu there too.
             </p>
           </section>
+        ) : method === 'android' ? (
+          <section id="android" data-method="android">
+            <h2>{methodLabels.android}</h2>
+            <p>
+              Once Radar is on your Home Screen, <strong>Radar</strong> appears in the share sheet of
+              every app: Chrome, YouTube, anywhere you can tap Share. No token needed: it uses your
+              sign-in.
+            </p>
+            <ol class="grid gap-2.5">
+              <li>
+                <a href="#home-screen-android">Add Radar to your Home Screen</a> from Chrome.
+              </li>
+              <li>
+                In any app, tap <strong>Share</strong>, then <strong>Radar</strong>. If you don't see it,
+                scroll the row of apps or tap <strong>More</strong>.
+              </li>
+              <li>
+                Radar opens with the link filled in. Add why you're saving it if you like, then tap{' '}
+                <strong>Save</strong>.
+              </li>
+            </ol>
+            <p class="text-sm text-muted-foreground">
+              Radar may take a minute to appear in the share sheet after you add it.
+            </p>
+          </section>
         ) : (
           <section id="bookmarklet" data-method="bookmarklet">
             <h2>{methodLabels.bookmarklet}</h2>
@@ -129,12 +157,76 @@ const methodLabels: Record<SaveMethod, string> = {
     }
   </div>
 
+  <section id="home-screen">
+    <h2>Home Screen</h2>
+    <p>Put Radar on your phone's Home Screen to open your archive in one tap.</p>
+
+    <h3 id="home-screen-ios">iPhone & iPad</h3>
+    <ol class="grid gap-2.5">
+      <li>Open Radar in Safari and sign in.</li>
+      <li>
+        Tap the <strong>Share</strong> button. In newer versions of Safari it's in the{' '}
+        <strong>⋯</strong> menu next to the address bar.
+      </li>
+      <li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+    </ol>
+    <p class="text-sm text-muted-foreground">
+      Radar opens from the icon in Safari, where you're already signed in. To save pages from other
+      apps on iPhone, use <a href="#shortcut">the Radar Shortcut</a>.
+    </p>
+
+    <h3 id="home-screen-android">Android</h3>
+    <Button type="button" className="mb-3 hidden" data-install>
+      Install Radar
+    </Button>
+    <ol class="grid gap-2.5">
+      <li>Open Radar in Chrome and sign in.</li>
+      <li>
+        Tap Chrome's <strong>⋮</strong> menu, then <strong>Add to Home screen</strong> or{' '}
+        <strong>Install app</strong>.
+      </li>
+      <li>Tap <strong>Install</strong> to confirm.</li>
+    </ol>
+    <p class="text-sm text-muted-foreground">
+      This also puts Radar in your share sheet: see <a href="#android">saving on Android</a>. Other
+      browsers that can install web apps work too; the menu wording varies.
+    </p>
+  </section>
+
+  <section id="offline">
+    <h2>Read offline</h2>
+    <p>
+      On each phone or computer where you're signed in, Radar keeps your {OFFLINE_LIMIT} most recent saves
+      that have archived text, so they open without a connection. When Radar can't be reached it shows{' '}
+      <a href="/offline">what's on this device</a>. Images still need a connection. Signing out removes
+      the copies.
+    </p>
+  </section>
+
   <p class="text-sm text-muted-foreground">
     Tokens can be reviewed and revoked any time in <a href="/settings">Settings</a>.
   </p>
 </Layout>
 
 <script>
+  // Chrome on Android offers its own install prompt; show a button for it in
+  // the Home Screen section when it's available (not yet installed, supported
+  // browser).
+  const install = document.querySelector<HTMLButtonElement>('[data-install]');
+  let prompt: (Event & { prompt(): Promise<void> }) | null = null;
+  addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    prompt = event as typeof prompt;
+    install?.classList.remove('hidden');
+  });
+  install?.addEventListener('click', async () => {
+    if (!prompt) return;
+    await prompt.prompt();
+    prompt = null;
+    install.classList.add('hidden');
+  });
+  addEventListener('appinstalled', () => install?.classList.add('hidden'));
+
   // iPadOS Safari sends a Mac user agent, so the server puts the bookmarklet
   // first. A touch-capable "Mac" is an iPad: move the Shortcut back to the top.
   const isIpad = /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;

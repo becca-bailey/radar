@@ -47,19 +47,22 @@ describe('detectPlatform', () => {
 
 describe('methodOrder', () => {
   it('puts the bookmarklet first on desktops', () => {
-    expect(methodOrder('mac')).toEqual(['bookmarklet', 'shortcut']);
-    expect(methodOrder('desktop')).toEqual(['bookmarklet', 'shortcut']);
+    expect(methodOrder('mac')).toEqual(['bookmarklet', 'shortcut', 'android']);
+    expect(methodOrder('desktop')).toEqual(['bookmarklet', 'shortcut', 'android']);
   });
 
-  it('puts the Shortcut first everywhere else', () => {
-    expect(methodOrder('ios')).toEqual(['shortcut', 'bookmarklet']);
-    expect(methodOrder('android')).toEqual(['shortcut', 'bookmarklet']);
-    expect(methodOrder('unknown')).toEqual(['shortcut', 'bookmarklet']);
+  it('puts the Android app first on Android', () => {
+    expect(methodOrder('android')).toEqual(['android', 'shortcut', 'bookmarklet']);
+  });
+
+  it('puts the Shortcut first on iOS and unknown clients', () => {
+    expect(methodOrder('ios')).toEqual(['shortcut', 'bookmarklet', 'android']);
+    expect(methodOrder('unknown')).toEqual(['shortcut', 'android', 'bookmarklet']);
   });
 
   it('always includes every method', () => {
     for (const p of ['ios', 'android', 'mac', 'desktop', 'unknown'] as const) {
-      expect([...methodOrder(p)].sort()).toEqual(['bookmarklet', 'shortcut']);
+      expect([...methodOrder(p)].sort()).toEqual(['android', 'bookmarklet', 'shortcut']);
     }
   });
 });

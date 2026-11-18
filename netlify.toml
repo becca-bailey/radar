@@ -9,3 +9,10 @@
   to = "https://onyourradar.app/:splat"
   status = 301
   force = true
+
+# The service worker (RAD-25) must be rechecked on every visit, so a fix to
+# it reaches phones on their next page load.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

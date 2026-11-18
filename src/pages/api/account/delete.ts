@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { CLEAR_OFFLINE_DATA } from '../../../lib/offline';
 import { createServiceClient } from '../../../lib/supabase';
 
 /**
@@ -43,5 +44,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   // Clears the session cookies (the server-side session no longer exists).
   await supabase.auth.signOut().catch(() => {});
-  return redirect('/login?account_deleted=1');
+  // Also drop this device's offline copies of the archive (RAD-25).
+  const response = redirect('/login?account_deleted=1');
+  response.headers.set('Clear-Site-Data', CLEAR_OFFLINE_DATA);
+  return response;
 };

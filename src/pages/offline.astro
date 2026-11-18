@@ -1,0 +1,72 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+/**
+ * Saves kept on this device for offline reading (RAD-25). The service worker
+ * (public/sw.js) shows this page when Radar can't be reached, so the list
+ * comes from the browser's cache, not the server: it's what this device
+ * actually has.
+ */
+const { user } = Astro.locals;
+if (!user) {
+  return Astro.redirect(`/login?next=${encodeURIComponent('/offline')}`);
+}
+---
+
+<Layout title="Available offline — Radar" user={user}>
+  <h1>Available offline</h1>
+  <p data-offline-status class="hidden font-semibold">You're offline, or Radar can't be reached right now.</p>
+  <p>
+    Your most recent saves with archived text are kept on this device, so they open without a
+    connection. Images need a connection.
+  </p>
+  <ul class="grid list-none gap-3 p-0" data-offline-list></ul>
+  <p class="hidden text-muted-foreground" data-offline-empty>
+    Nothing on this device yet. Open Radar while you're online and your recent saves will be
+    copied here.
+  </p>
+  <p class="text-sm text-muted-foreground">
+    Signing out removes these copies. <a href="/privacy#on-this-device">What's kept on this device</a>
+  </p>
+</Layout>
+
+<script>
+  import { OFFLINE_CACHE, readOfflineIndex, readerPath, type OfflineIndex } from '../lib/offline';
+
+  const list = document.querySelector<HTMLUListElement>('[data-offline-list]')!;
+  const empty = document.querySelector<HTMLElement>('[data-offline-empty]')!;
+  const status = document.querySelector<HTMLElement>('[data-offline-status]')!;
+
+  const showStatus = () => status.classList.toggle('hidden', navigator.onLine);
+  showStatus();
+  addEventListener('online', showStatus);
+  addEventListener('offline', showStatus);
+
+  async function render() {
+    let index: OfflineIndex | null = null;
+    try {
+      index = await readOfflineIndex(await caches.open(OFFLINE_CACHE));
+    } catch {}
+    // Only this account's copies (the sync replaces another account's).
+    const userId = document.body.dataset.userId;
+    const saves = index && index.userId === userId ? index.saves : [];
+    empty.classList.toggle('hidden', saves.length > 0);
+    list.replaceChildren(
+      ...saves.map((s) => {
+        const li = document.createElement('li');
+        li.className = 'rounded-lg border-2 bg-card px-4 py-3 shadow-hard-sm';
+        const a = document.createElement('a');
+        a.href = readerPath(s.id);
+        a.className = 'font-display text-[1.05rem] font-semibold';
+        a.textContent = s.title;
+        const meta = document.createElement('p');
+        meta.className = 'm-0 mt-1 text-[0.85rem] text-muted-foreground';
+        const saved = new Date(s.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        meta.textContent = [s.source, `Saved ${saved}`].filter(Boolean).join(' · ');
+        li.append(a, meta);
+        return li;
+      })
+    );
+  }
+  void render();
+</script>

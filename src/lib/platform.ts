@@ -5,7 +5,7 @@
  */
 export type Platform = 'ios' | 'android' | 'mac' | 'desktop' | 'unknown';
 
-export type SaveMethod = 'shortcut' | 'bookmarklet';
+export type SaveMethod = 'shortcut' | 'bookmarklet' | 'android';
 
 export function detectPlatform(userAgent: string | null | undefined): Platform {
   const ua = userAgent ?? '';
@@ -21,12 +21,21 @@ export function detectPlatform(userAgent: string | null | undefined): Platform {
 }
 
 /**
- * Desktops get the bookmarklet first. Phones and unknown clients keep the
- * Shortcut first: there's no Android method yet, and the Shortcut is the
- * one that works without a desktop browser.
+ * Each platform's own method first: the bookmarklet on desktops, the
+ * installed app's share target on Android, the Shortcut on iPhone and iPad.
+ * Unknown clients keep the Shortcut first, then Android, since both work
+ * without a desktop browser.
  */
 export function methodOrder(platform: Platform): SaveMethod[] {
-  return platform === 'mac' || platform === 'desktop'
-    ? ['bookmarklet', 'shortcut']
-    : ['shortcut', 'bookmarklet'];
+  switch (platform) {
+    case 'mac':
+    case 'desktop':
+      return ['bookmarklet', 'shortcut', 'android'];
+    case 'android':
+      return ['android', 'shortcut', 'bookmarklet'];
+    case 'ios':
+      return ['shortcut', 'bookmarklet', 'android'];
+    default:
+      return ['shortcut', 'android', 'bookmarklet'];
+  }
 }

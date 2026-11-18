@@ -3,15 +3,18 @@ import Layout from '../layouts/Layout.astro';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { sharedPage } from '../lib/shareTarget';
 
-// Bookmarklet target: a small prefilled save form that works in a popup.
+// Bookmarklet and Android share target (manifest.webmanifest): a small
+// prefilled save form that works in a popup or the installed app.
 const { user } = Astro.locals;
 if (!user) {
-  return Astro.redirect('/login');
+  // Come back to the same shared link after signing in.
+  return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`);
 }
 
-const url = Astro.url.searchParams.get('url') ?? '';
-const title = Astro.url.searchParams.get('title') ?? '';
+// Android apps put the link in `url` or somewhere in `text`.
+const { url, title } = sharedPage(Astro.url.searchParams);
 const done = Astro.url.searchParams.get('done') === '1';
 const already = Astro.url.searchParams.get('already') === '1';
 const error = Astro.url.searchParams.get('error');
@@ -22,6 +25,8 @@ const error = Astro.url.searchParams.get('error');
     done ? (
       <>
         <Alert>{already ? 'Already on Radar.' : 'Saved to Radar.'} You can close this window.</Alert>
+        {/* The installed app (Android share target) may not let a page close itself. */}
+        <p class="text-sm"><a href="/">Go to your archive</a></p>
         <script is:inline>
           setTimeout(() => window.close(), 1200);
         </script>
