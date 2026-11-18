@@ -164,17 +164,6 @@ export function textToHtml(text: string): string {
     .join('\n');
 }
 
-/**
- * Whether a save opens in the reader view rather than going straight to the
- * original: its link is archived and was an HTML page. Ingest records every
- * fetch's content type (an empty string when the server sent none); null
- * means a row from before it did, which only HTML pages reached.
- */
-export function opensInReader(status: string | null | undefined, contentType: string | null | undefined): boolean {
-  if (status !== 'ready') return false;
-  return contentType == null || /text\/html|application\/xhtml/i.test(contentType);
-}
-
 /** Minutes to read `text` at about 230 words a minute, at least 1. */
 export function readingMinutes(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { opensInReader, readingMinutes, safeUrl, sanitizeSnapshot, textToHtml } from './readerHtml';
+import { readingMinutes, safeUrl, sanitizeSnapshot, textToHtml } from './readerHtml';
 
 const BASE = 'https://example.com/posts/one';
 
@@ -100,21 +100,5 @@ describe('readingMinutes', () => {
   it('rounds to at least a minute', () => {
     expect(readingMinutes('')).toBe(1);
     expect(readingMinutes('word '.repeat(690))).toBe(3);
-  });
-});
-
-describe('opensInReader', () => {
-  it('opens archived HTML pages', () => {
-    expect(opensInReader('ready', 'text/html; charset=utf-8')).toBe(true);
-    expect(opensInReader('ready', 'application/xhtml+xml')).toBe(true);
-    expect(opensInReader('ready', null)).toBe(true);
-  });
-
-  it('sends everything else to the original', () => {
-    expect(opensInReader('ready', 'application/pdf')).toBe(false);
-    expect(opensInReader('ready', '')).toBe(false);
-    expect(opensInReader('pending', 'text/html')).toBe(false);
-    expect(opensInReader('failed', null)).toBe(false);
-    expect(opensInReader(undefined, null)).toBe(false);
   });
 });

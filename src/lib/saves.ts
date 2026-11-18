@@ -156,3 +156,41 @@ export async function requeueIngest(service: SupabaseClient, linkId: string): Pr
   );
   if (job.error) throw new Error(`Failed to enqueue ingest: ${job.error.message}`);
 }
+
+/** Ids per request: 100 UUIDs keep the query string near 4 KB. */
+const ARCHIVED_TEXT_CHUNK = 100;
+
+/**
+ * Which of these saves have archived text to show in the reader view.
+ * Being archived isn't enough: ingest marks a page ready even when
+ * Readability found nothing in it (pages built by JavaScript, video pages),
+ * so this checks for the text itself. The text columns are only filtered
+ * on, never returned, so a list page doesn't load whole articles.
+ */
+export async function savesWithArchivedText(
+  supabase: SupabaseClient,
+  saveIds: string[]
+): Promise<Set<string>> {
+  const found = new Set<string>();
+  const ids = [...new Set(saveIds)];
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += ARCHIVED_TEXT_CHUNK) chunks.push(ids.slice(i, i + ARCHIVED_TEXT_CHUNK));
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      supabase
+        .from('saves')
+        .select('id, links!inner(id)')
+        .in('id', chunk)
+        .or('html_snapshot.not.is.null,full_text.not.is.null', { referencedTable: 'links' })
+    )
+  );
+  for (const { data, error } of results) {
+    // Without the answer, leave the item out rather than offer an empty page.
+    if (error) {
+      console.error('archived text check failed:', error.message);
+      continue;
+    }
+    for (const row of data ?? []) found.add(row.id as string);
+  }
+  return found;
+}
