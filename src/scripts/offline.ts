@@ -10,12 +10,14 @@
 import {
   ASSET_CACHE,
   OFFLINE_CACHE,
-  OFFLINE_INDEX_KEY,
   OFFLINE_PAGE,
   builtAssetPaths,
   planOfflineSync,
+  readOfflineIndex,
   readerPath,
+  writeOfflineIndex,
   type OfflineIndex,
+  type OfflineSave,
 } from '../lib/offline';
 
 /** Last sync, as "<user id>:<ms>", so page loads don't each refetch the list. */
@@ -43,16 +45,7 @@ export async function clearOfflineCopies() {
   await Promise.all([caches.delete(OFFLINE_CACHE), caches.delete(ASSET_CACHE)]);
 }
 
-async function readIndex(cache: Cache): Promise<OfflineIndex | null> {
-  try {
-    const res = await cache.match(OFFLINE_INDEX_KEY);
-    return res ? ((await res.json()) as OfflineIndex) : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Fetch a same-site page and cache it. False if it isn't a real page for this user. */
+/** Fetch a same-site page and cache it. Null if it isn't a real page for this user. */
 async function cachePage(cache: Cache, path: string): Promise<string | null> {
   const res = await fetch(path, { credentials: 'same-origin', redirect: 'follow' });
   // A redirect means signed out (to /login) or gone; neither is worth keeping.
@@ -70,7 +63,7 @@ async function sync(userId: string) {
   if (wanted.userId !== userId) return;
 
   let cache = await caches.open(OFFLINE_CACHE);
-  let cached = await readIndex(cache);
+  let cached = await readOfflineIndex(cache);
   if (cached && cached.userId !== userId) {
     // Another account's copies: remove them all before adding any of ours.
     await caches.delete(OFFLINE_CACHE);
@@ -80,46 +73,71 @@ async function sync(userId: string) {
   const plan = planOfflineSync(cached, userId, wanted.saves);
   for (const id of plan.remove) await cache.delete(readerPath(id));
 
-  // Keep what's still wanted and unchanged, then add what we fetch.
-  const fetchIds = new Set(plan.fetch.map((s) => s.id));
-  const kept = new Set((cached?.saves ?? []).map((s) => s.id).filter((id) => !fetchIds.has(id)));
-  const assets = new Set<string>();
-  const pages = [OFFLINE_PAGE, ...plan.fetch.map((s) => readerPath(s.id))];
-  for (const path of pages) {
+  const previous = new Map((cached?.saves ?? []).map((s) => [s.id, s]));
+  const fetched = new Map<string, OfflineSave | null>();
+  try {
+    await cachePage(cache, OFFLINE_PAGE);
+  } catch {}
+  for (const save of plan.fetch) {
     try {
-      const html = await cachePage(cache, path);
-      if (html === null) continue;
-      builtAssetPaths(html).forEach((a) => assets.add(a));
-      const id = path.startsWith('/saves/') ? path.slice('/saves/'.length) : null;
-      if (id) kept.add(id);
+      fetched.set(save.id, (await cachePage(cache, readerPath(save.id))) === null ? null : save);
     } catch {
-      // Offline mid-sync or a flaky connection: try again next time.
+      // Offline mid-sync or a flaky connection: keep any older copy and try
+      // again next time (its old version doesn't match, so it's refetched).
     }
   }
 
-  const index: OfflineIndex = { userId, saves: wanted.saves.filter((s) => kept.has(s.id)) };
-  await cache.put(
-    OFFLINE_INDEX_KEY,
-    new Response(JSON.stringify(index), { headers: { 'Content-Type': 'application/json' } })
-  );
+  const saves: OfflineSave[] = [];
+  for (const save of wanted.saves) {
+    if (!fetched.has(save.id)) {
+      // Unchanged, or the fetch failed: whatever copy we had stays.
+      const had = previous.get(save.id);
+      if (had) saves.push(had);
+    } else if (fetched.get(save.id)) {
+      saves.push(save);
+    } else {
+      // Gone or not readable any more: drop the old copy too.
+      await cache.delete(readerPath(save.id));
+    }
+  }
+  await writeOfflineIndex(cache, { userId, saves });
+  await syncAssets(cache, [OFFLINE_PAGE, ...saves.map((s) => readerPath(s.id))]);
+  storageSet(SYNCED_KEY, `${userId}:${Date.now()}`);
+}
 
-  // Styles and scripts for the cached pages. Hashed names never change, so
-  // anything already cached is current.
+/**
+ * Keep exactly the styles and scripts the cached pages link to. The service
+ * worker adds assets as you browse; this is where old builds' files go.
+ */
+async function syncAssets(cache: Cache, paths: string[]) {
+  const needed = new Set<string>();
+  for (const path of paths) {
+    const page = await cache.match(path);
+    if (page) builtAssetPaths(await page.text()).forEach((a) => needed.add(a));
+  }
   const assetCache = await caches.open(ASSET_CACHE);
-  for (const path of assets) {
+  for (const req of await assetCache.keys()) {
+    if (!needed.has(new URL(req.url).pathname)) await assetCache.delete(req);
+  }
+  // Hashed names never change, so anything already cached is current.
+  for (const path of needed) {
     if (await assetCache.match(path)) continue;
     try {
       const asset = await fetch(path);
       if (asset.ok) await assetCache.put(path, asset);
     } catch {}
   }
-  storageSet(SYNCED_KEY, `${userId}:${Date.now()}`);
 }
 
 export function startOffline(userId: string | null) {
   if (!('caches' in window)) return;
   if (!userId) {
     void clearOfflineCopies();
+    // The worker goes too, so nothing is cached while signed out.
+    navigator.serviceWorker
+      ?.getRegistrations()
+      .then((regs) => regs.forEach((r) => r.unregister()))
+      .catch(() => {});
     return;
   }
   if ('serviceWorker' in navigator) {

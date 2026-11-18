@@ -42,6 +42,12 @@ describe('sharedPage', () => {
     });
   });
 
+  it('keeps url exactly as sent, trailing punctuation included', () => {
+    expect(sharedPage(p({ url: 'https://en.wikipedia.org/wiki/Washington,_D.C.' })).url).toBe(
+      'https://en.wikipedia.org/wiki/Washington,_D.C.'
+    );
+  });
+
   it('prefers url over a link in text', () => {
     expect(sharedPage(p({ url: 'https://example.com/a', text: 'see https://other.com' })).url).toBe(
       'https://example.com/a'

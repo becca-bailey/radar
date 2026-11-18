@@ -107,3 +107,20 @@ export function builtAssetPaths(html: string): string[] {
 export function readerPath(saveId: string): string {
   return `/saves/${saveId}`;
 }
+
+/** The index of cached saves, or null when there's none (or it's unreadable). */
+export async function readOfflineIndex(cache: Cache): Promise<OfflineIndex | null> {
+  try {
+    const res = await cache.match(OFFLINE_INDEX_KEY);
+    return res ? ((await res.json()) as OfflineIndex) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeOfflineIndex(cache: Cache, index: OfflineIndex): Promise<void> {
+  await cache.put(
+    OFFLINE_INDEX_KEY,
+    new Response(JSON.stringify(index), { headers: { 'Content-Type': 'application/json' } })
+  );
+}

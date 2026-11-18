@@ -15,11 +15,10 @@
 const OFFLINE_CACHE = 'radar-offline-v1';
 const ASSET_CACHE = 'radar-assets-v1';
 const OFFLINE_PAGE = '/offline';
+const OFFLINE_INDEX_KEY = '/__radar/offline-index';
 const READER_PATH = /^\/saves\/[0-9a-f-]{36}$/i;
 /** On a slow connection, show the saved copy of a page after this long. */
 const NETWORK_TIMEOUT_MS = 6000;
-/** Old builds' assets pile up across deploys; keep the newest this many. */
-const MAX_ASSETS = 150;
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -45,38 +44,67 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname.startsWith('/_astro/')) {
-    event.respondWith(builtAsset(request));
+    event.respondWith(builtAsset(event));
   } else if (request.mode === 'navigate') {
-    event.respondWith(page(request, url));
+    event.respondWith(page(event, url));
   }
 });
 
-/** Built files have content hashes in their names, so a cached copy is always right. */
-async function builtAsset(request) {
+/**
+ * Built files have content hashes in their names, so a cached copy is always
+ * right. The page script's sync prunes ones no cached page needs.
+ */
+async function builtAsset(event) {
   const cache = await caches.open(ASSET_CACHE);
-  const cached = await cache.match(request);
+  const cached = await cache.match(event.request);
   if (cached) return cached;
-  const response = await fetch(request);
-  if (response.ok) {
-    await cache.put(request, response.clone());
-    const keys = await cache.keys();
-    for (const old of keys.slice(0, Math.max(0, keys.length - MAX_ASSETS))) await cache.delete(old);
-  }
+  const response = await fetch(event.request);
+  if (response.ok) keepAlive(event, cache.put(event.request, response.clone()));
   return response;
 }
 
+/**
+ * Finish cache work after responding. If the event is already over (the
+ * network answered after the timeout served the copy), just let it run.
+ */
+function keepAlive(event, promise) {
+  promise.catch(() => {});
+  try {
+    event.waitUntil(promise);
+  } catch {}
+}
+
+/** Drop a save's copy and its line in the index, so /offline stops listing it. */
+async function forget(cache, path) {
+  await cache.delete(path);
+  const res = await cache.match(OFFLINE_INDEX_KEY);
+  if (!res) return;
+  const index = await res.json();
+  const id = path.slice('/saves/'.length);
+  index.saves = index.saves.filter((s) => s.id !== id);
+  await cache.put(
+    OFFLINE_INDEX_KEY,
+    new Response(JSON.stringify(index), { headers: { 'Content-Type': 'application/json' } })
+  );
+}
+
 /** Network first. When it fails, the saved copy of this page, else the offline page. */
-async function page(request, url) {
+async function page(event, url) {
+  const request = event.request;
   const cache = await caches.open(OFFLINE_CACHE);
   const isReader = READER_PATH.test(url.pathname);
   const saved = isReader ? await cache.match(url.pathname) : undefined;
 
-  const network = fetch(request).then(async (response) => {
+  const network = fetch(request).then((response) => {
     if (isReader && saved) {
-      // Keep the copy current, and drop it once the save is gone or you're
-      // signed out (a redirect to /login).
-      if (response.ok && response.type === 'basic') await cache.put(url.pathname, response.clone());
-      else if (response.status === 404 || response.type === 'opaqueredirect') await cache.delete(url.pathname);
+      // Keep the copy current (only the plain page: ?error= and similar
+      // views carry one-off notices), and drop it once the save is gone or
+      // you're signed out (a redirect to /login).
+      if (response.ok && response.type === 'basic') {
+        if (!url.search) keepAlive(event, cache.put(url.pathname, response.clone()));
+      } else if (response.status === 404 || response.type === 'opaqueredirect') {
+        keepAlive(event, forget(cache, url.pathname));
+      }
     }
     return response;
   });

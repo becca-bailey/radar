@@ -27,7 +27,9 @@ export function sharedPage(params: URLSearchParams): SharedPage {
   const text = (params.get('text') ?? '').trim();
   let title = (params.get('title') ?? '').trim();
 
-  const url = (rawUrl && firstLink(rawUrl)) || rawUrl || firstLink(text) || '';
+  // `url` is the page's address exactly (the bookmarklet sends location.href),
+  // so it's used as sent: a final "." or ")" can be part of it.
+  const url = rawUrl || firstLink(text) || '';
 
   // With no title, the text around the link is usually the headline.
   if (!title && text) {

@@ -31,7 +31,7 @@ if (!user) {
 </Layout>
 
 <script>
-  import { OFFLINE_CACHE, OFFLINE_INDEX_KEY, readerPath, type OfflineIndex } from '../lib/offline';
+  import { OFFLINE_CACHE, readOfflineIndex, readerPath, type OfflineIndex } from '../lib/offline';
 
   const list = document.querySelector<HTMLUListElement>('[data-offline-list]')!;
   const empty = document.querySelector<HTMLElement>('[data-offline-empty]')!;
@@ -45,9 +45,7 @@ if (!user) {
   async function render() {
     let index: OfflineIndex | null = null;
     try {
-      const cache = await caches.open(OFFLINE_CACHE);
-      const res = await cache.match(OFFLINE_INDEX_KEY);
-      if (res) index = (await res.json()) as OfflineIndex;
+      index = await readOfflineIndex(await caches.open(OFFLINE_CACHE));
     } catch {}
     // Only this account's copies (the sync replaces another account's).
     const userId = document.body.dataset.userId;
