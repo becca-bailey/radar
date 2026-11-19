@@ -8,16 +8,38 @@
  * named for its colour (bg-gold, var(--peach)); the comment says what it's for.
  *
  * Styling is Tailwind utilities in the markup plus shadcn/ui components in
- * src/components/ui. This file only holds the theme: the palette as shadcn
+ * src/components/ui. This file only holds the themes: each palette as shadcn
  * tokens, and base styles for bare prose elements.
+ *
+ * Themes: <html> carries data-theme (which palette) and data-mode (system,
+ * light or dark), set by the server in Layout.astro (see src/lib/theme.ts).
+ * Each theme has a light block and a dark block. The dark tokens appear
+ * twice, once for a forced dark mode and once inside the media query for
+ * "system"; the two copies must stay identical.
  */
 
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* Mode, independent of theme: form controls and scrollbars follow it. */
 :root {
   --radius: 14px;
+  color-scheme: light dark;
+}
 
+:root[data-mode='light'] {
+  color-scheme: light;
+}
+
+:root[data-mode='dark'] {
+  color-scheme: dark;
+}
+
+/* ---- Playful (the default) ---------------------------------------------- */
+
+/* Light. Also the fallback with no data-theme at all. */
+:root,
+:root[data-theme='playful'] {
   --ink: #4e473f; /* stone brown */
   --hairline: #e8d3c7; /* a deeper peach, enough to read as a rule on cream */
   --on-fill: #3d3832; /* text on gold, peach, blue and sage fills */
@@ -50,14 +72,39 @@
   --border: var(--ink);
   --input: var(--ink);
   --ring: var(--link);
-
-  color-scheme: light dark;
 }
 
 /* Dark: the same family at dusk. Warm stone surfaces, cream text, and the
-   accents dimmed so they sit on the dark page rather than glow. */
+   accents dimmed so they sit on the dark page rather than glow.
+   Forced dark; the system copy below must match it. */
+:root[data-theme='playful'][data-mode='dark'] {
+  --ink: #14110e;
+  --hairline: #4a423a;
+  --on-fill: #1f1b18;
+  --link: #8fb9f5;
+
+  --gold: #c9aa38;
+  --peach: #c79a87;
+  --blue: #6f93c4;
+  --pink: #c98aab;
+  --rose: #c46e98;
+  --sage: #93a876;
+
+  --background: #2a2622;
+  --foreground: #f3eee9;
+  --card: #36302a;
+  --muted: #3f3832; /* muted text keeps 5:1 on it */
+  /* Ink is near-black here for the sticker shadows; outlines need to stay
+     visible on dark stone (3:1), so borders get their own colour. */
+  --border: #857a6f;
+  --input: #857a6f;
+  --muted-foreground: #b3aa9f;
+  --destructive: #ea957f;
+}
+
+/* Dark when the mode follows the system. A copy of the block above. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root[data-theme='playful'][data-mode='system'] {
     --ink: #14110e;
     --hairline: #4a423a;
     --on-fill: #1f1b18;
@@ -73,9 +120,7 @@
     --background: #2a2622;
     --foreground: #f3eee9;
     --card: #36302a;
-    --muted: #3f3832; /* muted text keeps 5:1 on it */
-    /* Ink is near-black here for the sticker shadows; outlines need to stay
-       visible on dark stone (3:1), so borders get their own colour. */
+    --muted: #3f3832;
     --border: #857a6f;
     --input: #857a6f;
     --muted-foreground: #b3aa9f;
