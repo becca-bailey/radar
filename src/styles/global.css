@@ -102,8 +102,10 @@
   --destructive: #ea957f;
 }
 
-/* Dark when the mode follows the system. A copy of the block above. */
+/* Dark when the mode follows the system. A copy of the block above. Also
+   the fallback for a page with no data-theme or data-mode at all. */
 @media (prefers-color-scheme: dark) {
+  :root:not([data-theme]):not([data-mode]),
   :root[data-theme='playful'][data-mode='system'] {
     --ink: #14110e;
     --hairline: #4a423a;
