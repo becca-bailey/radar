@@ -9,3 +9,25 @@ export function safeLocalPath(raw: string | null | undefined, fallback = '/'): s
   if (/[\\\x00-\x1f\x7f]/.test(raw)) return fallback;
   return raw;
 }
+
+/**
+ * A redirect `Location` that keeps Netlify from copying the request's query
+ * string onto it. Netlify appends the original query to a `Location` that has
+ * none (`/setup?foo=1` → `Location: /login` arrives as `/login?foo=1`), which
+ * carried `?error=…` from the sign-in page onto the archive and `?code=…` from
+ * the auth callback into history. A bare `?` gives the target its own, empty
+ * query. External URLs and locations that already have a query are unchanged.
+ */
+export function withOwnQuery(location: string, origin: string): string {
+  let url: URL;
+  try {
+    url = new URL(location, origin);
+  } catch {
+    return location;
+  }
+  if (url.origin !== new URL(origin).origin) return location;
+  const hashAt = location.indexOf('#');
+  const beforeHash = hashAt === -1 ? location : location.slice(0, hashAt);
+  if (beforeHash.includes('?')) return location;
+  return beforeHash + '?' + (hashAt === -1 ? '' : location.slice(hashAt));
+}
