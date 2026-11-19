@@ -108,9 +108,10 @@ data.
 
 Add the theme in `src/lib/theme.ts` (`THEMES`, `THEME_COLORS`, `THEME_FONTS`)
 and its tokens in `src/styles/global.css`: copy the Playful block (light
-tokens, then `@variant dark` with the ones that change) and keep its families
-and order. The comment at the top of that file explains how the colours relate
-and which names to use in markup. Storybook picks it up from there: it
+tokens, then `@variant dark` with the ones that change) under the selector
+`:root[data-theme='name']` alone, and keep its families and order. The
+comment at the top of that file explains how the colours relate and which
+names to use in markup. Storybook picks it up from there: it
 appears in the toolbar and the gallery, the token pages list its values, and
 the Astro stories are rendered once per theme, so anything that differs by
 theme on the server (like the background) shows correctly.

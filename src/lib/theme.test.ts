@@ -48,6 +48,20 @@ describe.each(THEMES)('the %s tokens in global.css', (theme) => {
   });
 });
 
+describe('the dark variant in global.css', () => {
+  const variant = block(css, css.indexOf('@custom-variant dark'));
+
+  it('covers a forced dark mode', () => {
+    expect(variant).toContain("[data-mode='dark']");
+  });
+
+  it('covers "system" on a dark OS', () => {
+    const media = variant.indexOf('@media (prefers-color-scheme: dark)');
+    expect(media).toBeGreaterThan(-1);
+    expect(block(variant, media)).toContain("[data-mode='system']");
+  });
+});
+
 describe('resolveTheme', () => {
   it('keeps a known theme', () => {
     expect(resolveTheme('playful')).toBe('playful');

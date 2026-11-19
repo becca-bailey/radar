@@ -16,7 +16,9 @@
  * Each theme is one block: its light tokens, then `@variant dark { … }` with
  * the tokens that change in dark. The dark variant (defined below) covers
  * both a forced dark mode and "system" on a dark OS, so the dark tokens are
- * written once. A new theme copies the Playful block and keeps its order.
+ * written once. A new theme copies the Playful block and keeps its order,
+ * with only its own selector (:root[data-theme='name']): the extra
+ * :root:not([data-theme]) on Playful's block makes it the fallback.
  *
  * How the colours relate
  * ----------------------
@@ -110,7 +112,7 @@
   /* Text */
   --foreground: #4e473f; /* the same stone brown as ink */
   --muted-foreground: #736b62;
-  --on-fill: #3d3832; /* text on gold, peach, blue and sage fills; 5.4:1 on gold */
+  --on-fill: #3d3832; /* text on the primary, secondary and accent fills; 5.4:1 on gold */
   --link: #2969c2; /* links and blue text, 5.1:1 on cream (--blue is a fill) */
   --card-foreground: var(--foreground);
   --popover-foreground: var(--foreground);
