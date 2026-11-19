@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import globalCss from '@/styles/global.css?raw';
 import { parseTokens, type Token } from './parseTokens';
+import { groupPalette } from './paletteGroups';
 
 /**
  * The active theme's tokens, generated from src/styles/global.css: add a
@@ -49,31 +50,73 @@ function Name({ token }: { token: Token }) {
   );
 }
 
+function ColourChip({ name, size }: { name: string; size: 'lg' | 'sm' }) {
+  return (
+    <span
+      className={`shrink-0 border-2 border-border ${size === 'lg' ? 'size-12 rounded-md shadow-hard-xs' : 'size-5 rounded-sm'}`}
+      style={{ background: `var(${name})` }}
+      aria-hidden="true"
+    />
+  );
+}
+
+/**
+ * Each colour once, grouped by what it's for (src/stories/tokens/paletteGroups.ts),
+ * with the tokens that point at it listed underneath. A token that points at
+ * a colour in light but has its own value in the current mode (borders in
+ * dark) gets its own swatch, marked as such.
+ */
 export const Palette: Story = {
   render: (_args, { globals }) => {
     const live = useLiveThemeVars(globals.theme, globals.mode);
     const colours = themeVars.filter((t) => live[t.name] && CSS.supports('color', live[t.name]));
+    const value = (name: string) => live[name]?.toLowerCase();
     return (
       <>
-        <Heading>Palette</Heading>
-        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
-          {colours.map((t) => (
-            <li key={t.name} className="flex items-start gap-3">
-              <span
-                className="size-12 shrink-0 rounded-md border-2 border-border shadow-hard-xs"
-                style={{ background: `var(${t.name})` }}
-                aria-hidden="true"
-              />
-              <div className="min-w-0">
-                {/* Notes are written on the first (light) declaration and can
-                    describe that value ("5.1:1 on cream"); show one only
-                    while that's the value in effect. */}
-                <Name token={sameColour(live[t.name], t.value) ? t : { ...t, note: '' }} />
-                <code className="text-xs text-muted-foreground">{live[t.name]}</code>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {groupPalette(colours).map((group) => (
+          <section key={group.title}>
+            <Heading>{group.title}</Heading>
+            <p className="mt-0 mb-4 text-sm text-muted-foreground">{group.blurb}</p>
+            <ul className="m-0 grid list-none gap-5 p-0 sm:grid-cols-2">
+              {group.swatches.map(({ root, aliases }) => {
+                const same = aliases.filter((a) => value(a.name) === value(root.name));
+                const own = aliases.filter((a) => value(a.name) !== value(root.name));
+                return (
+                  <li key={root.name} className="flex items-start gap-3">
+                    <ColourChip name={root.name} size="lg" />
+                    <div className="grid min-w-0 gap-1">
+                      {/* Notes are written on the first (light) declaration and can
+                          describe that value ("5.1:1 on cream"); show one only
+                          while that's the value in effect. */}
+                      <Name token={sameColour(live[root.name], root.value) ? root : { ...root, note: '' }} />
+                      <code className="text-xs text-muted-foreground">{live[root.name]}</code>
+                      {same.length > 0 && (
+                        <p className="m-0 text-xs">
+                          <span className="text-muted-foreground">Also as </span>
+                          {same.map((a, i) => (
+                            <span key={a.name}>
+                              {i > 0 && ', '}
+                              <code>{a.name}</code>
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                      {own.map((a) => (
+                        <p key={a.name} className="m-0 flex items-center gap-1.5 text-xs">
+                          <ColourChip name={a.name} size="sm" />
+                          <code>{a.name}</code>
+                          <span className="text-muted-foreground">
+                            {live[a.name]}, its own colour in this mode
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
       </>
     );
   },
