@@ -23,3 +23,7 @@ __pycache__/
 
 # Claude Code session worktrees
 .claude/worktrees/
+
+# Storybook (RAD-82): the build, and .astro stories prerendered to HTML
+storybook-static/
+src/stories/astro/generated/

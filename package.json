@@ -11,7 +11,10 @@
     "astro": "astro",
     "check": "astro check",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "storybook:astro": "vitest run --config vitest.storybook.config.ts",
+    "storybook": "npm run storybook:astro && storybook dev -p 6006",
+    "build-storybook": "npm run storybook:astro && storybook build"
   },
   "dependencies": {
     "@astrojs/netlify": "^8.2.12",
@@ -39,8 +42,12 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
+    "@storybook/addon-a11y": "^10.6.7",
+    "@storybook/react-vite": "^10.6.7",
     "@types/node": "^26.6.6",
+    "storybook": "^10.6.7",
     "typescript": "^6.0.3",
+    "vite": "^8.3.6",
     "vitest": "^5.1.0"
   }
 }
