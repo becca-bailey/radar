@@ -1,5 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createRequestClient } from './lib/supabase';
+import { withOwnQuery } from './lib/redirects';
 import { TZ_COOKIE, TZ_SAVED_COOKIE, isValidTimeZone, resolveTimeZone } from './lib/dates';
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -42,5 +43,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.timeZone = resolveTimeZone();
   }
 
-  return next();
+  const response = await next();
+
+  // Netlify copies the request's query onto a redirect whose Location has
+  // none, so give every same-site redirect its own query (RAD-83, see
+  // withOwnQuery). The headers are edited in place: a rebuilt Response could
+  // lose the auth cookies the callback and logout set.
+  const location = response.headers.get('location');
+  if (location && response.status >= 300 && response.status < 400) {
+    const rewritten = withOwnQuery(location, context.url.origin);
+    // Response.redirect() and fetched responses have read-only headers; leave
+    // those as they are rather than fail the request.
+    try {
+      if (rewritten !== location) response.headers.set('location', rewritten);
+    } catch {}
+  }
+  return response;
 });
