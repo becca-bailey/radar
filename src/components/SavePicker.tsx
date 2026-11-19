@@ -191,7 +191,7 @@ export default function SavePicker({ rows, noun = 'save', filePrefix = 'on-your-
                 <Card
                   className={cn(
                     'transition-colors',
-                    isOn && 'bg-[color-mix(in_srgb,var(--peach)_22%,var(--card))]'
+                    isOn && 'bg-[color-mix(in_srgb,var(--highlight)_22%,var(--card))]'
                   )}
                 >
                   <div className="flex items-start gap-3">

@@ -10,19 +10,19 @@ const steps = [
   {
     n: '1',
     title: 'Save',
-    tint: 'var(--peach)',
+    tint: 'var(--decor-1)',
     body: 'Share a link from your phone or browser, with a note about why if you like. Radar keeps the full text, so it’s still there when the page isn’t, and you can search it later by the words or the idea.',
   },
   {
     n: '2',
     title: 'Share',
-    tint: 'var(--pink)',
+    tint: 'var(--decor-2)',
     body: 'Send a save to a group you’re in. The group sees the link, your note, how many people shared it and the name you picked for that group, which can be anything. Never your email, and never the rest of your archive.',
   },
   {
     n: '3',
     title: 'Find',
-    tint: 'var(--blue)',
+    tint: 'var(--decor-3)',
     body: 'A group shows what members found this week, gathered into topics. When the week is read, you’re done. A newsletter writer can export it straight into a roundup post.',
   },
 ];
@@ -107,7 +107,7 @@ const wont = [
     {
       wont.map((line) => (
         <li class="flex gap-2.5">
-          <span class="mt-[0.55em] size-2.5 shrink-0 rounded-full border-2 bg-gold" aria-hidden="true" />
+          <span class="mt-[0.55em] size-2.5 shrink-0 rounded-full border-2 bg-primary" aria-hidden="true" />
           <span>{line}</span>
         </li>
       ))

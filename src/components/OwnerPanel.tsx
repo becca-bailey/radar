@@ -12,7 +12,7 @@ export function OwnerBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-flex w-fit items-center gap-1 rounded-full border-2 bg-rose px-2 text-[0.72rem] font-bold whitespace-nowrap text-ink',
+        'inline-flex w-fit items-center gap-1 rounded-full border-2 bg-owner px-2 text-[0.72rem] font-bold whitespace-nowrap text-owner-foreground',
         className
       )}
     >
@@ -36,7 +36,7 @@ export default function OwnerPanel({ title, as: Heading = 'h2', id, className, c
     <section
       id={id}
       className={cn(
-        'scroll-mt-4 rounded-lg border-2 border-dashed border-[color-mix(in_srgb,var(--rose)_75%,var(--ink))] bg-[color-mix(in_srgb,var(--rose)_13%,var(--card))] p-4',
+        'scroll-mt-4 rounded-lg border-2 border-dashed border-[color-mix(in_srgb,var(--owner)_75%,var(--owner-foreground))] bg-[color-mix(in_srgb,var(--owner)_13%,var(--card))] p-4',
         className
       )}
     >

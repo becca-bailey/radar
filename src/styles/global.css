@@ -16,42 +16,61 @@
  * Each theme is one block: its light tokens, then `@variant dark { … }` with
  * the tokens that change in dark. The dark variant (defined below) covers
  * both a forced dark mode and "system" on a dark OS, so the dark tokens are
- * written once. A new theme copies the Playful block and keeps its order,
- * with only its own selector (:root[data-theme='name']): the extra
- * :root:not([data-theme]) on Playful's block makes it the fallback.
+ * written once.
  *
- * How the colours relate
- * ----------------------
- * Tokens come in two kinds, and each theme block lists them in five families
- * (the same families as Storybook's Tokens → Palette page, which reads them
- * from src/stories/tokens/paletteGroups.ts):
+ * Palette and roles
+ * -----------------
+ * A theme block holds two kinds of token:
  *
- *   Accents   the theme's fill colours, named for their colour: gold, peach…
- *   Surfaces  what content sits on: background, card, muted
- *   Text      foreground, muted-foreground, on-fill (text on accents), link
- *   Lines     ink, border, hairline
- *   Status    destructive, and the alert fills
+ *   - The palette: the theme's raw colours, named however suits the theme
+ *     (Playful's are gold, peach, blue, pink, rose, sage, ink and on-fill).
+ *     They are private to the block: they aren't listed as Tailwind colours
+ *     below, so Tailwind makes no utilities for them, and no component or
+ *     page may name them. A test in src/lib/theme.test.ts fails if one does.
+ *   - Roles: what a colour is for. Components and pages use only these. Each
+ *     role points at a palette colour or holds its own value, and two roles
+ *     may share a colour (Playful's secondary and highlight are both peach).
  *
- * A token either holds a colour (a hex value) or points at one by role
- * (primary is var(--gold)). The role names are shadcn's (primary,
- * secondary, accent, card, popover, muted, border, input, ring, destructive
- * and their -foreground pairs) plus a few of ours (on-fill, link, ink,
- * hairline, alert-*). shadcn components rely on its names, so they stay.
+ * The roles, by family (the same families as Storybook's Tokens → Palette
+ * page, from src/stories/tokens/paletteGroups.ts). A fill role has a
+ * -foreground pair for the text on it, and the pair must meet contrast.
  *
- * Which name to use in markup:
- *   - A role name when one fits the job: bg-primary for the main action,
- *     bg-accent for hover fills, bg-alert-error, text-destructive,
- *     border-border, bg-muted, text-muted-foreground.
- *   - An accent's colour name when the colour itself is the point:
- *     decoration (the background blobs, the logo, the landing-page tints)
- *     and things known by their colour (the peach avatar and <mark>, the
- *     rose owner tools, sage "picked" badges).
+ *   Fills     primary          main actions, the brand dot, link and nav
+ *                              hover underlines, the loading bar
+ *             secondary        shadcn's secondary fill: the default badge
+ *             accent           hover fills in menus, chips and buttons
+ *             highlight        the avatar, <mark>, the news count, the save
+ *                              panel and selected cards (as a tint)
+ *             info             the "Made by…" pill, the explore and group
+ *                              panels (as a tint)
+ *             owner            owner-only tools
+ *             decor-1…3        decoration only, no text on them: the
+ *                              background blobs, the logo, the landing tints
+ *   Surfaces  background, card, popover, muted
+ *   Text      foreground, muted-foreground, card-foreground,
+ *             popover-foreground, link
+ *   Lines     sticker-shadow   the hard offset shadows and the logo's strokes
+ *             border           outlines; input is its form-field twin and
+ *                              ring the focus outline
+ *             border-subtle    soft rules and dividers
+ *   Status    success          success alerts, "picked" badges and pills
+ *             error            error alert fills
+ *             destructive      error text, destructive actions and their
+ *                              outlines (text-destructive, not text-error)
  *
- * Ink is the drawing colour: sticker shadows, the logo's strokes, and dark
- * text on light accent fills (text-ink). In light it's the same stone brown
- * as body text and borders. In dark it stays near-black so shadows still
- * read as shadows, which is why dark gives borders their own lighter colour
- * and text its own cream.
+ * shadcn's names (primary, secondary, accent, card, popover, muted, border,
+ * input, ring, destructive and their -foreground pairs) are kept as they
+ * are, since the components in src/components/ui rely on them.
+ *
+ * A new theme copies the Playful block, keeps its order and fills in every
+ * role, light and dark, under its own selector alone
+ * (:root[data-theme='name']). Playful's extra :root:not([data-theme]) makes
+ * it the fallback. Markup shouldn't need to change for a new theme.
+ *
+ * Why Playful's sticker shadow and border differ in dark: in light both are
+ * ink, the same stone brown as body text. In dark, ink stays near-black so
+ * the shadows still read as shadows, and outlines get their own lighter
+ * colour so they stay visible on dark stone.
  */
 
 @import 'tailwindcss';
@@ -92,16 +111,32 @@
    accents dimmed so they sit on the dark page rather than glow. */
 :root:not([data-theme]),
 :root[data-theme='playful'] {
-  /* Accents. Peach, pink and blue also tint the three steps on the landing page. */
-  --gold: #cfaf36; /* the brand dot, primary actions, link hover underlines */
-  --peach: #ffd9c9; /* badges, the avatar, <mark>, save panel, selected cards */
-  --blue: #a6c8f6; /* hover fills, background blob, explore and group panels */
-  --pink: #fdc1e1; /* error alerts, background blob */
-  --rose: #f4a6cb; /* owner tools */
-  --sage: #c9dca6; /* success alerts, "picked" badges */
+  /* Palette. Private to this block: markup uses the roles below. */
+  --gold: #cfaf36;
+  --peach: #ffd9c9;
+  --blue: #a6c8f6;
+  --pink: #fdc1e1;
+  --rose: #f4a6cb;
+  --sage: #c9dca6;
+  --ink: #4e473f; /* stone brown: text on the light fills, shadows, light outlines */
+  --on-fill: #3d3832; /* text on gold, peach and blue; 5.4:1 on gold */
+
+  /* Fills */
   --primary: var(--gold);
+  --primary-foreground: var(--on-fill);
   --secondary: var(--peach);
+  --secondary-foreground: var(--on-fill);
   --accent: var(--blue);
+  --accent-foreground: var(--on-fill);
+  --highlight: var(--peach);
+  --highlight-foreground: var(--ink);
+  --info: var(--blue);
+  --info-foreground: var(--ink);
+  --owner: var(--rose);
+  --owner-foreground: var(--ink);
+  --decor-1: var(--peach);
+  --decor-2: var(--pink);
+  --decor-3: var(--blue);
 
   /* Surfaces */
   --background: #fbf9f8;
@@ -112,34 +147,34 @@
   /* Text */
   --foreground: #4e473f; /* the same stone brown as ink */
   --muted-foreground: #736b62;
-  --on-fill: #3d3832; /* text on the primary, secondary and accent fills; 5.4:1 on gold */
-  --link: #2969c2; /* links and blue text, 5.1:1 on cream (--blue is a fill) */
   --card-foreground: var(--foreground);
   --popover-foreground: var(--foreground);
-  --primary-foreground: var(--on-fill);
-  --secondary-foreground: var(--on-fill);
-  --accent-foreground: var(--on-fill);
+  --link: #2969c2; /* links and blue text, 5.1:1 on cream */
 
   /* Lines */
-  --ink: #4e473f; /* stone brown: sticker shadows, the logo, text on light fills */
-  --border: var(--ink); /* outlines; the ink itself in light */
+  --sticker-shadow: var(--ink);
+  --border: var(--ink);
   --input: var(--border);
   --ring: var(--link);
-  --hairline: #e8d3c7; /* a deeper peach, enough to read as a rule on cream */
+  --border-subtle: #e8d3c7; /* a deeper peach, enough to read as a rule on cream */
 
   /* Status */
-  --destructive: #b5412e; /* error text, destructive buttons and their outlines */
-  --alert-success: var(--sage);
-  --alert-error: var(--pink);
+  --success: var(--sage);
+  --success-foreground: var(--ink);
+  --error: var(--pink);
+  --error-foreground: var(--ink);
+  --destructive: #b5412e;
 
   @variant dark {
-    /* Accents */
+    /* Palette */
     --gold: #c9aa38;
     --peach: #c79a87;
     --blue: #6f93c4;
     --pink: #c98aab;
     --rose: #c46e98;
     --sage: #93a876;
+    --ink: #14110e; /* near-black, so the sticker shadows still read as shadows */
+    --on-fill: #1f1b18;
 
     /* Surfaces */
     --background: #2a2622;
@@ -149,34 +184,40 @@
     /* Text */
     --foreground: #f3eee9;
     --muted-foreground: #b3aa9f;
-    --on-fill: #1f1b18;
     --link: #8fb9f5;
 
-    /* Lines. Ink stays near-black for the sticker shadows; outlines need to
-       stay visible on dark stone (3:1), so borders get their own colour. */
-    --ink: #14110e;
+    /* Lines. Outlines need to stay visible on dark stone (3:1), so the
+       border gets its own colour rather than near-black ink. */
     --border: #857a6f;
-    --hairline: #4a423a;
+    --border-subtle: #4a423a;
 
     /* Status */
     --destructive: #ea957f;
   }
 }
 
+/* The roles as Tailwind colours (bg-primary, text-success-foreground…).
+   Palette colours are left out on purpose: markup can't name them. */
 @theme inline {
   --font-sans: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
 
-  /* Accents */
-  --color-gold: var(--gold);
-  --color-peach: var(--peach);
-  --color-blue: var(--blue);
-  --color-pink: var(--pink);
-  --color-rose: var(--rose);
-  --color-sage: var(--sage);
+  /* Fills */
   --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-owner: var(--owner);
+  --color-owner-foreground: var(--owner-foreground);
+  --color-decor-1: var(--decor-1);
+  --color-decor-2: var(--decor-2);
+  --color-decor-3: var(--decor-3);
 
   /* Surfaces */
   --color-background: var(--background);
@@ -187,34 +228,33 @@
   /* Text */
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--muted-foreground);
-  --color-link: var(--link);
   --color-card-foreground: var(--card-foreground);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-link: var(--link);
 
   /* Lines */
-  --color-ink: var(--ink);
+  --color-sticker-shadow: var(--sticker-shadow);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-hairline: var(--hairline);
+  --color-border-subtle: var(--border-subtle);
 
   /* Status */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
   --color-destructive: var(--destructive);
-  --color-alert-success: var(--alert-success);
-  --color-alert-error: var(--alert-error);
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: var(--radius);
 
   /* the hard offset "sticker" shadows */
-  --shadow-hard-xs: 1px 1px 0 var(--ink);
-  --shadow-hard-sm: 2px 2px 0 var(--ink);
-  --shadow-hard: 3px 3px 0 var(--ink);
-  --shadow-hard-lg: 4px 4px 0 var(--ink);
+  --shadow-hard-xs: 1px 1px 0 var(--sticker-shadow);
+  --shadow-hard-sm: 2px 2px 0 var(--sticker-shadow);
+  --shadow-hard: 3px 3px 0 var(--sticker-shadow);
+  --shadow-hard-lg: 4px 4px 0 var(--sticker-shadow);
 }
 
 /* Fraunces' soft, wonky cut — used with font-display on headings and the brand. */
@@ -250,7 +290,7 @@
   }
 
   mark {
-    @apply bg-peach rounded-[3px] px-0.5 text-ink;
+    @apply bg-highlight text-highlight-foreground rounded-[3px] px-0.5;
   }
 
   /* Bare prose inside the page column (privacy, ranking, intros). Scoped to

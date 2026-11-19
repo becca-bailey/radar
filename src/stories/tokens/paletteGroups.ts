@@ -19,9 +19,9 @@ export interface Family {
 
 export const FAMILIES: Family[] = [
   {
-    title: 'Accents',
+    title: 'Fills',
     blurb:
-      'Fills, named for their colour: actions, badges, panels, alerts and the background shapes. Roles such as --primary point at them.',
+      'The palette colours behind the fill roles. Markup uses the roles listed under each colour (bg-primary, bg-success), never the colour itself.',
     roots: ['--gold', '--peach', '--blue', '--pink', '--rose', '--sage'],
   },
   {
@@ -31,17 +31,18 @@ export const FAMILIES: Family[] = [
   },
   {
     title: 'Text',
-    blurb: 'Body text, quieter text, text on accent fills (--on-fill) and links.',
+    blurb: 'Body text, quieter text and links. On-fill is the text on the primary, secondary and accent fills.',
     roots: ['--foreground', '--muted-foreground', '--on-fill', '--link'],
   },
   {
     title: 'Lines',
-    blurb: 'Ink draws the sticker shadows and, in light, the outlines; dark gives --border its own colour. Hairline is the soft rule.',
-    roots: ['--ink', '--hairline'],
+    blurb:
+      'Ink draws the sticker shadows and the text on light fills, and in light the outlines too; dark gives --border its own colour. Border-subtle is the soft rule.',
+    roots: ['--ink', '--border-subtle'],
   },
   {
     title: 'Status',
-    blurb: 'Error text and destructive actions. The alert fills (--alert-success, --alert-error) sit under sage and pink.',
+    blurb: 'Error text and destructive actions. The success and error fills sit under sage and pink.',
     roots: ['--destructive'],
   },
 ];
