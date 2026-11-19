@@ -26,8 +26,6 @@ export function withOwnQuery(location: string, origin: string): string {
     return location;
   }
   if (url.origin !== new URL(origin).origin) return location;
-  const hashAt = location.indexOf('#');
-  const beforeHash = hashAt === -1 ? location : location.slice(0, hashAt);
-  if (beforeHash.includes('?')) return location;
-  return beforeHash + '?' + (hashAt === -1 ? '' : location.slice(hashAt));
+  if (url.search) return location;
+  return url.href;
 }
