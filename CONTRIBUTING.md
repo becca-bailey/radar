@@ -62,6 +62,56 @@ npm test        # vitest
 npm run build
 ```
 
+CI also builds Storybook (`npm run build-storybook`), so it can't quietly break.
+
+## Storybook
+
+Storybook shows the components and a few whole screens in every theme, light
+and dark. Use it to build and check themes, and to demo them.
+
+```bash
+npm run storybook        # http://localhost:6006
+npm run build-storybook  # static build in storybook-static/
+```
+
+It runs with sample content only: no Supabase, no `.env` needed. Pick the theme
+and mode (system, light or dark) in the toolbar. The Accessibility panel runs
+axe on every story. **Gallery** shows one screen in every theme side by side,
+and **Tokens** lists each theme's palette, type, radii and shadows, read
+straight from `src/styles/global.css`.
+
+Stories live in `src/stories`. Sample data is in `src/stories/fixtures.ts` (and
+`src/stories/astro/screens.ts` for whole screens): made up, never real user
+data.
+
+### Adding a story
+
+- **A React component** (`.tsx`): write a normal story next to the others, e.g.
+  `src/stories/components/Button.stories.tsx`.
+- **An Astro component or page** (`.astro`): Storybook can't run `.astro` files,
+  so they're rendered to HTML first with Astro's Container API
+  (`scripts/storybook/render-astro.ts`). Add an entry to
+  `src/stories/astro/renders.ts` with the component and its props, then show it
+  with `astroStory('<id>')`. For a component that needs a wrapper (a card goes in
+  a `CardList`), add a small story-only `.astro` file in `src/stories/astro/`.
+  A page also needs the data its queries read, in `src/stories/astro/screens.ts`;
+  the fake Supabase client fails loudly, naming the query, if something's
+  missing.
+- `npm run storybook` renders the Astro stories on start. After changing an
+  `.astro` file, run `npm run storybook:astro` and reload.
+- Astro output is static: React islands inside it show but don't respond. Give
+  an island its own `.tsx` story if it needs to be interactive.
+- Styles in `.astro` files must be `<style is:global>` (or Tailwind classes) to
+  show in Storybook; the render step fails on a scoped `<style>`.
+
+### Adding a theme
+
+Add the theme in `src/lib/theme.ts` (`THEMES`, `THEME_COLORS`, `THEME_FONTS`)
+and its tokens in `src/styles/global.css`. Storybook picks it up from there: it
+appears in the toolbar and the gallery, the token pages list its values, and
+the Astro stories are rendered once per theme, so anything that differs by
+theme on the server (like the background) shows correctly.
+
 ## How the code is organized
 
 - `src/pages`: Astro pages and API routes (`src/pages/api`).

@@ -18,3 +18,5 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+      # Storybook isn't deployed anywhere; building it on every PR keeps it from quietly breaking.
+      - run: npm run build-storybook

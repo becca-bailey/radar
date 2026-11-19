@@ -28,6 +28,16 @@ export const THEME_COLORS: Record<Theme, { light: string; dark: string }> = {
   playful: { light: '#fbf9f8', dark: '#2a2622' },
 };
 
+/**
+ * Each theme's web fonts, as a Google Fonts stylesheet URL. Only the active
+ * theme's fonts load: Layout.astro links this, and so does Storybook's
+ * preview (.storybook/preview.tsx), so the two always match.
+ */
+export const THEME_FONTS: Record<Theme, string> = {
+  playful:
+    'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..900,0..100,0..1;1,9..144,400..900,0..100,0..1&family=Work+Sans:wght@400;600;700&display=swap',
+};
+
 /** The cookie's theme if it's one we have, else the default. */
 export function resolveTheme(value: unknown): Theme {
   return THEMES.find((t) => t === value) ?? DEFAULT_THEME;

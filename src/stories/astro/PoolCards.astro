@@ -1,0 +1,19 @@
+---
+// Story-only: links shared to a group (PoolCard) inside the real CardList.
+import CardList from '@/components/CardList.astro';
+import PoolCard from '@/components/PoolCard.astro';
+import { GROUP_PAGE_ID, POOL } from './screens';
+
+interface Props {
+  /** "shared": recommendations; "own": member work. */
+  which: 'shared' | 'own';
+  isOwner: boolean;
+}
+
+const { which, isOwner } = Astro.props;
+const links = POOL.filter((l) => l.own_work === (which === 'own'));
+---
+
+<CardList>
+  {links.map((link) => <PoolCard link={link} groupId={GROUP_PAGE_ID} isOwner={isOwner} returnPath={`/groups/${GROUP_PAGE_ID}`} />)}
+</CardList>

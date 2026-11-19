@@ -1,0 +1,18 @@
+---
+// Story-only: save cards inside the real CardList, as the home page shows them.
+import CardList from '@/components/CardList.astro';
+import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
+
+interface Props {
+  rows: SaveRow[];
+  groups?: { id: string; name: string }[];
+  defaultGroupId?: string;
+  hideOwnWork?: boolean;
+}
+
+const { rows, groups = [], defaultGroupId = '', hideOwnWork = false } = Astro.props;
+---
+
+<CardList>
+  {rows.map((row) => <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} hideOwnWork={hideOwnWork} hasArchivedText />)}
+</CardList>

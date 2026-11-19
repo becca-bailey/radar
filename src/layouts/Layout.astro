@@ -2,7 +2,7 @@
 import '../styles/global.css';
 import UserMenu from '@/components/UserMenu.tsx';
 import { isAdmin } from '../lib/admin';
-import { MODE_COOKIE, THEME_COLORS, THEME_COOKIE, resolveMode, resolveTheme } from '../lib/theme';
+import { MODE_COOKIE, THEME_COLORS, THEME_COOKIE, THEME_FONTS, resolveMode, resolveTheme } from '../lib/theme';
 
 interface Props {
   title?: string;
@@ -48,10 +48,7 @@ if (user) {
     }
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..900,0..100,0..1;1,9..144,400..900,0..100,0..1&family=Work+Sans:wght@400;600;700&display=swap"
-    />
+    <link rel="stylesheet" href={THEME_FONTS[theme]} />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
     <script is:inline>
