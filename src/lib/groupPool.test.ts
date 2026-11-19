@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pageOf, parsePage, sharedByLabel } from './groupPool';
+import { pageOf, parsePage, savedByLabel, sharedByLabel } from './groupPool';
 
 describe('sharedByLabel', () => {
   it('counts anonymous sharers and names the ones with a nickname', () => {
@@ -9,6 +9,16 @@ describe('sharedByLabel', () => {
     expect(sharedByLabel(2, ['Ana', 'Bo'])).toBe('shared by Ana and Bo');
     expect(sharedByLabel(3, ['Ana'])).toBe('shared by Ana and 2 others');
     expect(sharedByLabel(4, ['Ana', 'Bo', 'Cy'])).toBe('shared by Ana, Bo and 2 others');
+  });
+});
+
+describe('savedByLabel', () => {
+  it('shows the Radar-wide count from two savers up', () => {
+    expect(savedByLabel(null)).toBe('');
+    expect(savedByLabel(undefined)).toBe('');
+    expect(savedByLabel(1)).toBe('');
+    expect(savedByLabel(2)).toBe('saved by 2');
+    expect(savedByLabel(15)).toBe('saved by 15');
   });
 });
 

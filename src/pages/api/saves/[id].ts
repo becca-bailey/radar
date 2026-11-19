@@ -12,6 +12,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  *   delete — move the save to a one-day trash (undo restores it, shares too)
  *   undo_save — "Undo" right after saving: remove it for good
  *   retry  — re-queue archiving for a link whose ingest failed
+ *   own_work — mark (value=1) or unmark it as your own work ("I made this");
+ *              it moves between sections in your archive and in every
+ *              group it's shared to
  * RLS scopes every read and write to the caller's own saves.
  */
 export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
@@ -46,6 +49,14 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
     if (error) return fail('Could not update the note. Try again.');
     if (!data?.length) return fail('That save was not found.');
     return back('updated=1');
+  }
+
+  if (action === 'own_work') {
+    const ownWork = form.get('value') === '1';
+    const { data, error } = await supabase.from('saves').update({ own_work: ownWork }).eq('id', id).select('id');
+    if (error) return fail('Could not change that. Try again.');
+    if (!data?.length) return fail('That save was not found.');
+    return back(ownWork ? 'own_work=1' : 'own_work=0');
   }
 
   if (action === 'delete') {

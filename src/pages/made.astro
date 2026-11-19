@@ -1,0 +1,113 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Alert } from '@/components/ui/alert';
+import Empty from '@/components/Empty.astro';
+import CardList from '@/components/CardList.astro';
+import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
+import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
+import PendingSavesRefresh from '@/components/PendingSavesRefresh.astro';
+import { parsePage } from '../lib/groupPool';
+import { savesWithArchivedText } from '../lib/saves';
+
+/**
+ * Everything you marked "I made this", newest first, in numbered pages with
+ * Newer / Older links. Finite pages, never a feed that loads more (PLAN.md §2).
+ */
+const { user, supabase } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const PER_PAGE = 30;
+const MAX_PAGE = 1000;
+
+const params = Astro.url.searchParams;
+const page = parsePage(params.get('page'), MAX_PAGE);
+const pagePath = (n: number) => `/made${n > 1 ? `?page=${n}` : ''}`;
+// One URL per page: send a junk ?page= to the page it shows. Notices from
+// the save menu come back here with extra params, so leave those alone.
+const NOTICE_PARAMS = ['own_work', 'updated', 'deleted', 'trash', 'restored', 'retrying', 'error'];
+if ((params.get('page') ?? '1') !== String(page) && !NOTICE_PARAMS.some((p) => params.has(p))) {
+  return Astro.redirect(pagePath(page));
+}
+
+const linkCols = 'title, source, canonical_url, status, image:metadata->>image, fetch_blocked:metadata->>fetchBlocked';
+const start = (page - 1) * PER_PAGE;
+// RLS scopes this to your own saves. One extra row says whether an older page exists.
+const [{ data, error: loadError }, { data: myGroups }, { data: profile }] = await Promise.all([
+  supabase
+    .from('saves')
+    .select(`id, original_url, note, created_at, own_work, links(${linkCols}), shares(group_id, removed_at, picked_at)`)
+    .eq('own_work', true)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(start, start + PER_PAGE),
+  supabase.from('groups').select('id, name').order('created_at'),
+  supabase.from('profiles').select('last_shared_group_id').eq('id', user.id).single(),
+]);
+const fetched = (data ?? []) as unknown as SaveRow[];
+const items = fetched.slice(0, PER_PAGE);
+const hasOlder = fetched.length > PER_PAGE;
+// Which shown saves can open in the reader view ("Read archived text").
+const withText = await savesWithArchivedText(supabase, items.map((r) => r.id));
+
+const groups = (myGroups ?? []) as { id: string; name: string }[];
+const defaultGroupId = profile?.last_shared_group_id ?? groups[0]?.id ?? '';
+
+const ownWork = params.get('own_work');
+const notice =
+  ownWork === '0'
+    ? 'Moved back to your saves.'
+    : params.get('updated') === '1'
+      ? 'Note updated.'
+      : params.get('retrying') === '1'
+        ? 'Trying to archive it again…'
+        : null;
+const error = params.get('error') ?? loadError?.message ?? null;
+---
+
+<Layout title="Made by you — Radar" user={user}>
+  <p class="mb-0 text-sm"><a class="text-muted-foreground" href="/">← Your archive</a></p>
+  <h1>Made by you</h1>
+  <p class="m-0 text-sm text-muted-foreground">
+    What you marked “I made this”, newest first{page > 1 ? ` · Page ${page}` : ''}.
+  </p>
+
+  {notice && <Alert>{notice}</Alert>}
+  <UndoDeleteAlert />
+  {error && <Alert variant="error">{error}</Alert>}
+
+  {
+    items.length === 0 && !loadError ? (
+      page > 1 ? (
+        <Empty>
+          Nothing older. <a href={pagePath(1)}>Back to the newest</a>.
+        </Empty>
+      ) : (
+        <Empty>
+          Nothing here yet. Tick “I made this” when you save something you wrote or made, or pick it from a
+          save's ⋯ menu.
+        </Empty>
+      )
+    ) : (
+      <CardList>
+        {items.map((row) => (
+          <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} hideOwnWork returnPath={pagePath(page)} hasArchivedText={withText.has(row.id)} />
+        ))}
+      </CardList>
+    )
+  }
+
+  {
+    items.length > 0 && (page > 1 || hasOlder) && (
+      <nav class="mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t-2 pt-4" aria-label="Pages">
+        {page > 1 ? <a class="font-semibold" href={pagePath(page - 1)} rel="prev">← Newer</a> : <span />}
+        {hasOlder && page < MAX_PAGE && (
+          <a class="font-semibold" href={pagePath(page + 1)} rel="next">Older →</a>
+        )}
+      </nav>
+    )
+  }
+
+  <PendingSavesRefresh />
+</Layout>

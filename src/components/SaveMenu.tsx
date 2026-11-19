@@ -6,6 +6,7 @@ import {
   MoreHorizontalIcon,
   PencilIcon,
   RotateCwIcon,
+  SparklesIcon,
   Share2Icon,
   Trash2Icon,
 } from 'lucide-react';
@@ -48,6 +49,8 @@ interface Props {
   readerHref?: string | null;
   /** Archiving failed, so offer to try again. */
   canRetry: boolean;
+  /** Marked "I made this": the saver's own work. */
+  ownWork?: boolean;
   /** Active topic filter, so the page returns to the same view. */
   topic?: string | null;
   /** Same-site path to return to after an action (default: home). */
@@ -61,9 +64,10 @@ interface Props {
 
 /**
  * The three-dot menu on a save: read the archived text, copy the link, edit
- * the note, share to a group, retry a failed archive, delete. Every action is a plain form post
- * (to /api/saves/:id or /api/shares); React only provides the menu and
- * dialogs. Delete has no confirm step: the page offers Undo afterwards.
+ * the note, mark it as your own work (or not), share to a group, retry a
+ * failed archive, delete. Every action is a plain form post (to
+ * /api/saves/:id or /api/shares); React only provides the menu and dialogs.
+ * Delete has no confirm step: the page offers Undo afterwards.
  */
 export default function SaveMenu({
   saveId,
@@ -72,6 +76,7 @@ export default function SaveMenu({
   note,
   readerHref,
   canRetry,
+  ownWork = false,
   topic,
   returnPath,
   sharedIn = [],
@@ -85,6 +90,7 @@ export default function SaveMenu({
   const [shareGroup, setShareGroup] = React.useState(firstShareable);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const retryForm = React.useRef<HTMLFormElement>(null);
+  const ownWorkForm = React.useRef<HTMLFormElement>(null);
   const deleteForm = React.useRef<HTMLFormElement>(null);
   const noteId = React.useId();
   const shareNoteId = React.useId();
@@ -167,6 +173,10 @@ export default function SaveMenu({
             <PencilIcon aria-hidden="true" />
             {note ? 'Edit note' : 'Add a note'}
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => ownWorkForm.current?.requestSubmit()}>
+            <SparklesIcon aria-hidden="true" />
+            {ownWork ? "I didn't make this" : 'I made this'}
+          </DropdownMenuItem>
           {shareTo.length > 0 && (
             <DropdownMenuItem onSelect={() => setSharing(true)}>
               <Share2Icon aria-hidden="true" />
@@ -192,6 +202,10 @@ export default function SaveMenu({
           {hidden('retry')}
         </form>
       )}
+      <form ref={ownWorkForm} method="post" action={action} hidden>
+        {hidden('own_work')}
+        <input type="hidden" name="value" value={ownWork ? '0' : '1'} />
+      </form>
       <form ref={deleteForm} method="post" action={action} hidden>
         {hidden('delete')}
       </form>
@@ -269,6 +283,7 @@ export default function SaveMenu({
                 <p className="m-0 text-[0.8rem] text-muted-foreground">
                   The link, this note and your name in that group. Never your email.
                   {sharedIn.length > 0 ? ` It's the same note ${listNames(sharedIn)} sees.` : ''}
+                  {ownWork ? ' You made this, so it shows under “Made by members”.' : ''}
                 </p>
               </div>
               <DialogFooter>

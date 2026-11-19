@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_SHARE_TO, parseShareTo, resolveShareChoice, shareChoices, shareSummary } from './shares';
+import {
+  MAX_SHARE_TO,
+  OWN_WORK_LABEL,
+  parseShareTo,
+  resolveShareChoice,
+  shareChoices,
+  shareSummary,
+  shortcutMenu,
+  splitOwnWork,
+} from './shares';
 
 const groups = [
   { id: 'g-b', name: 'Bakers' },
@@ -88,5 +97,48 @@ describe('shareSummary', () => {
       " and shared to Readers, Bakers and Allotment — not shared: Chess's owner removed this link; " +
         "couldn't share to Film, try from the archive; couldn't find the group “Knitters”"
     );
+  });
+});
+
+describe('the Shortcut\'s Options list', () => {
+  it('puts "I made this" first, then "Share to" each group, even with no groups', () => {
+    expect(shortcutMenu(groups, 'g-r')).toEqual([
+      OWN_WORK_LABEL,
+      'Share to Readers',
+      'Share to Allotment',
+      'Share to Bakers',
+    ]);
+    expect(shortcutMenu([])).toEqual([OWN_WORK_LABEL]);
+  });
+
+  it('resolves "Share to" items and bare labels to the same group', () => {
+    expect(resolveShareChoice('Share to Readers', groups)?.groupId).toBe('g-r');
+    expect(resolveShareChoice(' share to readers ', groups)?.groupId).toBe('g-r');
+    expect(resolveShareChoice('Readers', groups)?.groupId).toBe('g-r');
+    expect(resolveShareChoice('Share to Knitters', groups)).toBeNull();
+  });
+
+  it('reaches groups whose names collide with the prefix or the own-work item', () => {
+    const odd = [
+      { id: 'g-1', name: 'Readers' },
+      { id: 'g-2', name: 'Share to Readers' },
+      { id: 'g-3', name: OWN_WORK_LABEL },
+    ];
+    const menu = shortcutMenu(odd);
+    expect(menu).toContain('Share to Share to Readers');
+    expect(menu).toContain(`Share to ${OWN_WORK_LABEL}`);
+    const ids = menu.slice(1).map((label) => resolveShareChoice(label, odd)?.groupId).sort();
+    expect(ids).toEqual(['g-1', 'g-2', 'g-3']);
+  });
+
+  it('reads "I made this" out of share_to, leaving only group items', () => {
+    expect(splitOwnWork([OWN_WORK_LABEL, 'Share to Readers'])).toEqual({ ownWork: true, groupLabels: ['Share to Readers'] });
+    expect(splitOwnWork([' ★ i made this '])).toEqual({ ownWork: true, groupLabels: [] });
+    expect(splitOwnWork(['Readers'])).toEqual({ ownWork: false, groupLabels: ['Readers'] });
+    expect(splitOwnWork([`Share to ${OWN_WORK_LABEL}`])).toEqual({ ownWork: false, groupLabels: [`Share to ${OWN_WORK_LABEL}`] });
+    expect(splitOwnWork(parseShareTo(`${OWN_WORK_LABEL}\nShare to Bakers`))).toEqual({
+      ownWork: true,
+      groupLabels: ['Share to Bakers'],
+    });
   });
 });

@@ -9,6 +9,7 @@ import CardList from '@/components/CardList.astro';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import SaveCard, { type SaveRow } from '@/components/SaveCard.astro';
 import UndoDeleteAlert from '@/components/UndoDeleteAlert.astro';
+import PendingSavesRefresh from '@/components/PendingSavesRefresh.astro';
 import SkeletonCards from '@/components/SkeletonCards.astro';
 import { RESURFACE_MIN_AGE_DAYS, agoLabel, pickForDay } from '../lib/resurface';
 import { dayKey } from '../lib/dates';
@@ -25,6 +26,7 @@ const saved = Astro.url.searchParams.get('saved') === '1';
 const shared = Astro.url.searchParams.get('shared') === '1';
 const unshared = Astro.url.searchParams.get('unshared') === '1';
 const updated = Astro.url.searchParams.get('updated') === '1';
+const ownWorkChanged = Astro.url.searchParams.get('own_work');
 const retrying = Astro.url.searchParams.get('retrying') === '1';
 // Undo targets: a save just made (delete it) or a save just deleted (restore it).
 const undoSave = Astro.url.searchParams.get('undo_save');
@@ -41,7 +43,7 @@ const [{ data: categories }, { data: catRows }, { data: myGroups }, { data: prof
   await Promise.all([
     supabase.from('categories').select('id, slug, name').order('id'),
     // Whole-archive category ids, for the chip counts (not just the 200 shown).
-    supabase.from('saves').select('links(category_id)'),
+    supabase.from('saves').select('own_work, links(category_id)'),
     supabase.from('groups').select('id, name').order('created_at'),
     supabase.from('profiles').select('last_shared_group_id').eq('id', user.id).single(),
   ]);
@@ -53,12 +55,15 @@ const activeCat = topic && topic !== 'uncategorized' ? (bySlug.get(topic) ?? nul
 const linkCols = 'title, source, canonical_url, status, image:metadata->>image, fetch_blocked:metadata->>fetchBlocked';
 let query = supabase
   .from('saves')
-  .select(`id, original_url, note, created_at, ${topic ? 'links!inner' : 'links'}(${linkCols}), shares(group_id, removed_at, picked_at)`);
+  .select(`id, original_url, note, created_at, own_work, ${topic ? 'links!inner' : 'links'}(${linkCols}), shares(group_id, removed_at, picked_at)`)
+  // Your own work ("I made this") has its own section, not Recent saves.
+  .eq('own_work', false);
 if (topic === 'uncategorized') query = query.is('links.category_id', null);
 else if (activeCat) query = query.eq('links.category_id', activeCat.id);
 if (cursor) query = query.or(afterCursorFilter(cursor));
 const resurfaceCutoff = new Date(Date.now() - RESURFACE_MIN_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-const [{ data: saves }, { data: oldSaves }] = await Promise.all([
+const MADE_PREVIEW = 3;
+const [{ data: saves }, { data: oldSaves }, { data: madeRows, count: madeCount }] = await Promise.all([
   // One extra row tells us whether there's another page.
   query
     .order('created_at', { ascending: false })
@@ -69,20 +74,38 @@ const [{ data: saves }, { data: oldSaves }] = await Promise.all([
     ? Promise.resolve({ data: [] })
     : supabase
         .from('saves')
-        .select(`id, original_url, note, created_at, links(${linkCols}), shares(group_id, removed_at, picked_at)`)
+        .select(`id, original_url, note, created_at, own_work, links(${linkCols}), shares(group_id, removed_at, picked_at)`)
+        .eq('own_work', false)
         .lt('created_at', resurfaceCutoff)
         .order('created_at')
         .limit(365),
+  // "Made by you": your newest own work, on the unfiltered first page.
+  topic || cursor
+    ? Promise.resolve({ data: [], count: 0 })
+    : supabase
+        .from('saves')
+        .select(`id, original_url, note, created_at, own_work, links(${linkCols}), shares(group_id, removed_at, picked_at)`, {
+          count: 'exact',
+        })
+        .eq('own_work', true)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(MADE_PREVIEW),
 ]);
+const made = (madeRows ?? []) as unknown as SaveRow[];
 const now = new Date();
 // Today's pick changes at the person's midnight, not UTC's.
 const resurfaced = pickForDay((oldSaves ?? []) as unknown as SaveRow[], dayKey(now, Astro.locals.timeZone));
 
-// Chip counts from the whole archive.
+// Chip counts from the whole archive, apart from your own work: the chips
+// filter Recent saves, which leave it out.
 const countByCategory = new Map<number | null, number>();
 let totalSaves = 0;
-for (const r of (catRows ?? []) as unknown as { links: { category_id: number | null } | null }[]) {
+let recentSaves = 0;
+for (const r of (catRows ?? []) as unknown as { own_work: boolean; links: { category_id: number | null } | null }[]) {
   totalSaves++;
+  if (r.own_work) continue;
+  recentSaves++;
   const id = r.links?.category_id ?? null;
   countByCategory.set(id, (countByCategory.get(id) ?? 0) + 1);
 }
@@ -106,7 +129,7 @@ const moreHref =
 // Which shown saves can open in the reader view ("Read archived text").
 const withText = await savesWithArchivedText(
   supabase,
-  [...rows, ...(resurfaced ? [resurfaced] : [])].map((r) => r.id)
+  [...rows, ...made, ...(resurfaced ? [resurfaced] : [])].map((r) => r.id)
 );
 const chip = badgeVariants({ variant: 'chip' });
 
@@ -138,6 +161,8 @@ const lensTopic = activeCat?.name ?? null;
   {shared && <Alert>Shared.</Alert>}
   {unshared && <Alert>Unshared. It's still in your archive.</Alert>}
   {updated && <Alert>Note updated.</Alert>}
+  {ownWorkChanged === '1' && <Alert>Marked as your own work. It's under “Made by you”.</Alert>}
+  {ownWorkChanged === '0' && <Alert>Moved back to your saves.</Alert>}
   <UndoDeleteAlert />
   {retrying && <Alert>Trying to archive it again…</Alert>}
   {error && <Alert variant="error">{error}</Alert>}
@@ -161,6 +186,10 @@ const lensTopic = activeCat?.name ?? null;
     <form class="grid gap-2.5 px-4 pt-2.5 pb-4" method="post" action="/api/saves">
       <Input type="url" name="url" placeholder="Paste a link to save it" required />
       <Input type="text" name="note" placeholder="Why you're saving it (optional)" />
+      <label class="flex items-center gap-2 text-sm font-semibold">
+        <input class="size-4 accent-primary" type="checkbox" name="own_work" value="1" />
+        I made this
+      </label>
       <Button type="submit">Save</Button>
     </form>
     <SkeletonCards count={1} class="px-4 pb-4" />
@@ -181,10 +210,31 @@ const lensTopic = activeCat?.name ?? null;
   }
 
   {
+    made.length > 0 && (
+      <section class="mb-8" aria-labelledby="made-heading">
+        <div class="mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h2 id="made-heading" class="m-0 text-[1.15rem]">Made by you</h2>
+          <Badge className="-rotate-2">{madeCount ?? made.length}</Badge>
+        </div>
+        <CardList>
+          {made.map((row) => (
+            <SaveCard row={row} groups={groups} defaultGroupId={defaultGroupId} hideOwnWork hasArchivedText={withText.has(row.id)} />
+          ))}
+        </CardList>
+        {(madeCount ?? 0) > made.length && (
+          <a class="text-sm font-semibold" href="/made">
+            See all {madeCount} →
+          </a>
+        )}
+      </section>
+    )
+  }
+
+  {
     totalSaves > 0 && (
       <div class="mt-8 mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <h2 class="m-0 whitespace-nowrap">Recent saves</h2>
-        <Badge className="-rotate-2">{totalSaves}</Badge>
+        <Badge className="-rotate-2">{recentSaves}</Badge>
         <a class={buttonVariants({ variant: 'outline', size: 'sm', className: 'ml-auto' })} href="/export">
           <DownloadIcon aria-hidden="true" />
           Export
@@ -202,7 +252,7 @@ const lensTopic = activeCat?.name ?? null;
         aria-label="Filter by topic"
       >
         <a class={chip} href="/" aria-current={!topic ? 'true' : undefined}>
-          All · {totalSaves}
+          All · {recentSaves}
         </a>
         {shownChips.map((c) => (
           <a class={chip} href={`/?topic=${c.slug}`} aria-current={topic === c.slug ? 'true' : undefined}>
@@ -257,6 +307,8 @@ const lensTopic = activeCat?.name ?? null;
           'No older saves.'
         ) : topic ? (
           `Nothing saved under ${activeCat?.name ?? 'that topic'} yet.`
+        ) : made.length > 0 ? (
+          'Links you save to read later show up here.'
         ) : (
           <>Your archive is empty. Save the first thing you don't want to lose, here or <a href="/setup">from your phone and browser</a>.</>
         )}
@@ -325,36 +377,5 @@ const lensTopic = activeCat?.name ?? null;
     });
   </script>
 
-  <script>
-    // While any save is still archiving, poll its status and re-render the
-    // page when the worker finishes (or gives up), instead of making the
-    // user refresh. Gives up after two minutes; a plain refresh still works.
-    const pending = [...document.querySelectorAll<HTMLElement>('[data-pending]')].map(
-      (el) => el.dataset.saveId as string
-    );
-    if (pending.length > 0) {
-      // No cron runs locally, so in dev the page kicks the queue itself.
-      // In production this 401s harmlessly; the scheduled function does it.
-      if (import.meta.env.DEV) {
-        fetch('/api/jobs/ingest?limit=10', { method: 'POST' }).catch(() => {});
-      }
-      const deadline = Date.now() + 2 * 60_000;
-      const tick = async () => {
-        try {
-          const res = await fetch('/api/saves/status?ids=' + pending.join(','));
-          if (res.ok) {
-            const statuses: Record<string, string> = await res.json();
-            if (pending.some((id) => statuses[id] && statuses[id] !== 'pending')) {
-              location.reload();
-              return;
-            }
-          }
-        } catch {
-          // Transient network error; try again on the next tick.
-        }
-        if (Date.now() < deadline) setTimeout(tick, 2500);
-      };
-      setTimeout(tick, 2500);
-    }
-  </script>
+  <PendingSavesRefresh />
 </Layout>

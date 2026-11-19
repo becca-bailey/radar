@@ -6,6 +6,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * both sides derive labels with shareChoices, so they always agree.
  */
 
+/**
+ * The Shortcut shows one "Options" list: "★ I made this" first, then
+ * "Share to <group>" for each group. Marking your own work costs no extra
+ * question, and the prefix keeps group items from ever matching it.
+ */
+export const OWN_WORK_LABEL = '★ I made this';
+export const SHARE_TO_PREFIX = 'Share to ';
+
 export interface GroupOption {
   id: string;
   name: string;
@@ -41,14 +49,22 @@ export function shareChoices(groups: GroupOption[], lastUsedId: string | null = 
 
 /**
  * Builds the menu once and returns a label → choice lookup (case and
- * surrounding spaces ignored); null for an unknown label.
+ * surrounding spaces ignored); null for an unknown label. Takes the
+ * Shortcut's "Share to <label>" items and bare labels (older callers).
+ * The prefix is tried first, so a group named "Share to X" is still
+ * reached by its own item, "Share to Share to X".
  */
 export function shareChoiceLookup(
   groups: GroupOption[],
   lastUsedId: string | null = null
 ): (label: string) => ShareChoice | null {
   const byLabel = new Map(shareChoices(groups, lastUsedId).map((c) => [c.label.toLowerCase(), c]));
-  return (label) => byLabel.get(label.trim().toLowerCase()) ?? null;
+  const prefix = SHARE_TO_PREFIX.toLowerCase();
+  return (label) => {
+    const key = label.trim().toLowerCase();
+    const unprefixed = key.startsWith(prefix) ? byLabel.get(key.slice(prefix.length).trim()) : undefined;
+    return unprefixed ?? byLabel.get(key) ?? null;
+  };
 }
 
 /** The group for a picked label; null for an unknown label. */
@@ -86,6 +102,22 @@ export function parseShareTo(value: unknown): string[] {
     if (labels.length === MAX_SHARE_TO) break;
   }
   return labels;
+}
+
+/**
+ * The Shortcut's "Options" list: "★ I made this" first, then "Share to
+ * <label>" per group, last-used first. Always has at least one item, so
+ * the Shortcut always shows it.
+ */
+export function shortcutMenu(groups: GroupOption[], lastUsedId: string | null = null): string[] {
+  return [OWN_WORK_LABEL, ...shareChoices(groups, lastUsedId).map((c) => SHARE_TO_PREFIX + c.label)];
+}
+
+/** Splits picked `share_to` labels into "I made this" and group labels. */
+export function splitOwnWork(labels: string[]): { ownWork: boolean; groupLabels: string[] } {
+  const own = OWN_WORK_LABEL.toLowerCase();
+  const groupLabels = labels.filter((l) => l.trim().toLowerCase() !== own);
+  return { ownWork: groupLabels.length < labels.length, groupLabels };
 }
 
 /** "A", "A and B", "A, B and C". */

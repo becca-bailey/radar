@@ -2,6 +2,7 @@
 import ItemCard from '@/components/ItemCard.astro';
 import SaveMenu from '@/components/SaveMenu.tsx';
 import Why from '@/components/Why.astro';
+import CardPill from '@/components/CardPill.astro';
 import { formatRecentDate } from '../lib/dates';
 
 /** One save in the archive list. */
@@ -10,6 +11,8 @@ export interface SaveRow {
   original_url: string;
   note: string | null;
   created_at: string;
+  /** "I made this": the saver's own work. */
+  own_work?: boolean;
   links: {
     title: string | null;
     source: string | null;
@@ -31,11 +34,16 @@ interface Props {
   defaultGroupId?: string;
   /** Active topic filter, passed through so actions return to the same view. */
   topic?: string | null;
+  /** Under the "Made by you" heading, where the label would repeat it. */
+  hideOwnWork?: boolean;
+  /** Same-site path to come back to after an action (default: home). */
+  returnPath?: string | null;
   /** The save has archived text (savesWithArchivedText), so the menu offers the reader view. */
   hasArchivedText?: boolean;
 }
 
-const { row, groups = [], defaultGroupId = '', topic = null, hasArchivedText = false } = Astro.props;
+const { row, groups = [], defaultGroupId = '', topic = null, hideOwnWork = false, returnPath = null, hasArchivedText = false } =
+  Astro.props;
 const link = row.links;
 
 function displayTitle(): string {
@@ -83,10 +91,18 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
     {blocked ? ' · this site blocks archiving, saved the link' : ''}
   </Fragment>
   {
+    row.own_work && !hideOwnWork && (
+      <CardPill slot="before" tone="blue">
+        Made by you
+      </CardPill>
+    )
+  }
+  {
     failed && !blocked && (
       <form method="post" action={`/api/saves/${row.id}`}>
         <input type="hidden" name="action" value="retry" />
         <input type="hidden" name="topic" value={topic ?? ''} />
+        <input type="hidden" name="return_path" value={returnPath ?? ''} />
         <button class="cursor-pointer text-[0.82rem] font-semibold underline" type="submit">
           Try archiving again
         </button>
@@ -102,7 +118,9 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
     note={row.note}
     readerHref={readerHref}
     canRetry={failed && !blocked}
+    ownWork={!!row.own_work}
     topic={topic}
+    returnPath={returnPath}
     sharedIn={sharedIn}
     shareTo={shareable}
     defaultGroupId={defaultGroupId}

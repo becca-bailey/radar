@@ -2,8 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * A group's shared links, one row per link (the group_pool function). A row
- * says how many members shared the link, what they wrote, and the names they
- * picked for the group.
+ * says how many members shared the link, what they wrote, the names they
+ * picked for the group, and how many people on Radar saved it.
  */
 export interface PoolLink {
   link_id: string;
@@ -18,6 +18,13 @@ export interface PoolLink {
   names: string[];
   /** The owner marked it picked (say, for a newsletter). */
   picked: boolean;
+  /** A member shared it as their own work ("I made this"). */
+  own_work: boolean;
+  /**
+   * How many people on Radar saved the link, in any group or privately.
+   * Null below 2: the database never returns a count of one.
+   */
+  saved_by: number | null;
   last_shared_at: string;
 }
 
@@ -30,12 +37,21 @@ export interface PoolQuery {
   /** ISO timestamps bounding when links were shared. */
   sharedFrom?: string | null;
   sharedBefore?: string | null;
+  /** True: only member work. False: leave it out. Omitted: everything. */
+  memberWork?: boolean | null;
 }
 
 export async function fetchGroupPool(
   supabase: SupabaseClient,
   groupId: string,
-  { query = '', embedding = null, limit = 60, sharedFrom = null, sharedBefore = null }: PoolQuery = {}
+  {
+    query = '',
+    embedding = null,
+    limit = 60,
+    sharedFrom = null,
+    sharedBefore = null,
+    memberWork = null,
+  }: PoolQuery = {}
 ): Promise<{ links: PoolLink[]; error: string | null }> {
   const { data, error } = await supabase.rpc('group_pool', {
     gid: groupId,
@@ -44,6 +60,7 @@ export async function fetchGroupPool(
     match_limit: limit,
     shared_from: sharedFrom,
     shared_before: sharedBefore,
+    member_work: memberWork,
   });
   return { links: (data ?? []) as PoolLink[], error: error?.message ?? null };
 }
@@ -60,6 +77,11 @@ export function sharedByLabel(readers: number, names: string[]): string {
   const who = shown.join(' and ');
   if (others <= 0) return `shared by ${who}`;
   return `shared by ${shown.length === 2 ? shown.join(', ') : who} and ${others} other${others === 1 ? '' : 's'}`;
+}
+
+/** "saved by 5", or "" below 2 savers. Counts everyone on Radar, never names. */
+export function savedByLabel(savedBy: number | null | undefined): string {
+  return savedBy && savedBy > 1 ? `saved by ${savedBy}` : '';
 }
 
 /** A `?page=` value as a page number: 1 if missing or bad, at most maxPage. */

@@ -31,7 +31,9 @@ if (!group) {
 const params = Astro.url.searchParams;
 const from = isDayKey(params.get('from')) ? params.get('from')! : '';
 const to = isDayKey(params.get('to')) ? params.get('to')! : '';
-const SORTS = { shared: 'Most shared', newest: 'Newest first', oldest: 'Oldest first' } as const;
+// "shared" keeps its URL value from when it counted group sharers; it now
+// sorts by the Radar-wide count the export shows, then by sharers here.
+const SORTS = { shared: 'Most saved', newest: 'Newest first', oldest: 'Oldest first' } as const;
 type Sort = keyof typeof SORTS;
 const rawSort = params.get('sort') ?? '';
 const sort: Sort = rawSort in SORTS ? (rawSort as Sort) : 'shared';
@@ -59,6 +61,12 @@ const { links, error } = await fetchGroupPool(supabase, group.id, {
   sharedBefore,
 });
 
+// The pool arrives newest first.
+if (sort === 'oldest') links.reverse();
+if (sort === 'shared') links.sort((a, b) => (b.saved_by ?? 1) - (a.saved_by ?? 1) || b.readers - a.readers);
+// Member work comes last, as it does in every export format.
+links.sort((a, b) => Number(a.own_work) - Number(b.own_work));
+
 const rows: PickerRow[] = links.map((l) => ({
   id: l.link_id,
   title: saveDisplayTitle(l.title, l.canonical_url),
@@ -66,14 +74,11 @@ const rows: PickerRow[] = links.map((l) => ({
   source: l.source,
   note: joinNotes(l.notes),
   savedAt: l.last_shared_at,
-  readers: l.readers,
+  ownWork: l.own_work,
+  savedBy: l.saved_by,
   image: l.image,
   savedOn: formatDate(l.last_shared_at, timeZone),
 }));
-
-// The pool arrives newest first.
-if (sort === 'oldest') rows.reverse();
-if (sort === 'shared') rows.sort((a, b) => (b.readers ?? 1) - (a.readers ?? 1));
 
 const filtered = !!(from || to || since);
 const sinceLabel = since ? formatDate(since, timeZone) : '';
@@ -84,9 +89,9 @@ const slug = group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$
   <p class="mb-0 text-sm"><a class="text-muted-foreground" href={home}>← {group.name}</a></p>
   <h1>Export links</h1>
   <p>
-    Everything shared to {group.name}, one row per link, with how many members shared it and
-    their notes. Pick what you want and copy it into a draft, or download it. Names are never
-    included.
+    Everything shared to {group.name}, one row per link, with members' notes and how many people
+    on Radar saved it. Members' own work comes last, under “From our members”. Pick what you want
+    and copy it into a draft, or download it. Names are never included.
   </p>
 
   <form class="mt-4 mb-2 flex flex-wrap items-end gap-2.5" method="get">

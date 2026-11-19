@@ -1,0 +1,17 @@
+---
+/** A small label on a card: "Picked", "Made by you", "Made by a member". */
+interface Props {
+  tone: 'sage' | 'blue';
+  slot?: string;
+}
+const { tone } = Astro.props;
+---
+
+<span
+  class:list={[
+    'w-fit rounded-full border-2 px-2 text-[0.72rem] font-bold text-ink',
+    tone === 'sage' ? 'bg-sage' : 'bg-blue',
+  ]}
+>
+  <slot />
+</span>
