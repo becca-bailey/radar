@@ -15,8 +15,10 @@ export function safeLocalPath(raw: string | null | undefined, fallback = '/'): s
  * string onto it. Netlify appends the original query to a `Location` that has
  * none (`/setup?foo=1` → `Location: /login` arrives as `/login?foo=1`), which
  * carried `?error=…` from the sign-in page onto the archive and `?code=…` from
- * the auth callback into history. A bare `?` gives the target its own, empty
- * query. External URLs and locations that already have a query are unchanged.
+ * the auth callback into history. It does this for absolute URLs and for a
+ * bare `?` too (both checked on a deploy preview), so the target gets a
+ * placeholder query of its own, `?_`, which nothing reads. External URLs and
+ * locations that already have a query are unchanged.
  */
 export function withOwnQuery(location: string, origin: string): string {
   let url: URL;
@@ -25,9 +27,8 @@ export function withOwnQuery(location: string, origin: string): string {
   } catch {
     return location;
   }
-  if (url.origin !== new URL(origin).origin) return location;
+  if (url.origin !== new URL(origin).origin || url.search) return location;
   const hashAt = location.indexOf('#');
   const beforeHash = hashAt === -1 ? location : location.slice(0, hashAt);
-  if (/\?./.test(beforeHash)) return location;
   return beforeHash.replace(/\?$/, '') + '?_' + (hashAt === -1 ? '' : location.slice(hashAt));
 }

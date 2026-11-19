@@ -25,16 +25,17 @@ describe('safeLocalPath', () => {
 describe('withOwnQuery', () => {
   const origin = 'https://onyourradar.app';
 
-  it('adds an empty query to same-site paths without one', () => {
-    expect(withOwnQuery('/', origin)).toBe('/?');
-    expect(withOwnQuery('/login', origin)).toBe('/login?');
-    expect(withOwnQuery('/settings#delete-account', origin)).toBe('/settings?#delete-account');
-    expect(withOwnQuery('https://onyourradar.app/groups', origin)).toBe('https://onyourradar.app/groups?');
+  it('adds a placeholder query to same-site paths without one', () => {
+    expect(withOwnQuery('/', origin)).toBe('/?_');
+    expect(withOwnQuery('/login', origin)).toBe('/login?_');
+    expect(withOwnQuery('/?', origin)).toBe('/?_');
+    expect(withOwnQuery('/#', origin)).toBe('/?_#');
+    expect(withOwnQuery('/settings#delete-account', origin)).toBe('/settings?_#delete-account');
+    expect(withOwnQuery('https://onyourradar.app/groups', origin)).toBe('https://onyourradar.app/groups?_');
   });
 
   it('leaves locations that already have a query', () => {
     expect(withOwnQuery('/login?error=x', origin)).toBe('/login?error=x');
-    expect(withOwnQuery('/?', origin)).toBe('/?');
     expect(withOwnQuery('/settings?error=x#delete-account', origin)).toBe('/settings?error=x#delete-account');
   });
 

@@ -46,9 +46,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const response = await next();
 
   // Netlify copies the request's query onto a redirect whose Location has
-  // none, so give every same-site redirect its own query (RAD-83). The
-  // headers are edited in place: a rebuilt Response could lose the auth
-  // cookies the callback and logout set.
+  // none, so give every same-site redirect its own query (RAD-83, see
+  // withOwnQuery). The headers are edited in place: a rebuilt Response could
+  // lose the auth cookies the callback and logout set.
   const location = response.headers.get('location');
   if (location && response.status >= 300 && response.status < 400) {
     const rewritten = withOwnQuery(location, context.url.origin);
