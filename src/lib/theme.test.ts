@@ -44,6 +44,19 @@ describe.each(THEMES)('the %s tokens in global.css', (theme) => {
     expect(Object.keys(dark).filter((name) => !(name in light))).toEqual([]);
   });
 
+  it('fills in every role that Tailwind exposes', () => {
+    const inline = block(css, css.indexOf('@theme inline'));
+    const roles = [...inline.matchAll(/--color-[\w-]+\s*:\s*var\((--[\w-]+)\)/g)].map((m) => m[1]);
+    expect(roles.filter((role) => !(role in light))).toEqual([]);
+  });
+
+  it('only points at tokens it declares itself', () => {
+    const refs = [...Object.values(light), ...Object.values(dark)].flatMap((v) =>
+      [...v.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1])
+    );
+    expect(refs.filter((name) => !(name in light))).toEqual([]);
+  });
+
   it('matches the theme-color values', () => {
     expect(light['--background']).toBe(THEME_COLORS[theme].light);
     expect(dark['--background']).toBe(THEME_COLORS[theme].dark);
@@ -85,7 +98,7 @@ function sourceFiles(dir: string): string[] {
 describe('palette colours', () => {
   const names = paletteNames();
   // var(--sage), bg-sage, [&_a:hover]:border-b-gold, bg-sage/50, tone="sage"
-  const hue = new RegExp(`(?:--|(?<![\\w-])[a-z]+(?:-[a-z]+)*-|['"])(${names.join('|')})(?![\\w-])`, 'g');
+  const hue = new RegExp(`(?:--|(?<![\\w-])[a-z]+(?:-[a-z]+)*-|['"\`])(${names.join('|')})(?![\\w-])`, 'g');
 
   it('are found in global.css (gold, ink…) and roles are not', () => {
     expect(names).toEqual(expect.arrayContaining(['gold', 'sage', 'ink']));
@@ -95,8 +108,9 @@ describe('palette colours', () => {
 
   it('are never named outside the theme blocks', () => {
     const src = fileURLToPath(new URL('..', import.meta.url));
+    const root = fileURLToPath(new URL('../..', import.meta.url));
     const hits: string[] = [];
-    for (const file of sourceFiles(src)) {
+    for (const file of [...sourceFiles(src), ...sourceFiles(join(root, '.storybook'))]) {
       let text = readFileSync(file, 'utf8');
       if (file.endsWith(join('styles', 'global.css'))) {
         // Blank out the theme blocks, keeping line numbers.
@@ -105,10 +119,13 @@ describe('palette colours', () => {
         }
       }
       text.split('\n').forEach((line, i) => {
-        for (const m of line.matchAll(hue)) hits.push(`${relative(src, file)}:${i + 1}: ${m[0]}`);
+        for (const m of line.matchAll(hue)) hits.push(`${relative(root, file)}:${i + 1}: ${m[0]}`);
       });
     }
-    expect(hits, 'Use a role (bg-success, var(--primary)…), not a palette colour').toEqual([]);
+    expect(
+      hits,
+      'Use a role (bg-success, var(--primary)…), not a palette colour. If it is a role, add it to @theme inline.'
+    ).toEqual([]);
   });
 });
 
