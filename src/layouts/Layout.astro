@@ -67,7 +67,7 @@ if (user) {
   <body class="relative min-h-svh" data-user-id={user?.id}>
     {/* Shown while a form submit waits on the server (src/scripts/submitting.ts). */}
     <div
-      class="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-1 animate-pulse bg-gold [html:has(form[data-submitting])_&]:block"
+      class="pointer-events-none fixed inset-x-0 top-0 z-50 hidden h-1 animate-pulse bg-primary [html:has(form[data-submitting])_&]:block"
       aria-hidden="true"
     ></div>
     {/*
@@ -81,7 +81,7 @@ if (user) {
     <div class="pointer-events-none absolute inset-0 -z-10 overflow-clip" aria-hidden="true">
       <div class="sticky top-0 h-lvh">
         <svg
-          class="absolute -top-[60px] -right-20 w-[260px] text-pink opacity-30 min-[721px]:opacity-55"
+          class="absolute -top-[60px] -right-20 w-[260px] text-decor-2 opacity-30 min-[721px]:opacity-55"
           viewBox="0 0 200 200"
         >
           <path
@@ -89,7 +89,7 @@ if (user) {
             d="M48 15c25-14 62-18 84-2s24 48 17 76-23 54-49 62-61-4-77-27S5 66 17 44 32 24 48 15Z"></path>
         </svg>
         <svg
-          class="absolute -bottom-[90px] -left-[100px] w-80 text-blue opacity-30 min-[721px]:opacity-55"
+          class="absolute -bottom-[90px] -left-[100px] w-80 text-decor-3 opacity-30 min-[721px]:opacity-55"
           viewBox="0 0 200 200"
         >
           <path
@@ -115,17 +115,17 @@ if (user) {
         >
           {/* The logo (public/favicon.svg), drawn with theme colours so it dims in dark mode. */}
           <svg class="size-[1.3em] shrink-0" viewBox="26 26 460 460" aria-hidden="true">
-            <circle cx="256" cy="256" r="220" fill="var(--peach)"></circle>
-            <path d="M256 256 L256 36 A220 220 0 0 1 446.53 146 Z" fill="var(--blue)"></path>
-            <g fill="none" stroke="var(--ink)" stroke-width="18">
+            <circle cx="256" cy="256" r="220" fill="var(--decor-1)"></circle>
+            <path d="M256 256 L256 36 A220 220 0 0 1 446.53 146 Z" fill="var(--decor-3)"></path>
+            <g fill="none" stroke="var(--sticker-shadow)" stroke-width="18">
               <circle cx="256" cy="256" r="76"></circle>
               <circle cx="256" cy="256" r="148"></circle>
               <circle cx="256" cy="256" r="220"></circle>
               <line x1="256" y1="256" x2="446.53" y2="146"></line>
             </g>
-            <circle cx="256" cy="256" r="20" fill="var(--ink)"></circle>
-            <circle cx="127.83" cy="330" r="36" fill="var(--peach)"></circle>
-            <circle cx="127.83" cy="330" r="21" fill="var(--gold)" stroke="var(--ink)" stroke-width="18"
+            <circle cx="256" cy="256" r="20" fill="var(--sticker-shadow)"></circle>
+            <circle cx="127.83" cy="330" r="36" fill="var(--decor-1)"></circle>
+            <circle cx="127.83" cy="330" r="21" fill="var(--primary)" stroke="var(--sticker-shadow)" stroke-width="18"
             ></circle>
           </svg>
           {/* Fraunces sits its x-height low in the line box; lift it so the wordmark centres on the mark (RAD-65). */}
@@ -138,7 +138,7 @@ if (user) {
         */}
         <nav
           aria-label="Main"
-          class="ml-auto flex items-center gap-3.5 text-[0.92rem] font-semibold max-sm:gap-2 max-sm:text-[0.85rem] [&_a]:border-y-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-b-gold"
+          class="ml-auto flex items-center gap-3.5 text-[0.92rem] font-semibold max-sm:gap-2 max-sm:text-[0.85rem] [&_a]:border-y-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-b-primary"
         >
           {
             user ? (
@@ -149,7 +149,7 @@ if (user) {
                   Groups
                   {groupNews > 0 && (
                     <span
-                      class="ml-1 inline-block min-w-5 rounded-full border-2 border-foreground bg-peach px-1 text-center text-[0.72rem] leading-4 text-ink max-sm:ml-0.5 max-sm:size-3 max-sm:min-w-0 max-sm:p-0 max-sm:align-top"
+                      class="ml-1 inline-block min-w-5 rounded-full border-2 border-foreground bg-highlight px-1 text-center text-[0.72rem] leading-4 text-highlight-foreground max-sm:ml-0.5 max-sm:size-3 max-sm:min-w-0 max-sm:p-0 max-sm:align-top"
                       aria-hidden="true"
                     >
                       <span class="max-sm:hidden">{groupNews > 99 ? '99+' : groupNews}</span>

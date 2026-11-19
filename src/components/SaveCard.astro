@@ -92,7 +92,7 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
   </Fragment>
   {
     row.own_work && !hideOwnWork && (
-      <CardPill slot="before" tone="blue">
+      <CardPill slot="before" tone="info">
         Made by you
       </CardPill>
     )
@@ -143,7 +143,7 @@ const sharedIn = shares.filter((s) => !s.removed_at).map((s) => groupName.get(s.
               <span class="truncate">{groupName.get(s.group_id)}</span>
               {s.picked_at && (
                 <span
-                  class="shrink-0 rounded-full bg-sage px-1.5 text-[0.72rem] font-bold text-ink"
+                  class="shrink-0 rounded-full bg-success px-1.5 text-[0.72rem] font-bold text-success-foreground"
                   title="The group's owner picked this, say for a newsletter"
                 >
                   picked
