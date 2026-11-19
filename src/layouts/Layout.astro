@@ -102,11 +102,17 @@ if (user) {
       </div>
     </div>
     <main class="relative mx-auto max-w-[660px] px-4 pt-4 pb-16">
+      {/*
+        On phones the logo, nav and avatar only just fit on one line, so
+        below `sm` the wordmark, nav text and gaps shrink a little and the
+        Groups badge becomes a dot (RAD-66). Narrower than that (about 340px),
+        the nav wraps onto its own line, kept to the right by `ml-auto`.
+      */}
       <header
-        class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-[3px] border-foreground py-3.5"
+        class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-[3px] border-foreground py-3.5 max-sm:gap-x-3"
       >
         <a
-          class="font-display font-wonk inline-flex items-center gap-[0.3em] text-[1.45rem] leading-[1.15] font-extrabold tracking-[-0.01em] text-foreground no-underline"
+          class="font-display font-wonk inline-flex items-center gap-[0.3em] text-[1.45rem] leading-[1.15] max-sm:text-[1.25rem] font-extrabold tracking-[-0.01em] text-foreground no-underline"
           href="/"
           aria-label="Radar"
         >
@@ -135,7 +141,7 @@ if (user) {
         */}
         <nav
           aria-label="Main"
-          class="flex items-center gap-3.5 text-[0.92rem] font-semibold [&_a]:border-y-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-b-gold"
+          class="ml-auto flex items-center gap-3.5 text-[0.92rem] font-semibold max-sm:gap-2 max-sm:text-[0.85rem] [&_a]:border-y-[2.5px] [&_a]:border-transparent [&_a]:text-foreground [&_a]:no-underline [&_a:hover]:border-b-gold"
         >
           {
             user ? (
@@ -146,10 +152,10 @@ if (user) {
                   Groups
                   {groupNews > 0 && (
                     <span
-                      class="ml-1 inline-block min-w-5 rounded-full border-2 border-foreground bg-peach px-1 text-center text-[0.72rem] leading-4 text-ink"
+                      class="ml-1 inline-block min-w-5 rounded-full border-2 border-foreground bg-peach px-1 text-center text-[0.72rem] leading-4 text-ink max-sm:ml-0.5 max-sm:size-3 max-sm:min-w-0 max-sm:p-0 max-sm:align-top"
                       aria-hidden="true"
                     >
-                      {groupNews > 99 ? '99+' : groupNews}
+                      <span class="max-sm:hidden">{groupNews > 99 ? '99+' : groupNews}</span>
                     </span>
                   )}
                 </a>
