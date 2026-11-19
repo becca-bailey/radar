@@ -20,7 +20,8 @@ export interface Family {
 export const FAMILIES: Family[] = [
   {
     title: 'Accents',
-    blurb: 'Fills: actions, badges, panels, alerts and the background shapes. Text on any of them uses --on-fill.',
+    blurb:
+      'Fills, named for their colour: actions, badges, panels, alerts and the background shapes. Roles such as --primary point at them.',
     roots: ['--gold', '--peach', '--blue', '--pink', '--rose', '--sage'],
   },
   {
@@ -30,17 +31,17 @@ export const FAMILIES: Family[] = [
   },
   {
     title: 'Text',
-    blurb: 'Body text, quieter text, text on accent fills, and links.',
+    blurb: 'Body text, quieter text, text on accent fills (--on-fill) and links.',
     roots: ['--foreground', '--muted-foreground', '--on-fill', '--link'],
   },
   {
     title: 'Lines',
-    blurb: 'Ink draws outlines and the sticker shadows; hairline is the soft rule.',
+    blurb: 'Ink draws the sticker shadows and, in light, the outlines; dark gives --border its own colour. Hairline is the soft rule.',
     roots: ['--ink', '--hairline'],
   },
   {
     title: 'Status',
-    blurb: 'Errors and destructive actions.',
+    blurb: 'Error text and destructive actions. The alert fills (--alert-success, --alert-error) sit under sage and pink.',
     roots: ['--destructive'],
   },
 ];

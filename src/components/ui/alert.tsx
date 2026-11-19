@@ -8,8 +8,8 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-sage',
-        error: 'bg-pink',
+        default: 'bg-alert-success',
+        error: 'bg-alert-error',
       },
     },
     defaultVariants: {

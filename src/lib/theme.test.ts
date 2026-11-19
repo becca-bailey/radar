@@ -4,31 +4,47 @@ import { THEMES, THEME_COLORS, resolveMode, resolveTheme } from './theme';
 
 const css = readFileSync(new URL('../styles/global.css', import.meta.url), 'utf8');
 
-/** The custom properties declared in the first rule whose selector is `selector`. */
-function tokens(selector: string): Record<string, string> {
-  const start = css.indexOf(`${selector} {`);
-  if (start === -1) throw new Error(`no rule for ${selector}`);
-  const body = css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
-  const out: Record<string, string> = {};
-  for (const [, name, value] of body.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
-    out[name] = value.trim();
+/** The body of the first `{ … }` block after `from`, braces balanced. */
+function block(text: string, from: number): string {
+  const open = text.indexOf('{', from);
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}' && --depth === 0) return text.slice(open + 1, i);
   }
+  throw new Error('unbalanced braces');
+}
+
+/** The custom properties declared directly in `body` (not in nested blocks). */
+function declarations(body: string): Record<string, string> {
+  let flat = body.replace(/\/\*[\s\S]*?\*\//g, '');
+  while (/\{[^{}]*\}/.test(flat)) flat = flat.replace(/[^;{}]*\{[^{}]*\}/g, '');
+  const out: Record<string, string> = {};
+  for (const [, name, value] of flat.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[name] = value.trim();
   return out;
 }
 
-describe.each(THEMES)('the %s tokens in global.css', (theme) => {
-  const light = tokens(`:root[data-theme='${theme}']`);
-  const forcedDark = tokens(`:root[data-theme='${theme}'][data-mode='dark']`);
-  const systemDark = tokens(`:root[data-theme='${theme}'][data-mode='system']`);
+/** A theme's light tokens, and the ones its `@variant dark` block changes. */
+function themeTokens(theme: string) {
+  const start = css.indexOf(`:root[data-theme='${theme}'] {`);
+  if (start === -1) throw new Error(`no block for the ${theme} theme`);
+  const body = block(css, start);
+  const variant = body.indexOf('@variant dark');
+  if (variant === -1) throw new Error(`no @variant dark in the ${theme} theme`);
+  return { light: declarations(body), dark: declarations(block(body, variant)) };
+}
 
-  it('has the same dark tokens forced and following the system', () => {
-    expect(Object.keys(forcedDark).length).toBeGreaterThan(0);
-    expect(systemDark).toEqual(forcedDark);
+describe.each(THEMES)('the %s tokens in global.css', (theme) => {
+  const { light, dark } = themeTokens(theme);
+
+  it('only changes tokens in dark that light declares', () => {
+    expect(Object.keys(dark).length).toBeGreaterThan(0);
+    expect(Object.keys(dark).filter((name) => !(name in light))).toEqual([]);
   });
 
   it('matches the theme-color values', () => {
     expect(light['--background']).toBe(THEME_COLORS[theme].light);
-    expect(forcedDark['--background']).toBe(THEME_COLORS[theme].dark);
+    expect(dark['--background']).toBe(THEME_COLORS[theme].dark);
   });
 });
 

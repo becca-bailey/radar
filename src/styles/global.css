@@ -3,19 +3,53 @@
  * Cream paper, chunky friendly display type (Fraunces soft), sticker accents,
  * stone-brown borders with hard offset shadows, organic blob details.
  *
- * The palette is borrowed from becca.is: stone brown ink on cream, a gold
- * primary, peach highlights, cornflower blue and pink. Each accent is
- * named for its colour (bg-gold, var(--peach)); the comment says what it's for.
- *
  * Styling is Tailwind utilities in the markup plus shadcn/ui components in
- * src/components/ui. This file only holds the themes: each palette as shadcn
- * tokens, and base styles for bare prose elements.
+ * src/components/ui. This file only holds the themes (each palette as
+ * tokens) and base styles for bare prose elements.
  *
- * Themes: <html> carries data-theme (which palette) and data-mode (system,
- * light or dark), set by the server in Layout.astro (see src/lib/theme.ts).
- * Each theme has a light block and a dark block. The dark tokens appear
- * twice, once for a forced dark mode and once inside the media query for
- * "system"; the two copies must stay identical.
+ * Themes and modes
+ * ----------------
+ * <html> carries data-theme (which palette) and data-mode (system, light or
+ * dark), set by the server in Layout.astro (see src/lib/theme.ts). A page
+ * with no data-theme gets Playful; one with no data-mode follows the system.
+ *
+ * Each theme is one block: its light tokens, then `@variant dark { … }` with
+ * the tokens that change in dark. The dark variant (defined below) covers
+ * both a forced dark mode and "system" on a dark OS, so the dark tokens are
+ * written once. A new theme copies the Playful block and keeps its order.
+ *
+ * How the colours relate
+ * ----------------------
+ * Tokens come in two kinds, and each theme block lists them in five families
+ * (the same families as Storybook's Tokens → Palette page, which reads them
+ * from src/stories/tokens/paletteGroups.ts):
+ *
+ *   Accents   the theme's fill colours, named for their colour: gold, peach…
+ *   Surfaces  what content sits on: background, card, muted
+ *   Text      foreground, muted-foreground, on-fill (text on accents), link
+ *   Lines     ink, border, hairline
+ *   Status    destructive, and the alert fills
+ *
+ * A token either holds a colour (a hex value) or points at one by role
+ * (primary is var(--gold)). The role names are shadcn's (primary,
+ * secondary, accent, card, popover, muted, border, input, ring, destructive
+ * and their -foreground pairs) plus a few of ours (on-fill, link, ink,
+ * hairline, alert-*). shadcn components rely on its names, so they stay.
+ *
+ * Which name to use in markup:
+ *   - A role name when one fits the job: bg-primary for the main action,
+ *     bg-accent for hover fills, bg-alert-error, text-destructive,
+ *     border-border, bg-muted, text-muted-foreground.
+ *   - An accent's colour name when the colour itself is the point:
+ *     decoration (the background blobs, the logo, the landing-page tints)
+ *     and things known by their colour (the peach avatar and <mark>, the
+ *     rose owner tools, sage "picked" badges).
+ *
+ * Ink is the drawing colour: sticker shadows, the logo's strokes, and dark
+ * text on light accent fills (text-ink). In light it's the same stone brown
+ * as body text and borders. In dark it stays near-black so shadows still
+ * read as shadows, which is why dark gives borders their own lighter colour
+ * and text its own cream.
  */
 
 @import 'tailwindcss';
@@ -35,83 +69,69 @@
   color-scheme: dark;
 }
 
+/* "Dark" is a forced dark mode, or "system" (or no data-mode) on a dark OS.
+   Used on :root in the theme blocks, and on any element as a dark: utility. */
+@custom-variant dark {
+  &:is([data-mode='dark'], [data-mode='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:is([data-mode='system'], [data-mode='system'] *, :root:not([data-mode]), :root:not([data-mode]) *) {
+      @slot;
+    }
+  }
+}
+
 /* ---- Playful (the default) ---------------------------------------------- */
 
-/* Light. Also the fallback with no data-theme at all. */
-:root,
+/* The palette is borrowed from becca.is: stone brown ink on cream, a gold
+   primary, peach highlights, cornflower blue and pink.
+   Dark is the same family at dusk: warm stone surfaces, cream text, and the
+   accents dimmed so they sit on the dark page rather than glow. */
+:root:not([data-theme]),
 :root[data-theme='playful'] {
-  --ink: #4e473f; /* stone brown */
-  --hairline: #e8d3c7; /* a deeper peach, enough to read as a rule on cream */
-  --on-fill: #3d3832; /* text on gold, peach, blue and sage fills */
-  --link: #2969c2; /* links and blue text, 5.1:1 on cream (--blue is a fill) */
-
+  /* Accents. Peach, pink and blue also tint the three steps on the landing page. */
   --gold: #cfaf36; /* the brand dot, primary actions, link hover underlines */
-  --peach: #ffd9c9; /* secondary: badges, the avatar, <mark>, save panel, selected cards */
-  --blue: #a6c8f6; /* accent (hover fills), background blob, explore and group panels */
+  --peach: #ffd9c9; /* badges, the avatar, <mark>, save panel, selected cards */
+  --blue: #a6c8f6; /* hover fills, background blob, explore and group panels */
   --pink: #fdc1e1; /* error alerts, background blob */
   --rose: #f4a6cb; /* owner tools */
   --sage: #c9dca6; /* success alerts, "picked" badges */
-  /* Peach, pink and blue also tint the three steps on the landing page. */
-
-  /* shadcn tokens, mapped onto the palette above */
-  --background: #fbf9f8;
-  --foreground: #4e473f;
-  --card: #ffffff;
-  --card-foreground: var(--foreground);
-  --popover: var(--card);
-  --popover-foreground: var(--foreground);
   --primary: var(--gold);
-  --primary-foreground: var(--on-fill); /* 5.4:1 on gold */
   --secondary: var(--peach);
-  --secondary-foreground: var(--on-fill);
-  --muted: #f7eee9; /* muted text, links and errors all keep 4.5:1 on it */
-  --muted-foreground: #736b62;
   --accent: var(--blue);
+
+  /* Surfaces */
+  --background: #fbf9f8;
+  --card: #ffffff;
+  --popover: var(--card);
+  --muted: #f7eee9; /* muted text, links and errors all keep 4.5:1 on it */
+
+  /* Text */
+  --foreground: #4e473f; /* the same stone brown as ink */
+  --muted-foreground: #736b62;
+  --on-fill: #3d3832; /* text on gold, peach, blue and sage fills; 5.4:1 on gold */
+  --link: #2969c2; /* links and blue text, 5.1:1 on cream (--blue is a fill) */
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --primary-foreground: var(--on-fill);
+  --secondary-foreground: var(--on-fill);
   --accent-foreground: var(--on-fill);
-  --destructive: #b5412e;
-  --border: var(--ink);
-  --input: var(--ink);
+
+  /* Lines */
+  --ink: #4e473f; /* stone brown: sticker shadows, the logo, text on light fills */
+  --border: var(--ink); /* outlines; the ink itself in light */
+  --input: var(--border);
   --ring: var(--link);
-}
+  --hairline: #e8d3c7; /* a deeper peach, enough to read as a rule on cream */
 
-/* Dark: the same family at dusk. Warm stone surfaces, cream text, and the
-   accents dimmed so they sit on the dark page rather than glow.
-   Forced dark; the system copy below must match it. */
-:root[data-theme='playful'][data-mode='dark'] {
-  --ink: #14110e;
-  --hairline: #4a423a;
-  --on-fill: #1f1b18;
-  --link: #8fb9f5;
+  /* Status */
+  --destructive: #b5412e; /* error text, destructive buttons and their outlines */
+  --alert-success: var(--sage);
+  --alert-error: var(--pink);
 
-  --gold: #c9aa38;
-  --peach: #c79a87;
-  --blue: #6f93c4;
-  --pink: #c98aab;
-  --rose: #c46e98;
-  --sage: #93a876;
-
-  --background: #2a2622;
-  --foreground: #f3eee9;
-  --card: #36302a;
-  --muted: #3f3832; /* muted text keeps 5:1 on it */
-  /* Ink is near-black here for the sticker shadows; outlines need to stay
-     visible on dark stone (3:1), so borders get their own colour. */
-  --border: #857a6f;
-  --input: #857a6f;
-  --muted-foreground: #b3aa9f;
-  --destructive: #ea957f;
-}
-
-/* Dark when the mode follows the system. A copy of the block above. Also
-   the fallback for a page with no data-theme or data-mode at all. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]):not([data-mode]),
-  :root[data-theme='playful'][data-mode='system'] {
-    --ink: #14110e;
-    --hairline: #4a423a;
-    --on-fill: #1f1b18;
-    --link: #8fb9f5;
-
+  @variant dark {
+    /* Accents */
     --gold: #c9aa38;
     --peach: #c79a87;
     --blue: #6f93c4;
@@ -119,13 +139,24 @@
     --rose: #c46e98;
     --sage: #93a876;
 
+    /* Surfaces */
     --background: #2a2622;
-    --foreground: #f3eee9;
     --card: #36302a;
-    --muted: #3f3832;
-    --border: #857a6f;
-    --input: #857a6f;
+    --muted: #3f3832; /* muted text keeps 5:1 on it */
+
+    /* Text */
+    --foreground: #f3eee9;
     --muted-foreground: #b3aa9f;
+    --on-fill: #1f1b18;
+    --link: #8fb9f5;
+
+    /* Lines. Ink stays near-black for the sticker shadows; outlines need to
+       stay visible on dark stone (3:1), so borders get their own colour. */
+    --ink: #14110e;
+    --border: #857a6f;
+    --hairline: #4a423a;
+
+    /* Status */
     --destructive: #ea957f;
   }
 }
@@ -134,34 +165,44 @@
   --font-sans: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+  /* Accents */
+  --color-gold: var(--gold);
+  --color-peach: var(--peach);
+  --color-blue: var(--blue);
+  --color-pink: var(--pink);
+  --color-rose: var(--rose);
+  --color-sage: var(--sage);
   --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+
+  /* Surfaces */
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-popover: var(--popover);
+  --color-muted: var(--muted);
+
+  /* Text */
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-link: var(--link);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
+
+  /* Lines */
+  --color-ink: var(--ink);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-
-  --color-ink: var(--ink);
   --color-hairline: var(--hairline);
-  --color-link: var(--link);
-  --color-sage: var(--sage);
-  --color-gold: var(--gold);
-  --color-pink: var(--pink);
-  --color-blue: var(--blue);
-  --color-rose: var(--rose);
-  --color-peach: var(--peach);
+
+  /* Status */
+  --color-destructive: var(--destructive);
+  --color-alert-success: var(--alert-success);
+  --color-alert-error: var(--alert-error);
 
   --radius-sm: 6px;
   --radius-md: 10px;
