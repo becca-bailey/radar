@@ -32,7 +32,7 @@ export default function UserMenu({ email, admin = false }: Props) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="grid size-8 cursor-pointer place-items-center rounded-full border-2 border-foreground bg-peach font-sans text-sm font-bold text-ink shadow-hard-xs focus-visible:outline-[3px] focus-visible:outline-offset-1"
+          className="grid size-8 cursor-pointer place-items-center rounded-full border-2 border-foreground bg-highlight font-sans text-sm font-bold text-highlight-foreground shadow-hard-xs focus-visible:outline-[3px] focus-visible:outline-offset-1"
           aria-label={`Account menu for ${email}`}
         >
           {initial}

@@ -42,8 +42,8 @@ const confirmText = `Remove this link from the group? It's hidden here and can't
   {
     (link.picked || ownWork) && (
       <span slot="before" class="flex flex-wrap gap-1.5">
-        {ownWork && <CardPill tone="blue">Made by a member</CardPill>}
-        {link.picked && <CardPill tone="sage">Picked</CardPill>}
+        {ownWork && <CardPill tone="info">Made by a member</CardPill>}
+        {link.picked && <CardPill tone="success">Picked</CardPill>}
       </span>
     )
   }

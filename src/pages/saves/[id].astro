@@ -118,7 +118,7 @@ const timeZone = Astro.locals.timeZone;
 
     {
       body && (
-        <footer class="mt-12 border-t-2 border-dashed border-hairline pt-4 text-[0.85rem] text-muted-foreground">
+        <footer class="mt-12 border-t-2 border-dashed border-border-subtle pt-4 text-[0.85rem] text-muted-foreground">
           Archived{link?.archived_at ? ` ${formatRecentDate(link.archived_at, timeZone)}` : ''} from{' '}
           <a href={originalUrl} rel="noopener noreferrer">{host || 'the original page'}</a>. Images load from
           the original site.
@@ -181,7 +181,7 @@ const timeZone = Astro.locals.timeZone;
   .reader-body blockquote {
     margin: 1.5rem 0;
     padding-left: 1rem;
-    border-left: 4px solid var(--gold);
+    border-left: 4px solid var(--primary);
     font-style: italic;
   }
   .reader-body pre {
@@ -212,14 +212,14 @@ const timeZone = Astro.locals.timeZone;
   .reader-body th,
   .reader-body td {
     padding: 0.35rem 0.6rem;
-    border: 1px solid var(--hairline);
+    border: 1px solid var(--border-subtle);
     text-align: left;
     vertical-align: top;
   }
   .reader-body hr {
     margin: 2rem 0;
     border: 0;
-    border-top: 2px dashed var(--hairline);
+    border-top: 2px dashed var(--border-subtle);
   }
   .reader-body li + li {
     margin-top: 0.3rem;

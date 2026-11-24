@@ -107,10 +107,30 @@ data.
 ### Adding a theme
 
 Add the theme in `src/lib/theme.ts` (`THEMES`, `THEME_COLORS`, `THEME_FONTS`)
-and its tokens in `src/styles/global.css`. Storybook picks it up from there: it
-appears in the toolbar and the gallery, the token pages list its values, and
-the Astro stories are rendered once per theme, so anything that differs by
-theme on the server (like the background) shows correctly.
+and its tokens in `src/styles/global.css`. Copy the Playful block under the
+selector `:root[data-theme='name']` alone and keep its order:
+
+1. **Palette**: the theme's own colours, named however suits it. They stay
+   inside the block.
+2. **Roles**: fill in every one, light and dark. Point each at a palette
+   colour or give it a value. Two roles can share a colour.
+3. **`@variant dark`**: the palette colours and roles that change in dark.
+
+The roles are listed, with what each is for, at the top of `global.css`:
+fills with their `-foreground` text (`primary`, `secondary`, `accent`,
+`highlight`, `info`, `owner`, `decor-1` to `decor-3`), surfaces, text, lines
+(`sticker-shadow`, `border`, `border-subtle`, `input`, `ring`) and status
+(`success`, `error`, `destructive`).
+
+Components and pages use roles only (`bg-success`, `var(--primary)`), never a
+palette colour like `bg-sage` or `var(--gold)`. Palette colours have no
+Tailwind utilities, and a test in `src/lib/theme.test.ts` fails if markup
+names one. That's what lets a new theme work without touching markup.
+
+Storybook picks the theme up from there: it appears in the toolbar and the
+gallery, the token pages list its values, and the Astro stories are rendered
+once per theme, so anything that differs by theme on the server (like the
+background) shows correctly.
 
 ## How the code is organized
 
