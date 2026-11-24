@@ -3,9 +3,10 @@ import Layout from '../layouts/Layout.astro';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { safeLocalPath } from '../lib/redirects';
 
 if (Astro.locals.user) {
-  return Astro.redirect('/');
+  return Astro.redirect(safeLocalPath(Astro.url.searchParams.get('next')));
 }
 
 const sent = Astro.url.searchParams.get('sent') === '1';
@@ -29,7 +30,19 @@ const next = Astro.url.searchParams.get('next') ?? '';
     </Alert>
   )}
   {accountDeleted && <Alert>Your account and archive were deleted.</Alert>}
-  {error && <Alert variant="error">{error}</Alert>}
+  {error && <Alert variant="error" id="login-error">{error}</Alert>}
+  {/* A used or expired sign-in link: Supabase's reason is in the fragment,
+      carried here from /auth/callback. */}
+  <script>
+    import { signInLinkErrorFromHash } from '../lib/signInLinks';
+
+    const message = signInLinkErrorFromHash(location.hash);
+    const alert = document.getElementById('login-error');
+    if (alert && message) {
+      alert.textContent = message;
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+  </script>
 
   <form class="mt-4 mb-6 grid gap-2.5" method="post" action="/api/auth/login">
     <input type="hidden" name="next" value={next} />

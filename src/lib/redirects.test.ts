@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { safeLocalPath } from './redirects';
+import { safeLocalPath, withOwnQuery } from './redirects';
 
 describe('safeLocalPath', () => {
   it('keeps local paths with queries', () => {
@@ -19,5 +19,28 @@ describe('safeLocalPath', () => {
     expect(safeLocalPath('/\\evil.example')).toBe('/');
     expect(safeLocalPath('/\t/evil.example')).toBe('/');
     expect(safeLocalPath('/\n/evil.example')).toBe('/');
+  });
+});
+
+describe('withOwnQuery', () => {
+  const origin = 'https://onyourradar.app';
+
+  it('adds a placeholder query to same-site paths without one', () => {
+    expect(withOwnQuery('/', origin)).toBe('/?_');
+    expect(withOwnQuery('/login', origin)).toBe('/login?_');
+    expect(withOwnQuery('/?', origin)).toBe('/?_');
+    expect(withOwnQuery('/#', origin)).toBe('/?_#');
+    expect(withOwnQuery('/settings#delete-account', origin)).toBe('/settings?_#delete-account');
+    expect(withOwnQuery('https://onyourradar.app/groups', origin)).toBe('https://onyourradar.app/groups?_');
+  });
+
+  it('leaves locations that already have a query', () => {
+    expect(withOwnQuery('/login?error=x', origin)).toBe('/login?error=x');
+    expect(withOwnQuery('/settings?error=x#delete-account', origin)).toBe('/settings?error=x#delete-account');
+  });
+
+  it('leaves other sites alone', () => {
+    expect(withOwnQuery('https://evil.example/', origin)).toBe('https://evil.example/');
+    expect(withOwnQuery('//evil.example/', origin)).toBe('//evil.example/');
   });
 });
